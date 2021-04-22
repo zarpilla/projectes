@@ -19,15 +19,15 @@ module.exports = {
             const project = projects2[i]
             for(var j = 0; j < project.dedication.length; j++) {
                 const d = project.dedication[j]
-                console.log('dedication', d)
-                // await strapi.services.activity.create({
-                //     description: d.comment,
-                //     hours: d.hours,
-                //     project: project.id,
-                //     users_permissions_user: d.users_permissions_user ? d.users_permissions_user.id : null,
-                //     date: d.date,
-                //     dedication_type: d.dedication_type ? d.dedication_type.id : null
-                // })
+                // console.log('dedication', d)
+                await strapi.services.activity.create({
+                    description: d.comment,
+                    hours: d.hours,
+                    project: project.id,
+                    users_permissions_user: d.users_permissions_user ? d.users_permissions_user.id : null,
+                    date: d.date,
+                    dedication_type: d.dedication_type ? d.dedication_type.id : null
+                })
             }
         }
 
