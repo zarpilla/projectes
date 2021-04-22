@@ -1,0 +1,52 @@
+{
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/project-scopes",
+      "handler": "project-scope.find",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/project-scopes/count",
+      "handler": "project-scope.count",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/project-scopes/:id",
+      "handler": "project-scope.findOne",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/project-scopes",
+      "handler": "project-scope.create",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "PUT",
+      "path": "/project-scopes/:id",
+      "handler": "project-scope.update",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "DELETE",
+      "path": "/project-scopes/:id",
+      "handler": "project-scope.delete",
+      "config": {
+        "policies": []
+      }
+    }
+  ]
+}

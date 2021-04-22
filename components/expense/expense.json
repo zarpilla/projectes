@@ -1,0 +1,35 @@
+{
+  "collectionName": "components_expense_expenses",
+  "info": {
+    "name": "Expense",
+    "icon": "angry"
+  },
+  "options": {},
+  "attributes": {
+    "concept": {
+      "type": "string"
+    },
+    "quantity": {
+      "type": "decimal"
+    },
+    "amount": {
+      "type": "biginteger"
+    },
+    "tax_pct": {
+      "type": "decimal"
+    },
+    "tax_amount": {
+      "type": "decimal"
+    },
+    "total_amount": {
+      "type": "decimal"
+    },
+    "paid": {
+      "type": "boolean",
+      "default": false
+    },
+    "invoice": {
+      "type": "string"
+    }
+  }
+}

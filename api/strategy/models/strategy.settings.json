@@ -1,0 +1,33 @@
+{
+  "kind": "collectionType",
+  "collectionName": "strategies",
+  "info": {
+    "name": "Strategy",
+    "description": ""
+  },
+  "options": {
+    "increments": true,
+    "timestamps": true,
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "code": {
+      "type": "string",
+      "required": true,
+      "unique": true
+    },
+    "name": {
+      "type": "string"
+    },
+    "description": {
+      "type": "richtext"
+    },
+    "projects": {
+      "via": "strategies",
+      "collection": "project"
+    },
+    "code_name": {
+      "type": "string"
+    }
+  }
+}

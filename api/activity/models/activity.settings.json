@@ -1,0 +1,42 @@
+{
+  "kind": "collectionType",
+  "collectionName": "activities",
+  "info": {
+    "name": "Activity",
+    "description": ""
+  },
+  "options": {
+    "increments": true,
+    "timestamps": true,
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "description": {
+      "type": "string"
+    },
+    "users_permissions_user": {
+      "plugin": "users-permissions",
+      "model": "user"
+    },
+    "project": {
+      "model": "project",
+      "via": "activities"
+    },
+    "hours": {
+      "type": "decimal"
+    },
+    "date": {
+      "type": "date"
+    },
+    "activity_type": {
+      "model": "activity-type"
+    },
+    "invoiced": {
+      "type": "boolean",
+      "default": false
+    },
+    "dedication_type": {
+      "model": "dedication-type"
+    }
+  }
+}

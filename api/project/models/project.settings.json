@@ -1,0 +1,111 @@
+{
+  "kind": "collectionType",
+  "collectionName": "projects",
+  "info": {
+    "name": "Project",
+    "description": ""
+  },
+  "options": {
+    "increments": true,
+    "timestamps": true,
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true,
+      "unique": true
+    },
+    "description": {
+      "type": "richtext"
+    },
+    "strategies": {
+      "collection": "strategy",
+      "via": "projects",
+      "dominant": true
+    },
+    "project_scope": {
+      "model": "project-scope"
+    },
+    "leader": {
+      "plugin": "users-permissions",
+      "model": "user"
+    },
+    "intercooperations": {
+      "collection": "social-entity",
+      "via": "projects",
+      "dominant": true
+    },
+    "expenses": {
+      "type": "component",
+      "repeatable": true,
+      "component": "budget-line.budget-line"
+    },
+    "incomes": {
+      "type": "component",
+      "repeatable": true,
+      "component": "budget-line.budget-line"
+    },
+    "estimated_hours": {
+      "type": "component",
+      "repeatable": true,
+      "component": "hours.hours"
+    },
+    "dedication": {
+      "type": "component",
+      "repeatable": true,
+      "component": "dedication.dedication"
+    },
+    "total_estimated_hours": {
+      "type": "decimal"
+    },
+    "total_real_hours": {
+      "type": "decimal"
+    },
+    "total_expenses": {
+      "type": "decimal"
+    },
+    "total_incomes": {
+      "type": "decimal"
+    },
+    "total_expenses_hours": {
+      "type": "decimal"
+    },
+    "balance": {
+      "type": "decimal"
+    },
+    "total_estimated_expenses": {
+      "type": "decimal"
+    },
+    "estimated_balance": {
+      "type": "decimal",
+      "default": 0
+    },
+    "incomes_expenses": {
+      "type": "decimal"
+    },
+    "project_state": {
+      "model": "project-state"
+    },
+    "invoices": {
+      "collection": "invoice",
+      "via": "project"
+    },
+    "client": {
+      "model": "contacts",
+      "via": "projects"
+    },
+    "activities": {
+      "via": "project",
+      "collection": "activity"
+    },
+    "invoice_creation": {
+      "type": "component",
+      "repeatable": true,
+      "component": "invoice-line.invoice-creation"
+    },
+    "dedicated_hours": {
+      "type": "decimal"
+    }
+  }
+}

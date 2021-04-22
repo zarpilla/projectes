@@ -1,0 +1,76 @@
+{
+  "kind": "collectionType",
+  "collectionName": "invoices",
+  "info": {
+    "name": "Invoice",
+    "description": ""
+  },
+  "options": {
+    "increments": true,
+    "timestamps": true,
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "number": {
+      "type": "integer"
+    },
+    "emitted": {
+      "type": "date"
+    },
+    "paybefore": {
+      "type": "date"
+    },
+    "contact": {
+      "model": "contacts"
+    },
+    "lines": {
+      "type": "component",
+      "repeatable": true,
+      "component": "invoice-line.invoice-line"
+    },
+    "total_base": {
+      "type": "decimal"
+    },
+    "total_vat": {
+      "type": "decimal"
+    },
+    "total_irpf": {
+      "type": "decimal"
+    },
+    "total": {
+      "type": "decimal"
+    },
+    "comments": {
+      "type": "richtext"
+    },
+    "project": {
+      "via": "invoices",
+      "model": "project"
+    },
+    "paid": {
+      "type": "boolean",
+      "default": false
+    },
+    "paid_date": {
+      "type": "date"
+    },
+    "send": {
+      "type": "boolean",
+      "default": false
+    },
+    "send_date": {
+      "type": "date"
+    },
+    "serial": {
+      "type": "enumeration",
+      "enum": [
+        "S2021"
+      ]
+    },
+    "code": {
+      "type": "string",
+      "unique": false,
+      "required": false
+    }
+  }
+}

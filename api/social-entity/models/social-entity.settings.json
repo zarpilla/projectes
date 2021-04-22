@@ -1,0 +1,22 @@
+{
+  "kind": "collectionType",
+  "collectionName": "social_entities",
+  "info": {
+    "name": "SocialEntity",
+    "description": ""
+  },
+  "options": {
+    "increments": true,
+    "timestamps": true,
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "name": {
+      "type": "string"
+    },
+    "projects": {
+      "via": "intercooperations",
+      "collection": "project"
+    }
+  }
+}

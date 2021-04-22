@@ -1,0 +1,24 @@
+{
+  "collectionName": "components_invoice_line_invoice_creations",
+  "info": {
+    "name": "InvoiceCreation",
+    "icon": "arrow-right",
+    "description": ""
+  },
+  "options": {},
+  "attributes": {
+    "concept": {
+      "type": "string"
+    },
+    "quantity": {
+      "type": "decimal"
+    },
+    "base": {
+      "type": "decimal"
+    },
+    "reset_hours": {
+      "type": "boolean",
+      "default": false
+    }
+  }
+}

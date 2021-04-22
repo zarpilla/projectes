@@ -1,0 +1,30 @@
+{
+  "collectionName": "components_dedication_dedications",
+  "info": {
+    "name": "dedication",
+    "icon": "atom",
+    "description": ""
+  },
+  "options": {},
+  "attributes": {
+    "users_permissions_user": {
+      "plugin": "users-permissions",
+      "model": "user"
+    },
+    "date": {
+      "type": "date"
+    },
+    "hours": {
+      "type": "decimal"
+    },
+    "comment": {
+      "type": "string"
+    },
+    "dedication_type": {
+      "model": "dedication-type"
+    },
+    "costbyhour": {
+      "type": "decimal"
+    }
+  }
+}

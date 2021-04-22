@@ -1,0 +1,18 @@
+{
+  "kind": "collectionType",
+  "collectionName": "project_states",
+  "info": {
+    "name": "ProjectState"
+  },
+  "options": {
+    "increments": true,
+    "timestamps": true,
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true
+    }
+  }
+}

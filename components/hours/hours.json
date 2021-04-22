@@ -1,0 +1,33 @@
+{
+  "collectionName": "components_hours_hours",
+  "info": {
+    "name": "hours",
+    "icon": "adjust",
+    "description": ""
+  },
+  "options": {},
+  "attributes": {
+    "users_permissions_user": {
+      "plugin": "users-permissions",
+      "model": "user"
+    },
+    "quantity": {
+      "type": "decimal"
+    },
+    "comment": {
+      "type": "string"
+    },
+    "amount": {
+      "type": "decimal"
+    },
+    "total_amount": {
+      "type": "decimal"
+    },
+    "year": {
+      "model": "year"
+    },
+    "month": {
+      "model": "month"
+    }
+  }
+}

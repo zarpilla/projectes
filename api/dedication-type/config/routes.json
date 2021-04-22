@@ -1,0 +1,52 @@
+{
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/dedication-types",
+      "handler": "dedication-type.find",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/dedication-types/count",
+      "handler": "dedication-type.count",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/dedication-types/:id",
+      "handler": "dedication-type.findOne",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/dedication-types",
+      "handler": "dedication-type.create",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "PUT",
+      "path": "/dedication-types/:id",
+      "handler": "dedication-type.update",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "DELETE",
+      "path": "/dedication-types/:id",
+      "handler": "dedication-type.delete",
+      "config": {
+        "policies": []
+      }
+    }
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "kind": "collectionType",
+  "collectionName": "project_scopes",
+  "info": {
+    "name": "ProjectScope",
+    "description": ""
+  },
+  "options": {
+    "increments": true,
+    "timestamps": true,
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "code": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    },
+    "short_name": {
+      "type": "string"
+    }
+  }
+}

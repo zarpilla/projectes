@@ -1,0 +1,34 @@
+{
+  "collectionName": "components_invoice_line_invoice_lines",
+  "info": {
+    "name": "InvoiceLine",
+    "icon": "angle-double-right",
+    "description": ""
+  },
+  "options": {},
+  "attributes": {
+    "concept": {
+      "type": "string"
+    },
+    "base": {
+      "type": "decimal"
+    },
+    "quantity": {
+      "type": "decimal"
+    },
+    "discount": {
+      "type": "decimal"
+    },
+    "vat": {
+      "type": "decimal",
+      "default": 21
+    },
+    "irpf": {
+      "type": "decimal",
+      "default": 15
+    },
+    "comments": {
+      "type": "text"
+    }
+  }
+}
