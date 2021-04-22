@@ -58,56 +58,7 @@ let calculateTotals = async (data) => {
 
         data.total = data.total_base + data.total_vat - data.total_irpf
     }
-/*
-    if (data.incomes) {
-        let total_incomes = 0
-        data.incomes.forEach(i => {
-            i.total_amount = (i.quantity ? i.quantity : 0 ) * (i.amount ? i.amount : 0);
-            total_incomes += i.total_amount;
-        })
-        data.total_incomes = total_incomes
-    }
 
-    if (data.estimated_hours) {
-        let total_estimated_hours = 0
-        let total_estimated_expenses = 0
-        data.estimated_hours.forEach(i => {
-            total_estimated_hours += i.quantity;
-            if (i.amount) {
-                i.total_amount = i.quantity * i.amount;
-                total_estimated_expenses += i.total_amount;                
-            }            
-        })
-        data.total_estimated_hours = total_estimated_hours;
-        data.total_estimated_expenses = total_estimated_expenses;
-    }
-
-    if (data.dedication) {
-        let total_real_hours = 0
-        let total_expenses_hours = 0
-
-        for(let j = 0; j < data.dedication.length; j++) {
-            let i = data.dedication[j]
-            let costbyhour = 0;
-            if (i.costbyhour != null) {
-                costbyhour = i.costbyhour
-            }
-            else {
-                let user = await strapi.query('user', 'users-permissions').findOne( i.users_permissions_user );                
-                costbyhour = user.costbyhour;
-                i.costbyhour = user.costbyhour
-            }
-            total_real_hours += i.hours;
-            total_expenses_hours += i.hours * costbyhour;
-        }
-        data.total_real_hours = total_real_hours
-        data.total_expenses_hours = total_expenses_hours
-    }
-
-    data.balance = data.total_incomes - data.total_expenses - data.total_expenses_hours
-    data.estimated_balance = data.total_incomes - data.total_expenses - data.total_estimated_expenses
-    data.incomes_expenses = data.total_incomes - data.total_expenses
-*/
     return data;
 
 }

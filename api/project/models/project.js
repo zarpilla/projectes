@@ -24,7 +24,7 @@ let calculateTotals = async (data) => {
     data.total_incomes = 0;
     data.total_expenses = 0;
     data.total_expenses_hours = 0;
-    data.total_real_hours = 0
+    //data.total_real_hours = 0
     data.total_estimated_hours = 0
     data.estimated_balance = 0
     data.total_estimated_expenses = 0
@@ -60,29 +60,7 @@ let calculateTotals = async (data) => {
         data.total_estimated_hours = total_estimated_hours;
         data.total_estimated_expenses = total_estimated_expenses;
     }
-
-    if (data.dedication) {
-        let total_real_hours = 0
-        let total_expenses_hours = 0
-
-        for(let j = 0; j < data.dedication.length; j++) {
-            let i = data.dedication[j]
-            let costbyhour = 0;
-            if (i.costbyhour != null) {
-                costbyhour = i.costbyhour
-            }
-            else {
-                let user = await strapi.query('user', 'users-permissions').findOne( i.users_permissions_user );                
-                costbyhour = user.costbyhour;
-                i.costbyhour = user.costbyhour
-            }
-            total_real_hours += i.hours;
-            total_expenses_hours += i.hours * costbyhour;
-        }
-        data.total_real_hours = total_real_hours
-        data.total_expenses_hours = total_expenses_hours
-    }
-
+    
     data.balance = data.total_incomes - data.total_expenses - data.total_expenses_hours
     data.estimated_balance = data.total_incomes - data.total_expenses - data.total_estimated_expenses
     data.incomes_expenses = data.total_incomes - data.total_expenses
