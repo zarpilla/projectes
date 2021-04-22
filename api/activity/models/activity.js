@@ -93,7 +93,8 @@ let calculateTotals = async (id, data) => {
             strapi.query('project').update(
                 { id: data.project },
                 {
-                    dedicated_hours: projectHoursSum
+                    dedicated_hours: projectHoursSum,
+                    total_dedicated_hours: projectHoursSum,
                 });
         }
 
