@@ -10,7 +10,6 @@ const _ = require('lodash');
 module.exports = {
     lifecycles: {
         async beforeCreate(data) {
-
             data = await calculateTotals(0, data)
 
         },
@@ -28,7 +27,11 @@ module.exports = {
             console.log('result', result)
             console.log('params', params)
             // data = await calculateTotals(params.id, data)
-            await calculateTotalsForProject(result.project.id, 0, 0)
+            if (!result || !result.project) {
+                return
+            }
+            const data = await setHourPrice({}, result.project.id)
+            await calculateTotalsForProject(result.project.id, 0, 0, data.invoice_hours_price)
         },
       },
 };
@@ -37,87 +40,32 @@ module.exports = {
 let calculateTotals = async (id, data) => {
 
     if (id === 0) {
-        // const projectActivities = await strapi.query('activity').find({ project: data.project });
-        // console.log('projectActivities', projectActivities)
 
-        // const projectHours = projectActivities.map(a => { return a.hours })
-        // projectHours.push(data.hours)
-        // const projectHoursSum = _.sum(projectHours);
-
-        // strapi.query('project').update(
-        //     { id: data.project },
-        //     {
-        //         dedicated_hours: projectHoursSum,
-        //         total_dedicated_hours: projectHoursSum,
-        //     });
-
-        await calculateTotalsForProject(data.project, 0, data.hours)
+        data = await setHourPrice(data, data.project)
+        await calculateTotalsForProject(data.project, 0, data.hours, data.invoice_hours_price)
             
     }
     else {
         const oldActivity = await strapi.query('activity').findOne({ id: id });
-        console.log('oldActivity', oldActivity)
-        console.log('data.project', data.project)
 
-        // old project to update 
-        // oldActivity.project.id
         if (oldActivity.project.id !== data.project) {
             const oldProjectId = oldActivity.project.id
-            console.log('old', oldActivity.project.id)
-            console.log('new', data.project)
+            
+            let oldProjectData = {}
+            oldProjectData = await setHourPrice(oldProjectData, oldProjectId)
 
-            //const projectHoursSum = _.sum(projectHours);
+            await calculateTotalsForProject(oldProjectId, id, 0, oldProjectData.invoice_hours_price)
 
-            // const oldActivities = await strapi.query('activity').find({ project: oldProjectId });
-            // const oldActivitiesWithoutCurrent = oldActivities.filter(a => a.id !== id)
-            // const oldProjectHours = oldActivitiesWithoutCurrent.map(a => { return a.hours })
-            // const oldProjectHoursSum = _.sum(oldProjectHours);
+            data = await setHourPrice(data, data.project)
 
-            // strapi.query('project').update(
-            //     { id: oldProjectId },
-            //     {
-            //         dedicated_hours: oldProjectHoursSum,
-            //         total_dedicated_hours: oldProjectHoursSum,
-            //     });
-
-            await calculateTotalsForProject(oldProjectId, id, 0)
-
-
-            // const newActivities = await strapi.query('activity').find({ project: data.project });
-            // const newProjectHours = newActivities.map(a => { return a.hours })
-            // newProjectHours.push(data.hours)
-            // const newProjectHoursSum = _.sum(newProjectHours);
-
-            // strapi.query('project').update(
-            //     { id: data.project },
-            //     {
-            //         dedicated_hours: newProjectHoursSum,
-            //         total_dedicated_hours: newProjectHoursSum,
-            //     });
-
-            await calculateTotalsForProject(data.project, 0, data.hours)
+            await calculateTotalsForProject(data.project, 0, data.hours, data.invoice_hours_price)
 
         }
         else {
-            console.log('same', data.project)
-            console.log('hours', data.hours)
-            console.log('exclude', id)
-
-            await calculateTotalsForProject(data.project, id, data.hours)
-
-            // const projectActivities = await strapi.query('activity').find({ project: data.project });
-
-            // const projectActivitiesWithoutCurrent = projectActivities.filter(a => a.id !== id)
-            // const projectHours = projectActivitiesWithoutCurrent.map(a => { return a.hours })
-            // projectHours.push(data.hours)
-            // const projectHoursSum = _.sum(projectHours);
-
-            // strapi.query('project').update(
-            //     { id: data.project },
-            //     {
-            //         dedicated_hours: projectHoursSum,
-            //         total_dedicated_hours: projectHoursSum,
-            //     });
+            
+            data = await setHourPrice(data, data.project)
+            
+            await calculateTotalsForProject(data.project, id, data.hours, data.invoice_hours_price)
         }
 
     }
@@ -127,20 +75,65 @@ let calculateTotals = async (id, data) => {
 
 }
 
-let calculateTotalsForProject = async (projectId, excludeActivityId, addedHours) => {
+let setHourPrice = async (data, projectId) => {
+    const project = await strapi.query('project').findOne({ id: projectId });
+    console.log('project.invoice_hours_price', project.invoice_hours_price)
+    if (project.invoice_hours_price) {
+        data.invoice_hours_price = project.invoice_hours_price
+    }
+    else {
+        data.invoice_hours_price = 0
+    }
+    return data
+}
 
+let calculateTotalsForProject = async (projectId, excludeActivityId, addedHours, invoice_hours_price) => {
+    console.log('calculateTotalsForProject')
     const projectActivities = await strapi.query('activity').find({ project: projectId });
     // console.log('projectActivities', projectActivities)
-    const projectActivitiesWithoutCurrent = projectActivities.filter(a => a.id.toString() !== excludeActivityId.toString())
-    console.log('projectActivitiesWithoutCurrent', projectActivitiesWithoutCurrent)
+    const projectActivitiesWithoutCurrent = projectActivities.filter(a => a.id.toString() !== excludeActivityId.toString())    
     const projectHours = projectActivitiesWithoutCurrent.map(a => { return a.hours })
     projectHours.push(addedHours)
     const projectHoursSum = _.sum(projectHours);
 
-    await strapi.query('project').update(
-        { id: projectId },
-        {
-            dedicated_hours: projectHoursSum,
-            total_dedicated_hours: projectHoursSum,
-        });
+    const projectHoursPrice = projectActivitiesWithoutCurrent.map(a => { return a.hours * a.invoice_hours_price })
+    projectHoursPrice.push(addedHours * invoice_hours_price)
+    const projectHoursPriceSum = _.sum(projectHoursPrice);
+
+    const project = await strapi.query('project').findOne({ id: projectId });
+    
+    console.log('projectHoursPrice', projectHoursPrice)
+    console.log('projectHoursPriceSum', projectHoursPriceSum)
+    
+    if (project.invoice_hours_price) {
+        project.total_incomes = projectHoursPriceSum
+        project.incomes_expenses = project.total_incomes - project.total_expenses
+
+
+        await strapi.query('project').update(
+            { id: projectId },
+            {
+                dedicated_hours: projectHoursSum,
+                total_dedicated_hours: projectHoursSum,
+                total_incomes: projectHoursPriceSum,
+                total_incomes: project.total_incomes,
+                incomes_expenses: project.incomes_expenses,
+                balance: project.total_incomes - project.total_expenses - project.total_expenses_hours,
+                estimated_balance: project.total_incomes - project.total_expenses - project.total_estimated_expenses,
+                _internal: true
+            });
+    }
+    else {
+        
+        await strapi.query('project').update(
+            { id: projectId },
+            {
+                dedicated_hours: projectHoursSum,
+                total_dedicated_hours: projectHoursSum,                
+                _internal: true
+            });
+
+    }
+
+
 }

@@ -2,7 +2,8 @@
   "collectionName": "components_expense_expenses",
   "info": {
     "name": "Expense",
-    "icon": "angry"
+    "icon": "angry",
+    "description": ""
   },
   "options": {},
   "attributes": {
@@ -30,6 +31,12 @@
     },
     "invoice": {
       "type": "string"
+    },
+    "expense_type": {
+      "model": "expense-type"
+    },
+    "due_date": {
+      "type": "date"
     }
   }
 }

@@ -9,19 +9,29 @@
 module.exports = {
     lifecycles: {
         async beforeCreate(data) {
-
-            data = await calculateTotals(data)
+            data = await calculateTotals(data)            
 
         },
-        async beforeUpdate(params, data) {        
-            
-            data = await calculateTotals(data)
+        async afterCreate(result) {
+            // data = await calculateTotals(data)
+            // data = await setPDFPath(0, data)            
+            console.log('result', result)
+            await setPDFAfterCreation(result.id)
+
         },
+        async beforeUpdate(params, data) {
+            console.log('params', params)
+            data = await calculateTotals(data)
+            // data = await setPDFPath(params.id, data)
+        }
       },
 };
 
 
 let calculateTotals = async (data) => {
+    if (data._internal) {
+        return
+    }
     data.total_base = 0;
     data.total_vat = 0;
     data.total_irpf = 0;
@@ -29,7 +39,7 @@ let calculateTotals = async (data) => {
 
     if (!data.code) {
         const serial = await strapi.query('serie').findOne({ id: data.serial });
-        const quotes = await strapi.query('invoice').find({ serial: data.serial });
+        const quotes = await strapi.query('quote').find({ serial: data.serial });
         data.number = quotes.length + 1
         data.code = `${serial.name}-${(quotes.length + 1)}`
     }
@@ -44,7 +54,7 @@ let calculateTotals = async (data) => {
                 base = base * (1 - i.discount / 100.0)
             }
             let vat = base * (i.vat ? i.vat : 0) / 100.0;
-            let irpf = base * (i.irpf ? i.irpf : 0) / 100.0;
+            let irpf = 0; // base * (i.irpf ? i.irpf : 0) / 100.0;
 
             total_base += base
             total_vat += vat
@@ -61,4 +71,22 @@ let calculateTotals = async (data) => {
 
     return data;
 
+}
+
+let setPDFAfterCreation = async (id) => {
+    const config = await strapi.query('config').findOne();
+    const pdf = `${config.front_url}quote/${id}`
+    await strapi.query('quote').update(
+        { id: id },
+        {
+            pdf: pdf,
+            _internal: true
+        });
+}
+
+let setPDFPath = async (id, data) => {
+    const config = await strapi.query('config').findOne();
+    console.log('data', data)
+    console.log('config', config)
+    data.pdf = `${config.front_url}quote/${id}`
 }

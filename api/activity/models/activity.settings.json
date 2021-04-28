@@ -19,8 +19,8 @@
       "model": "user"
     },
     "project": {
-      "model": "project",
-      "via": "activities"
+      "via": "activities",
+      "model": "project"
     },
     "hours": {
       "type": "decimal"
@@ -37,6 +37,9 @@
     },
     "dedication_type": {
       "model": "dedication-type"
+    },
+    "invoice_hours_price": {
+      "type": "decimal"
     }
   }
 }

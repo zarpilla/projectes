@@ -1,0 +1,52 @@
+{
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/expense-types",
+      "handler": "expense-type.find",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/expense-types/count",
+      "handler": "expense-type.count",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/expense-types/:id",
+      "handler": "expense-type.findOne",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/expense-types",
+      "handler": "expense-type.create",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "PUT",
+      "path": "/expense-types/:id",
+      "handler": "expense-type.update",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "DELETE",
+      "path": "/expense-types/:id",
+      "handler": "expense-type.delete",
+      "config": {
+        "policies": []
+      }
+    }
+  ]
+}

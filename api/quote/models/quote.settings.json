@@ -1,8 +1,8 @@
 {
   "kind": "collectionType",
-  "collectionName": "invoices",
+  "collectionName": "quotes",
   "info": {
-    "name": "Invoice",
+    "name": "quote",
     "description": ""
   },
   "options": {
@@ -11,17 +11,15 @@
     "draftAndPublish": false
   },
   "attributes": {
+    "serial": {
+      "model": "serie"
+    },
     "number": {
       "type": "integer"
     },
-    "emitted": {
-      "type": "date"
-    },
-    "paybefore": {
-      "type": "date"
-    },
-    "contact": {
-      "model": "contacts"
+    "client": {
+      "model": "contacts",
+      "via": "quotes"
     },
     "lines": {
       "type": "component",
@@ -40,20 +38,6 @@
     "total": {
       "type": "decimal"
     },
-    "comments": {
-      "type": "richtext"
-    },
-    "project": {
-      "via": "invoices",
-      "model": "project"
-    },
-    "paid": {
-      "type": "boolean",
-      "default": false
-    },
-    "paid_date": {
-      "type": "date"
-    },
     "sent": {
       "type": "boolean",
       "default": false
@@ -62,12 +46,20 @@
       "type": "date"
     },
     "code": {
-      "type": "string",
-      "unique": false,
-      "required": false
+      "type": "string"
     },
-    "serial": {
-      "model": "serie"
+    "comments": {
+      "type": "richtext"
+    },
+    "accepted": {
+      "type": "boolean",
+      "default": false
+    },
+    "accepted_date": {
+      "type": "date"
+    },
+    "pdf": {
+      "type": "string"
     }
   }
 }

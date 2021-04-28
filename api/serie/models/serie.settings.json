@@ -1,0 +1,18 @@
+{
+  "kind": "collectionType",
+  "collectionName": "serials",
+  "info": {
+    "name": "serial",
+    "description": ""
+  },
+  "options": {
+    "increments": true,
+    "timestamps": true,
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "name": {
+      "type": "string"
+    }
+  }
+}

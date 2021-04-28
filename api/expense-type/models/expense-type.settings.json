@@ -1,0 +1,17 @@
+{
+  "kind": "collectionType",
+  "collectionName": "expense_types",
+  "info": {
+    "name": "ExpenseType"
+  },
+  "options": {
+    "increments": true,
+    "timestamps": true,
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "name": {
+      "type": "string"
+    }
+  }
+}

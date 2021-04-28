@@ -39,6 +39,10 @@
     "projects": {
       "via": "client",
       "collection": "project"
+    },
+    "quotes": {
+      "via": "client",
+      "collection": "quote"
     }
   }
 }

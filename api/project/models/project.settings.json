@@ -36,11 +36,6 @@
       "via": "projects",
       "dominant": true
     },
-    "expenses": {
-      "type": "component",
-      "repeatable": true,
-      "component": "budget-line.budget-line"
-    },
     "incomes": {
       "type": "component",
       "repeatable": true,
@@ -96,16 +91,25 @@
       "via": "projects"
     },
     "activities": {
-      "via": "project",
-      "collection": "activity"
+      "collection": "activity",
+      "via": "project"
     },
     "invoice_creation": {
       "type": "component",
       "repeatable": true,
       "component": "invoice-line.invoice-creation"
     },
-    "dedicated_hours": {
+    "invoice_hours_price": {
+      "type": "decimal",
+      "default": 0
+    },
+    "total_dedicated_hours": {
       "type": "decimal"
+    },
+    "expenses": {
+      "type": "component",
+      "repeatable": true,
+      "component": "expense.expense"
     }
   }
 }
