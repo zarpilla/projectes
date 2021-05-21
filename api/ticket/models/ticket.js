@@ -5,7 +5,6 @@
  * to customize this model
  */
 
-
 module.exports = {
     lifecycles: {
         async beforeCreate(data) {
@@ -13,9 +12,20 @@ module.exports = {
             data = await calculateTotals(data)
 
         },
-        async beforeUpdate(params, data) {        
-            
+        async beforeUpdate(params, data) {
+            const invoice = await strapi.query('ticket').findOne(params);
+            if (invoice.updatable === false && !(data.updatable_admin === true)) {
+                throw new Error('Ticket NOT updatable')
+            }
+            data.updatable_admin = false
+            // console.log('invoice data', data)
             data = await calculateTotals(data)
+        },        
+        async beforeDelete(params) {
+            const invoice = await strapi.query('ticket').findOne(params);
+            if (invoice.updatable === false) {
+                throw new Error('Ticket updatable')
+            }
         },
       },
 };
@@ -29,7 +39,7 @@ let calculateTotals = async (data) => {
 
     if (!data.code) {
         const serial = await strapi.query('serie').findOne({ id: data.serial });
-        const quotes = await strapi.query('invoice').find({ serial: data.serial });
+        const quotes = await strapi.query('ticket').find({ serial: data.serial });
         data.number = quotes.length + 1
         data.code = `${serial.name}-${(quotes.length + 1)}`
     }

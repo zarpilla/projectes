@@ -1,0 +1,18 @@
+{
+  "kind": "collectionType",
+  "collectionName": "festives",
+  "info": {
+    "name": "Festiu",
+    "description": ""
+  },
+  "options": {
+    "increments": true,
+    "timestamps": true,
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "date": {
+      "type": "date"
+    }
+  }
+}

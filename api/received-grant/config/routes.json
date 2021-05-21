@@ -1,0 +1,52 @@
+{
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/received-grants",
+      "handler": "received-grant.find",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/received-grants/count",
+      "handler": "received-grant.count",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/received-grants/:id",
+      "handler": "received-grant.findOne",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/received-grants",
+      "handler": "received-grant.create",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "PUT",
+      "path": "/received-grants/:id",
+      "handler": "received-grant.update",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "DELETE",
+      "path": "/received-grants/:id",
+      "handler": "received-grant.delete",
+      "config": {
+        "policies": []
+      }
+    }
+  ]
+}

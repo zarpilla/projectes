@@ -19,12 +19,20 @@
     "total_amount": {
       "type": "decimal"
     },
-    "charged": {
-      "type": "boolean",
-      "default": false
+    "date": {
+      "type": "date"
+    },
+    "paid": {
+      "type": "boolean"
+    },
+    "client": {
+      "model": "contacts"
     },
     "invoice": {
-      "type": "string"
+      "model": "emitted-invoice"
+    },
+    "grant": {
+      "model": "received-grant"
     }
   }
 }

@@ -2,7 +2,7 @@
   "kind": "collectionType",
   "collectionName": "projects",
   "info": {
-    "name": "Project",
+    "name": "Projectes",
     "description": ""
   },
   "options": {
@@ -20,8 +20,8 @@
       "type": "richtext"
     },
     "strategies": {
-      "collection": "strategy",
       "via": "projects",
+      "collection": "strategy",
       "dominant": true
     },
     "project_scope": {
@@ -32,8 +32,8 @@
       "model": "user"
     },
     "intercooperations": {
-      "collection": "social-entity",
       "via": "projects",
+      "collection": "social-entity",
       "dominant": true
     },
     "incomes": {
@@ -45,11 +45,6 @@
       "type": "component",
       "repeatable": true,
       "component": "hours.hours"
-    },
-    "dedication": {
-      "type": "component",
-      "repeatable": true,
-      "component": "dedication.dedication"
     },
     "total_estimated_hours": {
       "type": "decimal"
@@ -82,34 +77,58 @@
     "project_state": {
       "model": "project-state"
     },
-    "invoices": {
-      "collection": "invoice",
-      "via": "project"
-    },
-    "client": {
-      "model": "contacts",
-      "via": "projects"
+    "clients": {
+      "collection": "contacts",
+      "via": "projects",
+      "dominant": true
     },
     "activities": {
       "collection": "activity",
       "via": "project"
     },
-    "invoice_creation": {
-      "type": "component",
-      "repeatable": true,
-      "component": "invoice-line.invoice-creation"
-    },
     "invoice_hours_price": {
       "type": "decimal",
       "default": 0
-    },
-    "total_dedicated_hours": {
-      "type": "decimal"
     },
     "expenses": {
       "type": "component",
       "repeatable": true,
       "component": "expense.expense"
+    },
+    "emitted_invoices": {
+      "collection": "emitted-invoice",
+      "via": "project"
+    },
+    "received_invoices": {
+      "via": "project",
+      "collection": "received-invoice"
+    },
+    "tickets": {
+      "collection": "ticket",
+      "via": "project"
+    },
+    "diets": {
+      "collection": "diet",
+      "via": "project"
+    },
+    "emitted_grants": {
+      "collection": "emitted-grant",
+      "via": "project"
+    },
+    "received_grants": {
+      "collection": "received-grant",
+      "via": "project"
+    },
+    "activity_types": {
+      "collection": "activity-type",
+      "via": "project"
+    },
+    "quotes": {
+      "collection": "quote",
+      "via": "project"
+    },
+    "project_type": {
+      "model": "project-type"
     }
   }
 }

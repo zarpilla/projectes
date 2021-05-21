@@ -2,7 +2,7 @@
   "kind": "collectionType",
   "collectionName": "quotes",
   "info": {
-    "name": "quote",
+    "name": "Pressupostos",
     "description": ""
   },
   "options": {
@@ -18,8 +18,8 @@
       "type": "integer"
     },
     "client": {
-      "model": "contacts",
-      "via": "quotes"
+      "via": "quotes",
+      "model": "contacts"
     },
     "lines": {
       "type": "component",
@@ -60,6 +60,13 @@
     },
     "pdf": {
       "type": "string"
+    },
+    "date": {
+      "type": "date"
+    },
+    "project": {
+      "via": "quotes",
+      "model": "project"
     }
   }
 }

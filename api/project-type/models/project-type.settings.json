@@ -1,0 +1,18 @@
+{
+  "kind": "collectionType",
+  "collectionName": "project_types",
+  "info": {
+    "name": "TipusProjecte",
+    "description": ""
+  },
+  "options": {
+    "increments": true,
+    "timestamps": true,
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "name": {
+      "type": "string"
+    }
+  }
+}

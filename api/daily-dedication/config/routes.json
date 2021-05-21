@@ -1,0 +1,52 @@
+{
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/daily-dedications",
+      "handler": "daily-dedication.find",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/daily-dedications/count",
+      "handler": "daily-dedication.count",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/daily-dedications/:id",
+      "handler": "daily-dedication.findOne",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/daily-dedications",
+      "handler": "daily-dedication.create",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "PUT",
+      "path": "/daily-dedications/:id",
+      "handler": "daily-dedication.update",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "DELETE",
+      "path": "/daily-dedications/:id",
+      "handler": "daily-dedication.delete",
+      "config": {
+        "policies": []
+      }
+    }
+  ]
+}

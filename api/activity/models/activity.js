@@ -24,8 +24,8 @@ module.exports = {
         },
 
         async afterDelete(result, params) {        
-            console.log('result', result)
-            console.log('params', params)
+            // console.log('result', result)
+            // console.log('params', params)
             // data = await calculateTotals(params.id, data)
             if (!result || !result.project) {
                 return
@@ -77,7 +77,7 @@ let calculateTotals = async (id, data) => {
 
 let setHourPrice = async (data, projectId) => {
     const project = await strapi.query('project').findOne({ id: projectId });
-    console.log('project.invoice_hours_price', project.invoice_hours_price)
+    // console.log('project.invoice_hours_price', project.invoice_hours_price)
     if (project.invoice_hours_price) {
         data.invoice_hours_price = project.invoice_hours_price
     }
@@ -88,7 +88,7 @@ let setHourPrice = async (data, projectId) => {
 }
 
 let calculateTotalsForProject = async (projectId, excludeActivityId, addedHours, invoice_hours_price) => {
-    console.log('calculateTotalsForProject')
+    // console.log('calculateTotalsForProject')
     const projectActivities = await strapi.query('activity').find({ project: projectId });
     // console.log('projectActivities', projectActivities)
     const projectActivitiesWithoutCurrent = projectActivities.filter(a => a.id.toString() !== excludeActivityId.toString())    
@@ -102,19 +102,15 @@ let calculateTotalsForProject = async (projectId, excludeActivityId, addedHours,
 
     const project = await strapi.query('project').findOne({ id: projectId });
     
-    console.log('projectHoursPrice', projectHoursPrice)
-    console.log('projectHoursPriceSum', projectHoursPriceSum)
-    
     if (project.invoice_hours_price) {
         project.total_incomes = projectHoursPriceSum
         project.incomes_expenses = project.total_incomes - project.total_expenses
 
-
         await strapi.query('project').update(
             { id: projectId },
             {
-                dedicated_hours: projectHoursSum,
-                total_dedicated_hours: projectHoursSum,
+                // dedicated_hours: projectHoursSum,
+                total_real_hours: projectHoursSum,
                 total_incomes: projectHoursPriceSum,
                 total_incomes: project.total_incomes,
                 incomes_expenses: project.incomes_expenses,
@@ -129,7 +125,7 @@ let calculateTotalsForProject = async (projectId, excludeActivityId, addedHours,
             { id: projectId },
             {
                 dedicated_hours: projectHoursSum,
-                total_dedicated_hours: projectHoursSum,                
+                total_real_hours: projectHoursSum,                
                 _internal: true
             });
 

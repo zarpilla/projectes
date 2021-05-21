@@ -1,0 +1,24 @@
+{
+  "kind": "collectionType",
+  "collectionName": "treasuries",
+  "info": {
+    "name": "Tresoreria",
+    "description": ""
+  },
+  "options": {
+    "increments": true,
+    "timestamps": true,
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "comment": {
+      "type": "string"
+    },
+    "total": {
+      "type": "decimal"
+    },
+    "date": {
+      "type": "date"
+    }
+  }
+}

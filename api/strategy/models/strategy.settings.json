@@ -2,7 +2,7 @@
   "kind": "collectionType",
   "collectionName": "strategies",
   "info": {
-    "name": "Strategy",
+    "name": "Estrategies",
     "description": ""
   },
   "options": {
@@ -23,8 +23,8 @@
       "type": "richtext"
     },
     "projects": {
-      "via": "strategies",
-      "collection": "project"
+      "collection": "project",
+      "via": "strategies"
     },
     "code_name": {
       "type": "string"

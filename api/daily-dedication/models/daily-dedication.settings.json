@@ -1,0 +1,29 @@
+{
+  "kind": "collectionType",
+  "collectionName": "daily_dedications",
+  "info": {
+    "name": "Calendari",
+    "description": ""
+  },
+  "options": {
+    "increments": true,
+    "timestamps": true,
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "from": {
+      "type": "date"
+    },
+    "to": {
+      "type": "date"
+    },
+    "hours": {
+      "type": "decimal"
+    },
+    "users_permissions_user": {
+      "plugin": "users-permissions",
+      "model": "user",
+      "via": "daily_dedications"
+    }
+  }
+}

@@ -44,6 +44,9 @@
       ],
       "plugin": "upload",
       "required": false
+    },
+    "quote_footer": {
+      "type": "text"
     }
   }
 }

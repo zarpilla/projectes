@@ -1,0 +1,82 @@
+{
+  "kind": "collectionType",
+  "collectionName": "received_grants",
+  "info": {
+    "name": "Subvencions Rebudes",
+    "description": ""
+  },
+  "options": {
+    "increments": true,
+    "timestamps": true,
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "number": {
+      "type": "integer"
+    },
+    "emitted": {
+      "type": "date"
+    },
+    "contact": {
+      "model": "contacts"
+    },
+    "total_base": {
+      "type": "decimal"
+    },
+    "total_vat": {
+      "type": "decimal"
+    },
+    "total_irpf": {
+      "type": "decimal"
+    },
+    "total": {
+      "type": "decimal"
+    },
+    "comments": {
+      "type": "richtext"
+    },
+    "paid": {
+      "type": "boolean",
+      "default": false
+    },
+    "paid_date": {
+      "type": "date"
+    },
+    "code": {
+      "type": "string",
+      "unique": false,
+      "required": false
+    },
+    "serial": {
+      "model": "serie"
+    },
+    "updatable": {
+      "type": "boolean"
+    },
+    "updatable_admin": {
+      "type": "boolean",
+      "default": false
+    },
+    "documents": {
+      "collection": "file",
+      "via": "related",
+      "allowedTypes": [
+        "images",
+        "files",
+        "videos"
+      ],
+      "plugin": "upload",
+      "required": false
+    },
+    "payment_method": {
+      "model": "payment-method"
+    },
+    "contact_grant_number": {
+      "type": "string"
+    },
+    "project": {
+      "via": "received_grants",
+      "model": "project"
+    }
+  }
+}

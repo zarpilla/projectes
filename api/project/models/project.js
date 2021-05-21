@@ -47,6 +47,8 @@ let calculateTotals = async (data) => {
         let total_expenses = 0
         data.expenses.forEach(i => {
             i.total_amount = (i.quantity ? i.quantity : 0 ) * (i.amount ? i.amount : 0);
+            i.tax_amount = i.total_amount * (i.tax_pct ? i.tax_pct : 0) / 100.0;
+            i.total_amount = i.total_amount + i.tax_amount
             total_expenses += i.total_amount;
         })
         data.total_expenses = total_expenses;

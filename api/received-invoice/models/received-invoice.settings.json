@@ -1,0 +1,97 @@
+{
+  "kind": "collectionType",
+  "collectionName": "received_invoices",
+  "info": {
+    "name": "Factures Rebudes",
+    "description": ""
+  },
+  "options": {
+    "increments": true,
+    "timestamps": true,
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "number": {
+      "type": "integer"
+    },
+    "emitted": {
+      "type": "date"
+    },
+    "paybefore": {
+      "type": "date"
+    },
+    "contact": {
+      "model": "contacts"
+    },
+    "lines": {
+      "type": "component",
+      "repeatable": true,
+      "component": "invoice-line.invoice-line-expenses"
+    },
+    "total_base": {
+      "type": "decimal"
+    },
+    "total_vat": {
+      "type": "decimal"
+    },
+    "total_irpf": {
+      "type": "decimal"
+    },
+    "total": {
+      "type": "decimal"
+    },
+    "comments": {
+      "type": "richtext"
+    },
+    "paid": {
+      "type": "boolean",
+      "default": false
+    },
+    "paid_date": {
+      "type": "date"
+    },
+    "sent": {
+      "type": "boolean",
+      "default": false
+    },
+    "sent_date": {
+      "type": "date"
+    },
+    "code": {
+      "type": "string",
+      "unique": false,
+      "required": false
+    },
+    "serial": {
+      "model": "serie"
+    },
+    "updatable": {
+      "type": "boolean"
+    },
+    "updatable_admin": {
+      "type": "boolean",
+      "default": false
+    },
+    "documents": {
+      "collection": "file",
+      "via": "related",
+      "allowedTypes": [
+        "images",
+        "files",
+        "videos"
+      ],
+      "plugin": "upload",
+      "required": false
+    },
+    "payment_method": {
+      "model": "payment-method"
+    },
+    "contact_invoice_number": {
+      "type": "string"
+    },
+    "project": {
+      "model": "project",
+      "via": "received_invoices"
+    }
+  }
+}

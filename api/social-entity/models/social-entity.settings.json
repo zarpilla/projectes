@@ -2,7 +2,7 @@
   "kind": "collectionType",
   "collectionName": "social_entities",
   "info": {
-    "name": "SocialEntity",
+    "name": "EntitatsSocial",
     "description": ""
   },
   "options": {
@@ -15,8 +15,8 @@
       "type": "string"
     },
     "projects": {
-      "via": "intercooperations",
-      "collection": "project"
+      "collection": "project",
+      "via": "intercooperations"
     }
   }
 }

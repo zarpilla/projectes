@@ -1,0 +1,52 @@
+{
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/treasuries",
+      "handler": "treasury.find",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/treasuries/count",
+      "handler": "treasury.count",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/treasuries/:id",
+      "handler": "treasury.findOne",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/treasuries",
+      "handler": "treasury.create",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "PUT",
+      "path": "/treasuries/:id",
+      "handler": "treasury.update",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "DELETE",
+      "path": "/treasuries/:id",
+      "handler": "treasury.delete",
+      "config": {
+        "policies": []
+      }
+    }
+  ]
+}

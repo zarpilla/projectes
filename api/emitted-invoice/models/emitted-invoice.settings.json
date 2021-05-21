@@ -1,8 +1,8 @@
 {
   "kind": "collectionType",
-  "collectionName": "invoices",
+  "collectionName": "emitted_invoices",
   "info": {
-    "name": "Invoice",
+    "name": "Factures Emeses",
     "description": ""
   },
   "options": {
@@ -43,10 +43,6 @@
     "comments": {
       "type": "richtext"
     },
-    "project": {
-      "via": "invoices",
-      "model": "project"
-    },
     "paid": {
       "type": "boolean",
       "default": false
@@ -68,6 +64,34 @@
     },
     "serial": {
       "model": "serie"
+    },
+    "updatable": {
+      "type": "boolean"
+    },
+    "updatable_admin": {
+      "type": "boolean",
+      "default": false
+    },
+    "documents": {
+      "collection": "file",
+      "via": "related",
+      "allowedTypes": [
+        "images",
+        "files",
+        "videos"
+      ],
+      "plugin": "upload",
+      "required": false
+    },
+    "payment_method": {
+      "model": "payment-method"
+    },
+    "contact_invoice_number": {
+      "type": "string"
+    },
+    "project": {
+      "via": "emitted_invoices",
+      "model": "project"
     }
   }
 }

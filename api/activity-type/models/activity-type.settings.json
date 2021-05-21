@@ -2,7 +2,7 @@
   "kind": "collectionType",
   "collectionName": "activity_types",
   "info": {
-    "name": "ActivityType",
+    "name": "Tipus Activitats",
     "description": ""
   },
   "options": {
@@ -13,6 +13,10 @@
   "attributes": {
     "name": {
       "type": "string"
+    },
+    "project": {
+      "via": "activity_types",
+      "model": "project"
     }
   }
 }

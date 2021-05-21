@@ -1,0 +1,22 @@
+{
+  "collectionName": "components_invoice_line_ticket_lines",
+  "info": {
+    "name": "TicketLine",
+    "icon": "align-center"
+  },
+  "options": {},
+  "attributes": {
+    "concept": {
+      "type": "string"
+    },
+    "base": {
+      "type": "decimal"
+    },
+    "quantity": {
+      "type": "decimal"
+    },    
+    "comments": {
+      "type": "text"
+    }
+  }
+}
