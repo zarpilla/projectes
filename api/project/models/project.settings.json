@@ -96,8 +96,8 @@
       "component": "expense.expense"
     },
     "emitted_invoices": {
-      "collection": "emitted-invoice",
-      "via": "project"
+      "via": "project",
+      "collection": "emitted-invoice"
     },
     "received_invoices": {
       "via": "project",
@@ -129,6 +129,15 @@
     },
     "project_type": {
       "model": "project-type"
+    },
+    "total_real_incomes": {
+      "type": "decimal"
+    },
+    "total_real_expenses": {
+      "type": "decimal"
+    },
+    "total_real_incomes_expenses": {
+      "type": "decimal"
     }
   }
 }

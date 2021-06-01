@@ -1,5 +1,7 @@
 'use strict';
 
+const _ = require('lodash');
+
 /**
  * Read the documentation (https://strapi.io/documentation/v3.x/concepts/models.html#lifecycle-hooks)
  * to customize this model
@@ -7,13 +9,23 @@
 
 module.exports = {
     lifecycles: {
-        async beforeCreate(data) {
-
-            data = await calculateTotals(data)
-
+        async afterFindOne(result, params, populate) {
+            if (!result.pdf) {
+                const emittedInvoices = await strapi.query('emitted-invoice').find({ project: params.id });
+                const receivedGrants = await strapi.query('received-grant').find({ project: params.id });
+                const receivedInvoices = await strapi.query('received-invoice').find({ project: params.id });
+                const tickets = await strapi.query('ticket').find({ project: params.id });
+                const diets = await strapi.query('diet').find({ project: params.id });
+                const emittedGrants = await strapi.query('emitted-grant').find({ project: params.id });
+                result.total_real_incomes = _.sumBy(emittedInvoices, 'total_base') + _.sumBy(receivedGrants, 'total')
+                result.total_real_expenses = _.sumBy(receivedInvoices, 'total_base') + _.sumBy(tickets, 'total') + _.sumBy(diets, 'total') + _.sumBy(emittedGrants, 'total')
+                result.total_real_incomes_expenses = result.total_real_incomes - result.total_real_expenses
+            }            
         },
-        async beforeUpdate(params, data) {        
-            
+        async beforeCreate(data) {
+            data = await calculateTotals(data)
+        },
+        async beforeUpdate(params, data) {
             data = await calculateTotals(data)
         },
         // async afterCreate(result, data) {

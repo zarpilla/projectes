@@ -90,8 +90,8 @@
       "type": "string"
     },
     "project": {
-      "model": "project",
-      "via": "received_invoices"
+      "via": "received_invoices",
+      "model": "project"
     }
   }
 }

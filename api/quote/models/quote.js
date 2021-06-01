@@ -8,6 +8,13 @@
 
 module.exports = {
     lifecycles: {
+        async afterFindOne(result, params, populate) {
+            if (!result.pdf) {
+                const config = await strapi.query('config').findOne();
+                const pdf = `${config.front_url}quote/${params.id}`
+                result.pdf = pdf
+            }            
+        },
         async beforeCreate(data) {
             data = await calculateTotals(data)            
 
@@ -22,7 +29,6 @@ module.exports = {
         async beforeUpdate(params, data) {
             console.log('params', params)
             data = await calculateTotals(data)
-            // data = await setPDFPath(params.id, data)
         }
       },
 };
@@ -69,6 +75,12 @@ let calculateTotals = async (data) => {
         data.total = data.total_base + data.total_vat - data.total_irpf
     }
 
+    // if (!data.pdf) {
+    //     const config = await strapi.query('config').findOne();
+    //     const pdf = `${config.front_url}quote/${data.id}`
+    //     data.pdf = pdf
+    // }
+
     return data;
 
 }
@@ -82,11 +94,4 @@ let setPDFAfterCreation = async (id) => {
             pdf: pdf,
             _internal: true
         });
-}
-
-let setPDFPath = async (id, data) => {
-    const config = await strapi.query('config').findOne();
-    console.log('data', data)
-    console.log('config', config)
-    data.pdf = `${config.front_url}quote/${id}`
 }

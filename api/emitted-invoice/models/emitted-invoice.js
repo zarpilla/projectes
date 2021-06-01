@@ -7,9 +7,18 @@
 
 module.exports = {
     lifecycles: {
+        async afterFindOne(result, params, populate) {
+            if (!result.pdf) {
+                const config = await strapi.query('config').findOne();
+                const pdf = `${config.front_url}invoice/${params.id}`
+                result.pdf = pdf
+            }            
+        },
         async beforeCreate(data) {
-
             data = await calculateTotals(data)
+        },
+        async afterCreate(result) {
+            await setPDFAfterCreation(result.id)
 
         },
         async beforeUpdate(params, data) {
@@ -18,7 +27,6 @@ module.exports = {
                 throw new Error('Invoice NOT updatable')
             }
             data.updatable_admin = false
-            // console.log('invoice data', data)
             data = await calculateTotals(data)
         },        
         async beforeDelete(params) {
@@ -32,6 +40,9 @@ module.exports = {
 
 
 let calculateTotals = async (data) => {
+    if (data._internal) {
+        return
+    }
     data.total_base = 0;
     data.total_vat = 0;
     data.total_irpf = 0;
@@ -69,6 +80,24 @@ let calculateTotals = async (data) => {
         data.total = data.total_base + data.total_vat - data.total_irpf
     }
 
+    // if (!data.pdf) {
+    //     const config = await strapi.query('config').findOne();
+    //     const pdf = `${config.front_url}invoice/${data.id}`
+    //     data.pdf = pdf
+    // }
+
     return data;
 
+}
+
+
+let setPDFAfterCreation = async (id) => {
+    const config = await strapi.query('config').findOne();
+    const pdf = `${config.front_url}invoice/${id}`
+    await strapi.query('emitted-invoice').update(
+        { id: id },
+        {
+            pdf: pdf,
+            _internal: true
+        });
 }

@@ -81,7 +81,8 @@
         "videos"
       ],
       "plugin": "upload",
-      "required": false
+      "required": false,
+      "pluginOptions": {}
     },
     "payment_method": {
       "model": "payment-method"
@@ -92,6 +93,9 @@
     "project": {
       "via": "emitted_invoices",
       "model": "project"
+    },
+    "pdf": {
+      "type": "string"
     }
   }
 }

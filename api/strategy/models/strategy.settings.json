@@ -23,8 +23,8 @@
       "type": "richtext"
     },
     "projects": {
-      "collection": "project",
-      "via": "strategies"
+      "via": "strategies",
+      "collection": "project"
     },
     "code_name": {
       "type": "string"

@@ -15,8 +15,8 @@
       "type": "string"
     },
     "projects": {
-      "collection": "project",
-      "via": "intercooperations"
+      "via": "intercooperations",
+      "collection": "project"
     }
   }
 }
