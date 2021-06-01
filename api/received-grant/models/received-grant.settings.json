@@ -66,7 +66,8 @@
         "videos"
       ],
       "plugin": "upload",
-      "required": false
+      "required": false,
+      "pluginOptions": {}
     },
     "payment_method": {
       "model": "payment-method"
@@ -77,6 +78,12 @@
     "project": {
       "via": "received_grants",
       "model": "project"
+    },
+    "convocatory": {
+      "type": "string"
+    },
+    "department": {
+      "type": "string"
     }
   }
 }

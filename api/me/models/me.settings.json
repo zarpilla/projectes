@@ -43,9 +43,13 @@
         "images"
       ],
       "plugin": "upload",
-      "required": false
+      "required": false,
+      "pluginOptions": {}
     },
     "quote_footer": {
+      "type": "text"
+    },
+    "invoice_footer": {
       "type": "text"
     }
   }

@@ -116,8 +116,8 @@
       "via": "project"
     },
     "received_grants": {
-      "collection": "received-grant",
-      "via": "project"
+      "via": "project",
+      "collection": "received-grant"
     },
     "activity_types": {
       "collection": "activity-type",
