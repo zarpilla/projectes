@@ -43,6 +43,12 @@
     "projects": {
       "via": "clients",
       "collection": "project"
+    },
+    "is_client": {
+      "type": "boolean"
+    },
+    "is_provider": {
+      "type": "boolean"
     }
   }
 }
