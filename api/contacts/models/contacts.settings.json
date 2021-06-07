@@ -49,6 +49,24 @@
     },
     "is_provider": {
       "type": "boolean"
+    },
+    "legal_form": {
+      "model": "legal-form"
+    },
+    "sector": {
+      "model": "sector"
+    },
+    "contact_person": {
+      "type": "string"
+    },
+    "contact_phone": {
+      "type": "string"
+    },
+    "website": {
+      "type": "string"
+    },
+    "contact_email": {
+      "type": "email"
     }
   }
 }
