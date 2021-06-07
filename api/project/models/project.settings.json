@@ -78,8 +78,8 @@
       "model": "project-state"
     },
     "clients": {
-      "collection": "contacts",
       "via": "projects",
+      "collection": "contacts",
       "dominant": true
     },
     "activities": {
@@ -138,6 +138,12 @@
     },
     "total_real_incomes_expenses": {
       "type": "decimal"
+    },
+    "date_start": {
+      "type": "date"
+    },
+    "date_end": {
+      "type": "date"
     }
   }
 }
