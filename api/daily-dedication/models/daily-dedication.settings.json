@@ -21,9 +21,9 @@
       "type": "decimal"
     },
     "users_permissions_user": {
+      "via": "daily_dedications",
       "plugin": "users-permissions",
-      "model": "user",
-      "via": "daily_dedications"
+      "model": "user"
     }
   }
 }

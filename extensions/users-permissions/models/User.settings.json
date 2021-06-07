@@ -66,6 +66,9 @@
     "daily_dedications": {
       "via": "users_permissions_user",
       "collection": "daily-dedication"
+    },
+    "cost_by_hour": {
+      "type": "decimal"
     }
   }
 }
