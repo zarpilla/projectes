@@ -83,8 +83,8 @@
       "dominant": true
     },
     "activities": {
-      "collection": "activity",
-      "via": "project"
+      "via": "project",
+      "collection": "activity"
     },
     "invoice_hours_price": {
       "type": "decimal",
@@ -144,6 +144,18 @@
     },
     "date_end": {
       "type": "date"
+    },
+    "structural_expenses": {
+      "type": "boolean"
+    },
+    "structural_expenses_pct": {
+      "type": "decimal"
+    },
+    "total_estimated_hours_price": {
+      "type": "decimal"
+    },
+    "total_real_hours_price": {
+      "type": "decimal"
     }
   }
 }

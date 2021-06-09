@@ -40,6 +40,9 @@
     },
     "invoice_hours_price": {
       "type": "decimal"
+    },
+    "cost_by_hour": {
+      "type": "decimal"
     }
   }
 }

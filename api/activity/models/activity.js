@@ -10,12 +10,12 @@ const _ = require('lodash');
 module.exports = {
     lifecycles: {
         async beforeCreate(data) {
-            data = await calculateTotals(0, data)
-
+            data = await calculatePrice(0, data)
+            // data = await calculateTotals(0, data)
         },
-        async beforeUpdate(params, data) {        
-            //console.log('params', params)
-            data = await calculateTotals(params.id, data)
+        async beforeUpdate(params, data) {
+            data = await calculatePrice(params.id, data)
+            // data = await calculateTotals(params.id, data)
         },
 
         async beforeDelete(params) {        
@@ -27,15 +27,21 @@ module.exports = {
             // console.log('result', result)
             // console.log('params', params)
             // data = await calculateTotals(params.id, data)
-            if (!result || !result.project) {
-                return
-            }
-            const data = await setHourPrice({}, result.project.id)
-            await calculateTotalsForProject(result.project.id, 0, 0, data.invoice_hours_price)
+            // if (!result || !result.project) {
+            //     return
+            // }
+            // const data = await setHourPrice({}, result.project.id)
+            // await calculateTotalsForProject(result.project.id, 0, 0, data.invoice_hours_price)
         },
       },
 };
 
+let calculatePrice = async (id, data) => {
+    const users_permissions_user = await strapi.query('user', 'users-permissions').findOne({ id: data.users_permissions_user });
+    // console.log('users_permissions_user', users_permissions_user)
+    data.cost_by_hour = users_permissions_user.cost_by_hour
+    return data
+}
 
 let calculateTotals = async (id, data) => {
 
@@ -111,7 +117,7 @@ let calculateTotalsForProject = async (projectId, excludeActivityId, addedHours,
             {
                 // dedicated_hours: projectHoursSum,
                 total_real_hours: projectHoursSum,
-                total_incomes: projectHoursPriceSum,
+                //total_incomes: projectHoursPriceSum,
                 total_incomes: project.total_incomes,
                 incomes_expenses: project.incomes_expenses,
                 balance: project.total_incomes - project.total_expenses - project.total_expenses_hours,
