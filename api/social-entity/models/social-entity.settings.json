@@ -13,10 +13,6 @@
   "attributes": {
     "name": {
       "type": "string"
-    },
-    "projects": {
-      "via": "intercooperations",
-      "collection": "project"
     }
   }
 }

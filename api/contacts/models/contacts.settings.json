@@ -67,6 +67,10 @@
     },
     "contact_email": {
       "type": "email"
+    },
+    "projectes": {
+      "via": "intercooperations",
+      "collection": "project"
     }
   }
 }

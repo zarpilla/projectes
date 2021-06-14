@@ -30,10 +30,11 @@ module.exports = {
             data = await calculateTotals(data)
         },        
         async beforeDelete(params) {
-            const invoice = await strapi.query('emitted-invoice').findOne(params);
-            if (invoice.updatable === false) {
-                throw new Error('Invoice NOT updatable')
-            }
+            throw new Error('Invoice NOT updatable')
+            // const invoice = await strapi.query('emitted-invoice').findOne(params);
+            // if (invoice.updatable === false) {
+            //     throw new Error('Invoice NOT updatable')
+            // }
         },
       },
 };

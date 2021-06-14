@@ -32,8 +32,8 @@
       "model": "user"
     },
     "intercooperations": {
-      "via": "projects",
-      "collection": "social-entity",
+      "via": "projectes",
+      "collection": "contacts",
       "dominant": true
     },
     "incomes": {
