@@ -120,8 +120,8 @@
       "collection": "received-grant"
     },
     "activity_types": {
-      "collection": "activity-type",
-      "via": "project"
+      "via": "project",
+      "collection": "activity-type"
     },
     "quotes": {
       "collection": "quote",
