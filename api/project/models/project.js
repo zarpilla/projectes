@@ -80,7 +80,10 @@ let doTotalCalculations = async (result, params) => {
             if (i.amount) {
                 i.total_amount = (i.quantity ? i.quantity : 0) * (i.amount ? i.amount : 0);
                 total_estimated_expenses += i.total_amount;                
-            }            
+            }
+            else {
+                i.total_amount = 0;
+            }
         })
         data.total_estimated_hours = total_estimated_hours;
         data.total_estimated_expenses = total_estimated_expenses;

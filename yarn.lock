@@ -2685,15 +2685,6 @@
   "resolved" "https://registry.yarnpkg.com/cli-width/-/cli-width-2.2.1.tgz"
   "version" "2.2.1"
 
-"clipboard@^2.0.0":
-  "integrity" "sha512-Y6WO0unAIQp5bLmk1zdThRhgJt/x3ks6f30s3oE3H1mgIEU33XyQjEf8gsf6DxC7NPX8Y1SsNWjUjL/ywLnnbQ=="
-  "resolved" "https://registry.npmjs.org/clipboard/-/clipboard-2.0.8.tgz"
-  "version" "2.0.8"
-  dependencies:
-    "good-listener" "^1.2.2"
-    "select" "^1.1.2"
-    "tiny-emitter" "^2.0.0"
-
 "cliui@^5.0.0":
   "integrity" "sha512-PYeGSEmmHM6zvoef2w8TPzlrnNpXIjTipYK780YswmIP9vjxmd6Y2a3CB2Ks6/AU8NHjZugXvo8w3oWM2qnwXA=="
   "resolved" "https://registry.yarnpkg.com/cliui/-/cliui-5.0.0.tgz"
@@ -3207,9 +3198,9 @@
   "version" "3.0.7"
 
 "csv-parse@^4.15.3":
-  "integrity" "sha512-OdBbFc0yZhOm17lSxqkirrHlFFVpKRT0wp4DAGoJelsP3LbGzV9LNr7XmM/lrr0uGkCtaqac9UhP8PDHXOAbMg=="
-  "resolved" "https://registry.npmjs.org/csv-parse/-/csv-parse-4.15.4.tgz"
-  "version" "4.15.4"
+  "integrity" "sha512-Zb4tGPANH4SW0LgC9+s9Mnequs9aqn7N3/pCqNbVjs2XhEF6yWNU2Vm4OGl1v2Go9nw8rXt87Cm2QN/o6Vpqgg=="
+  "resolved" "https://registry.npmjs.org/csv-parse/-/csv-parse-4.16.0.tgz"
+  "version" "4.16.0"
 
 "csv-string@^4.0.1":
   "integrity" "sha512-nCdK+EWDbqLvZ2MmVQhHTmidMEsHbK3ncgTJb4oguNRpkmH5OOr+KkDRB4nqsVrJ7oK0AdO1QEsBp0+z7KBtGQ=="
@@ -3435,11 +3426,6 @@
   "integrity" "sha1-3zrhmayt+31ECqrgsp4icrJOxhk="
   "resolved" "https://registry.yarnpkg.com/delayed-stream/-/delayed-stream-1.0.0.tgz"
   "version" "1.0.0"
-
-"delegate@^3.1.2":
-  "integrity" "sha512-IofjkYBZaZivn0V8nnsMJGBr4jVLxHDheKSW88PyxS5QC4Vo9ZbZVvhzlSxY87fVq3STR6r+4cGepyHkcWOQSw=="
-  "resolved" "https://registry.npmjs.org/delegate/-/delegate-3.2.0.tgz"
-  "version" "3.2.0"
 
 "delegates@^1.0.0", "delegates@1.0.0":
   "integrity" "sha1-hMbhWbgZBP3KWaDvRM2HDTElD5o="
@@ -4602,13 +4588,6 @@
     "object-assign" "^4.0.1"
     "pify" "^2.0.0"
     "pinkie-promise" "^2.0.0"
-
-"good-listener@^1.2.2":
-  "integrity" "sha1-1TswzfkxPf+33JoNR3CWqm0UXFA="
-  "resolved" "https://registry.npmjs.org/good-listener/-/good-listener-1.2.2.tgz"
-  "version" "1.2.2"
-  dependencies:
-    "delegate" "^3.1.2"
 
 "got@^9.6.0":
   "integrity" "sha512-R7eWptXuGYxwijs0eV+v3o6+XH1IqVK8dJOEecQfTmkncw9AV4dcw/Dhxi8MdlqPthxxpZyizMzyg8RTmEsG+Q=="
@@ -7675,13 +7654,9 @@
   "version" "1.1.0"
 
 "prismjs@^1.23.0":
-  "integrity" "sha512-c29LVsqOaLbBHuIbsTxaKENh1N2EQBOHaWv7gkHN4dgRbxSREqDnDbtFJYdpPauS4YCplMSNCABQ6Eeor69bAA=="
-  "resolved" "https://registry.npmjs.org/prismjs/-/prismjs-1.23.0.tgz"
-  "version" "1.23.0"
-  dependencies:
-    "clipboard" "^2.0.0"
-  optionalDependencies:
-    "clipboard" "^2.0.0"
+  "integrity" "sha512-mNPsedLuk90RVJioIky8ANZEwYm5w9LcvCXrxHlwf4fNVSn8jEipMybMkWUyyF0JhnC+C4VcOVSBuHRKs1L5Ow=="
+  "resolved" "https://registry.npmjs.org/prismjs/-/prismjs-1.24.1.tgz"
+  "version" "1.24.1"
 
 "private@~0.1.5":
   "integrity" "sha512-VvivMrbvd2nKkiG38qjULzlc+4Vx4wm/whI9pQD35YrARNnhxeiRktSOhSukRLFNlzg6Br/cJPet5J/u19r/mg=="
@@ -8851,11 +8826,6 @@
   "resolved" "https://registry.yarnpkg.com/select-hose/-/select-hose-2.0.0.tgz"
   "version" "2.0.0"
 
-"select@^1.1.2":
-  "integrity" "sha1-DnNQrN7ICxEIUoeG7B1EGNEbOW0="
-  "resolved" "https://registry.npmjs.org/select/-/select-1.1.2.tgz"
-  "version" "1.1.2"
-
 "selfsigned@^1.10.8":
   "integrity" "sha512-2P4PtieJeEwVgTU9QEcwIRDQ/mXJLX8/+I3ur+Pg16nS8oNbrGxEso9NyYWy8NAmXiNl4dlAp5MwoNeCWzON4w=="
   "resolved" "https://registry.yarnpkg.com/selfsigned/-/selfsigned-1.10.8.tgz"
@@ -9696,10 +9666,10 @@
     "strapi-provider-email-sendmail" "3.6.2"
     "strapi-utils" "3.6.2"
 
-"strapi-plugin-import-export-content@^0.3.1":
-  "integrity" "sha512-OI6sAcsPlcGnu96e6nH5/sHqaJJQE+utgxshPuuiKfRu8p9w+Iy8La/fhP6W0Ar3LkPDBZ0CQq9d1mK6qkS4VA=="
-  "resolved" "https://registry.npmjs.org/strapi-plugin-import-export-content/-/strapi-plugin-import-export-content-0.3.1.tgz"
-  "version" "0.3.1"
+"strapi-plugin-import-export-content@^0.3.4":
+  "integrity" "sha512-z5oka+eNzls1HTF5eHeqWbLExqbq3I3kHpRHvMH++dg2FFBTT9+UEc1RLuA5kIkSN9iZuOlRgdLUOQVLmiIIlg=="
+  "resolved" "https://registry.npmjs.org/strapi-plugin-import-export-content/-/strapi-plugin-import-export-content-0.3.4.tgz"
+  "version" "0.3.4"
   dependencies:
     "csv-parse" "^4.15.3"
     "csv-string" "^4.0.1"
@@ -10266,11 +10236,6 @@
   "version" "2.0.12"
   dependencies:
     "setimmediate" "^1.0.4"
-
-"tiny-emitter@^2.0.0":
-  "integrity" "sha512-NB6Dk1A9xgQPMoGqC5CVXn123gWyte215ONT5Pp5a0yt4nlEoO1ZWeCwpncaekPHXO60i47ihFnZPiRPjRMq4Q=="
-  "resolved" "https://registry.npmjs.org/tiny-emitter/-/tiny-emitter-2.1.0.tgz"
-  "version" "2.1.0"
 
 "tiny-invariant@^1.0.2":
   "integrity" "sha512-ytxQvrb1cPc9WBEI/HSeYYoGD0kWnGEOR8RY6KomWLBVhqz0RgTwVO9dLrGz7dC+nN9llyI7OKAgRq8Vq4ZBSw=="
