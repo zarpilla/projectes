@@ -211,10 +211,11 @@ const HomePage = ({ global: { plugins }, history: { push } }) => {
           </div>
       </div> */}
 
-        <Menu></Menu>
-
         <div className="row">
           <div className="col-12">
+
+            <Menu></Menu>
+
             {/* <Block>Hello World!</Block> */}
             <div className="row">
               <h2 className="col-lg-12 col-md-12 col-xs-12">Projectes</h2>
