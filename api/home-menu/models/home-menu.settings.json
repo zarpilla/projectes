@@ -1,0 +1,20 @@
+{
+  "kind": "singleType",
+  "collectionName": "home_menus",
+  "info": {
+    "name": "HomeMenu",
+    "description": ""
+  },
+  "options": {
+    "increments": true,
+    "timestamps": true,
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "homegroup": {
+      "type": "component",
+      "repeatable": true,
+      "component": "homegroup.homegroup"
+    }
+  }
+}

@@ -10,7 +10,7 @@ const _ = require('lodash');
 module.exports = {
     lifecycles: {
         async afterFindOne(result, params, populate) {
-            console.log('afterFindOne')
+            // console.log('afterFindOne')
             result = await doTotalCalculations(result, params)
         },
         afterFind: async (results, params, populate) => {

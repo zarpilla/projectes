@@ -1,0 +1,18 @@
+{
+  "collectionName": "components_homegroup_homegroups",
+  "info": {
+    "name": "homegroup",
+    "icon": "address-book"
+  },
+  "options": {},
+  "attributes": {
+    "name": {
+      "type": "string"
+    },
+    "items": {
+      "type": "component",
+      "repeatable": true,
+      "component": "homeitem.home-item"
+    }
+  }
+}
