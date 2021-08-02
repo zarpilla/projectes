@@ -1,0 +1,22 @@
+{
+  "kind": "collectionType",
+  "collectionName": "contact_types",
+  "info": {
+    "name": "ContactType",
+    "description": ""
+  },
+  "options": {
+    "increments": true,
+    "timestamps": true,
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "name": {
+      "type": "string"
+    },
+    "contacte": {
+      "via": "contact_types",
+      "model": "contacts"
+    }
+  }
+}
