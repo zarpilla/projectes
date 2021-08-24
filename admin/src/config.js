@@ -3,14 +3,14 @@ export const SHOW_TUTORIALS = false;
 export const SETTINGS_BASE_URL = '/settings';
 export const STRAPI_UPDATE_NOTIF = true;
 
-module.exports = {
-    webpack: (config, webpack) => {
-        config.optimization = {
-            splitChunks: {
-                chunks: 'all'
-            }
-        }
+// module.exports = {
+//     webpack: (config, webpack) => {
+//         config.optimization = {
+//             splitChunks: {
+//                 chunks: 'all'
+//             }
+//         }
         
-        return config
-    }
-}
+//         return config
+//     }
+// }
