@@ -71,7 +71,7 @@ let doTotalCalculations = async (result, params) => {
         })
         data.total_incomes = total_incomes
     }
-
+    /*
     if (data.estimated_hours) {
         let total_estimated_hours = 0
         let total_estimated_expenses = 0
@@ -88,6 +88,38 @@ let doTotalCalculations = async (result, params) => {
         data.total_estimated_hours = total_estimated_hours;
         data.total_estimated_expenses = total_estimated_expenses;
     }
+    */
+    var estimated_hours = 0
+    var total_incomes = 0
+    // console.log('data.phases', data.phases)
+    if (data.phases) {
+        for (var i = 0; i < data.phases.length; i++) {
+            const phase = data.phases[i]
+            // var phase_estimated_hours = 0
+            if (phase.subphases) {
+                for (var j = 0; j < phase.subphases.length; j++) {
+                    const subphase = phase.subphases[j]
+                    var subphase_estimated_hours = 0
+                    if (subphase.quantity && subphase.amount) {
+                        subphase.total_amount = subphase.quantity * subphase.amount
+                        total_incomes += subphase.quantity * subphase.amount
+                    }
+                    if (subphase.estimated_hours) {
+                        for (var k = 0; k < subphase.estimated_hours.length; k++) {
+                            const hours = subphase.estimated_hours[k]
+                            subphase_estimated_hours += hours.quantity
+                            // console.log('hours', hours)
+                            estimated_hours += hours.quantity
+                        }
+                        subphase.total_estimated_hours = subphase_estimated_hours            
+                    }
+                }
+            }
+        }
+    }
+    
+    data.total_incomes = total_incomes;
+    data.total_estimated_hours = estimated_hours;
 
     result = data
     

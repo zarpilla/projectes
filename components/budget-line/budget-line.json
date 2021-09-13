@@ -33,6 +33,14 @@
     },
     "grant": {
       "model": "received-grant"
+    },
+    "estimated_hours": {
+      "type": "component",
+      "repeatable": true,
+      "component": "hours.hours"
+    },
+    "total_estimated_hours": {
+      "type": "decimal"
     }
   }
 }

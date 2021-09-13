@@ -156,6 +156,11 @@
     },
     "total_real_hours_price": {
       "type": "decimal"
+    },
+    "phases": {
+      "type": "component",
+      "repeatable": true,
+      "component": "project-phase.project-phase"
     }
   }
 }

@@ -28,6 +28,15 @@
     },
     "month": {
       "model": "month"
+    },
+    "from": {
+      "type": "date"
+    },
+    "to": {
+      "type": "date"
+    },
+    "monthly_quantity": {
+      "type": "decimal"
     }
   }
 }

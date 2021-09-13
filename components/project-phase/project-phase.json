@@ -1,0 +1,18 @@
+{
+  "collectionName": "components_project_phase_project_phases",
+  "info": {
+    "name": "ProjectPhase",
+    "icon": "angle-right"
+  },
+  "options": {},
+  "attributes": {
+    "name": {
+      "type": "string"
+    },
+    "subphases": {
+      "type": "component",
+      "repeatable": true,
+      "component": "budget-line.budget-line"
+    }
+  }
+}
