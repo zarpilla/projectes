@@ -52,12 +52,10 @@
     "invoice_footer": {
       "type": "text"
     },
-    "structural_expenses": {
-      "type": "boolean",
-      "default": false
-    },
-    "treasury": {
-      "type": "boolean"
+    "options": {
+      "type": "component",
+      "repeatable": false,
+      "component": "options.options"
     }
   }
 }

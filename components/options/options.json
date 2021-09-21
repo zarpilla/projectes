@@ -1,0 +1,19 @@
+{
+  "collectionName": "components_options_options",
+  "info": {
+    "name": "Options",
+    "icon": "check-double"
+  },
+  "options": {},
+  "attributes": {
+    "structuralExpenses": {
+      "type": "boolean"
+    },
+    "treasury": {
+      "type": "boolean"
+    },
+    "userHasCostByHour": {
+      "type": "boolean"
+    }
+  }
+}

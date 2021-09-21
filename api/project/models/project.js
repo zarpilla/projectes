@@ -91,6 +91,7 @@ let doTotalCalculations = async (result, params) => {
     */
     var estimated_hours = 0
     var total_incomes = 0
+    var total_estimated_hours_price = 0
     // console.log('data.phases', data.phases)
     if (data.phases) {
         for (var i = 0; i < data.phases.length; i++) {
@@ -100,6 +101,7 @@ let doTotalCalculations = async (result, params) => {
                 for (var j = 0; j < phase.subphases.length; j++) {
                     const subphase = phase.subphases[j]
                     var subphase_estimated_hours = 0
+                    var subphase_total_amount = 0
                     if (subphase.quantity && subphase.amount) {
                         subphase.total_amount = subphase.quantity * subphase.amount
                         total_incomes += subphase.quantity * subphase.amount
@@ -110,8 +112,12 @@ let doTotalCalculations = async (result, params) => {
                             subphase_estimated_hours += hours.quantity
                             // console.log('hours', hours)
                             estimated_hours += hours.quantity
+                            if (hours.quantity && hours.amount) {
+                                hours.total_amount = hours.quantity * hours.amount
+                                total_estimated_hours_price += hours.total_amount
+                            }
                         }
-                        subphase.total_estimated_hours = subphase_estimated_hours            
+                        subphase.total_estimated_hours = subphase_estimated_hours
                     }
                 }
             }
@@ -164,10 +170,10 @@ let doTotalCalculations = async (result, params) => {
 
     result.total_real_incomes_expenses = result.total_real_incomes - result.total_real_expenses - result.total_real_hours_price
 
-    result.total_estimated_hours_price = result.total_estimated_expenses
+    result.total_estimated_hours_price = total_estimated_hours_price // result.total_estimated_expenses
     result.balance = data.total_incomes - result.total_expenses - result.total_expenses_hours
     result.estimated_balance = result.total_incomes - result.total_expenses - result.total_estimated_expenses
-    result.incomes_expenses = result.total_incomes - result.total_expenses - result.total_estimated_expenses
+    result.incomes_expenses = result.total_incomes - result.total_expenses - result.total_estimated_hours_price
 
     return result
 }
