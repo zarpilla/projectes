@@ -34,6 +34,22 @@
     },
     {
       "method": "PUT",
+      "path": "/projects/:id/pay-expense/:expense",
+      "handler": "project.payExpense",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "PUT",
+      "path": "/projects/:id/pay-income/:income",
+      "handler": "project.payIncome",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "PUT",
       "path": "/projects/:id",
       "handler": "project.update",
       "config": {

@@ -161,6 +161,10 @@
       "type": "component",
       "repeatable": true,
       "component": "project-phase.project-phase"
+    },
+    "ingressos_rebuts": {
+      "via": "projecte",
+      "collection": "received-income"
     }
   }
 }

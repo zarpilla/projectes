@@ -1,0 +1,52 @@
+{
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/received-incomes",
+      "handler": "received-income.find",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/received-incomes/count",
+      "handler": "received-income.count",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/received-incomes/:id",
+      "handler": "received-income.findOne",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/received-incomes",
+      "handler": "received-income.create",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "PUT",
+      "path": "/received-incomes/:id",
+      "handler": "received-income.update",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "DELETE",
+      "path": "/received-incomes/:id",
+      "handler": "received-income.delete",
+      "config": {
+        "policies": []
+      }
+    }
+  ]
+}

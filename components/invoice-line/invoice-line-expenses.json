@@ -25,7 +25,7 @@
     },
     "irpf": {
       "type": "decimal",
-      "default": 15
+      "default": 0
     },
     "comments": {
       "type": "text"
