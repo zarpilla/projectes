@@ -75,6 +75,9 @@
     "contact_types": {
       "collection": "contact-type",
       "via": "contacte"
+    },
+    "externalId": {
+      "type": "string"
     }
   }
 }
