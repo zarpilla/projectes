@@ -11,38 +11,31 @@ module.exports = {
     lifecycles: {
         async beforeCreate(data) {
             data = await calculatePrice(0, data)
-            // data = await calculateTotals(0, data)
         },
         async beforeUpdate(params, data) {
             data = await calculatePrice(params.id, data)
-            // data = await calculateTotals(params.id, data)
         },
 
         async beforeDelete(params) {        
-            console.log('params', params)
-            // data = await calculateTotals(params.id, data)
+            // console.log('params', params)
         },
 
         async afterDelete(result, params) {        
-            // console.log('result', result)
-            // console.log('params', params)
-            // data = await calculateTotals(params.id, data)
-            // if (!result || !result.project) {
-            //     return
-            // }
-            // const data = await setHourPrice({}, result.project.id)
-            // await calculateTotalsForProject(result.project.id, 0, 0, data.invoice_hours_price)
         },
       },
 };
 
 let calculatePrice = async (id, data) => {
-    const users_permissions_user = await strapi.query('user', 'users-permissions').findOne({ id: data.users_permissions_user });
-    // console.log('users_permissions_user', users_permissions_user)
-    data.cost_by_hour = users_permissions_user.cost_by_hour
+    const dedications = await strapi.query('daily-dedication').find({ users_permissions_user: data.users_permissions_user });
+    if (dedications.length) {
+        const dedication = dedications.find(d => d.from <= data.date && d.to >= data.date)
+        if (dedication) {
+            data.cost_by_hour = dedication.costByHour
+        }
+    }    
     return data
 }
-
+/*
 let calculateTotals = async (id, data) => {
 
     if (id === 0) {
@@ -137,5 +130,6 @@ let calculateTotalsForProject = async (projectId, excludeActivityId, addedHours,
 
     }
 
-
 }
+
+*/
