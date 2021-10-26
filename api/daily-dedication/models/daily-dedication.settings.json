@@ -24,6 +24,9 @@
       "via": "daily_dedications",
       "plugin": "users-permissions",
       "model": "user"
+    },
+    "costByHour": {
+      "type": "decimal"
     }
   }
 }
