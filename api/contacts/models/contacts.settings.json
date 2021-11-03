@@ -80,6 +80,9 @@
     },
     "contact_types": {
       "collection": "contact-type"
+    },
+    "externalId2": {
+      "type": "string"
     }
   }
 }
