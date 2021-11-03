@@ -13,10 +13,6 @@
   "attributes": {
     "name": {
       "type": "string"
-    },
-    "contacte": {
-      "via": "contact_types",
-      "model": "contacts"
     }
   }
 }

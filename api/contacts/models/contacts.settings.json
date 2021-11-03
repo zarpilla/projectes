@@ -72,15 +72,14 @@
       "via": "intercooperations",
       "collection": "project"
     },
-    "contact_types": {
-      "collection": "contact-type",
-      "via": "contacte"
-    },
     "externalId": {
       "type": "string"
     },
     "state": {
       "type": "string"
+    },
+    "contact_types": {
+      "collection": "contact-type"
     }
   }
 }
