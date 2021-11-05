@@ -41,6 +41,9 @@
     },
     "total_estimated_hours": {
       "type": "decimal"
+    },
+    "income_type": {
+      "model": "income-type"
     }
   }
 }

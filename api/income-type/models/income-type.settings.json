@@ -1,0 +1,17 @@
+{
+  "kind": "collectionType",
+  "collectionName": "income_types",
+  "info": {
+    "name": "Income Type"
+  },
+  "options": {
+    "increments": true,
+    "timestamps": true,
+    "draftAndPublish": true
+  },
+  "attributes": {
+    "name": {
+      "type": "string"
+    }
+  }
+}
