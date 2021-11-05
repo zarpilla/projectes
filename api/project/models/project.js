@@ -254,7 +254,7 @@ let calculateTotals = async (params, data) => {
 
     // totals
     data.total_estimated_hours_price = data.total_estimated_expenses
-    data.balance = data.total_incomes - data.total_expenses - data.total_expenses_hours
+    data.balance = data.total_incomes - data.total_expenses - data.total_estimated_hours_price
     data.estimated_balance = data.total_incomes - data.total_expenses - data.total_estimated_expenses
     data.incomes_expenses = data.total_incomes - data.total_expenses - data.total_estimated_expenses
     
