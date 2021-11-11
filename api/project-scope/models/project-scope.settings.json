@@ -19,6 +19,9 @@
     },
     "short_name": {
       "type": "string"
+    },
+    "group": {
+      "type": "string"
     }
   }
 }
