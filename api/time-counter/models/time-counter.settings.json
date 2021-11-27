@@ -1,0 +1,28 @@
+{
+  "kind": "collectionType",
+  "collectionName": "time_counters",
+  "info": {
+    "name": "Time Counter",
+    "description": ""
+  },
+  "options": {
+    "increments": true,
+    "timestamps": true,
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "start": {
+      "type": "datetime"
+    },
+    "project": {
+      "model": "project"
+    },
+    "users_permissions_user": {
+      "plugin": "users-permissions",
+      "model": "user"
+    },
+    "description": {
+      "type": "string"
+    }
+  }
+}

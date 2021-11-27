@@ -1,0 +1,52 @@
+{
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/time-counters",
+      "handler": "time-counter.find",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/time-counters/count",
+      "handler": "time-counter.count",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/time-counters/:id",
+      "handler": "time-counter.findOne",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/time-counters",
+      "handler": "time-counter.create",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "PUT",
+      "path": "/time-counters/:id",
+      "handler": "time-counter.update",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "DELETE",
+      "path": "/time-counters/:id",
+      "handler": "time-counter.delete",
+      "config": {
+        "policies": []
+      }
+    }
+  ]
+}
