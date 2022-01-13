@@ -69,6 +69,12 @@
     },
     "cost_by_hour": {
       "type": "decimal"
+    },
+    "monthly_salary": {
+      "type": "decimal"
+    },
+    "monthly_tax": {
+      "type": "decimal"
     }
   }
 }
