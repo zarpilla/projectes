@@ -18,6 +18,14 @@
     },
     {
       "method": "GET",
+      "path": "/projects/basic",
+      "handler": "project.findWithBasicInfo",
+      "config": {
+        "policies": []
+      }
+    },    
+    {
+      "method": "GET",
       "path": "/projects/:id",
       "handler": "project.findOne",
       "config": {

@@ -1,4 +1,5 @@
 'use strict';
+const projectController = require('../../project/controllers/project');
 
 /**
  * Read the documentation (https://strapi.io/documentation/developer-docs/latest/development/backend-customization.html#lifecycle-hooks)
@@ -8,9 +9,11 @@
 module.exports = {
     lifecycles: {
         async beforeCreate(data) {
-
             data = await calculateTotals(data)
-
+            await projectController.enqueueProjects({ current: data.project, previous: null })
+        },
+        async afterCreate(result) {
+            projectController.updateQueuedProjects()
         },
         async beforeUpdate(params, data) {
             const invoice = await strapi.query('received-invoice').findOne(params);
@@ -18,15 +21,22 @@ module.exports = {
                 throw new Error('Invoice NOT updatable')
             }
             data.updatable_admin = false
-            // console.log('invoice data', data)
             data = await calculateTotals(data)
-        },        
+            await projectController.enqueueProjects({ current: data?.project, previous: invoice?.project?.id })
+        },
+        async afterUpdate(result, params, data) {            
+            projectController.updateQueuedProjects()
+        },
         async beforeDelete(params) {
             const invoice = await strapi.query('received-invoice').findOne(params);
             if (invoice.updatable === false) {
                 throw new Error('Invoice NOT updatable')
             }
+            await projectController.enqueueProjects({ current: null, previous: invoice.project?.id })
         },
+        async afterDelete(result, params) {
+            projectController.updateQueuedProjects()
+        }
       },
 };
 

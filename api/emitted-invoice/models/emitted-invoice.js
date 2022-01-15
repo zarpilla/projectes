@@ -1,9 +1,12 @@
 'use strict';
+const projectController = require('../../project/controllers/project');
 
 /**
  * Read the documentation (https://strapi.io/documentation/developer-docs/latest/development/backend-customization.html#lifecycle-hooks)
  * to customize this model
  */
+
+let previousProjectId = 0
 
 module.exports = {
     lifecycles: {
@@ -16,26 +19,34 @@ module.exports = {
         },
         async beforeCreate(data) {
             data = await calculateTotals(data)
+            await projectController.enqueueProjects({ current: data.project, previous: null })
         },
         async afterCreate(result) {
             await setPDFAfterCreation(result.id)
-
+            projectController.updateQueuedProjects()
         },
         async beforeUpdate(params, data) {
             const invoice = await strapi.query('emitted-invoice').findOne(params);
-            // console.log('invoice', invoice)
             if (invoice.updatable === false && !(data.updatable_admin === true)) {
                 throw new Error('Invoice NOT updatable')
             }
             data.updatable_admin = false
-            data = await calculateTotals(data)
-        },        
+            data = await calculateTotals(data)            
+            await projectController.enqueueProjects({ current: data?.project, previous: invoice?.project?.id })
+        },
+        async afterUpdate(result, params, data) {            
+            projectController.updateQueuedProjects()
+        },
         async beforeDelete(params) {
             const invoice = await strapi.query('emitted-invoice').findOne(params);
             if (invoice.updatable === false) {
                 throw new Error('Invoice NOT updatable')
             }
+            await projectController.enqueueProjects({ current: null, previous: invoice.project?.id })
         },
+        async afterDelete(result, params) {
+            projectController.updateQueuedProjects()
+        }
       },
 };
 
@@ -81,14 +92,7 @@ let calculateTotals = async (data) => {
         data.total = data.total_base + data.total_vat - data.total_irpf
     }
 
-    // if (!data.pdf) {
-    //     const config = await strapi.query('config').findOne();
-    //     const pdf = `${config.front_url}invoice/${data.id}`
-    //     data.pdf = pdf
-    // }
-
     return data;
-
 }
 
 
