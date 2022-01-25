@@ -10,7 +10,9 @@ const _ = require('lodash');
 
 let doProjectInfoCalculations = async (data, id) => {
     
-    // console.log('doProjectInfoCalculations', data, id)
+    if (!id) {
+        return
+    }
 
     data.total_incomes = 0;
     data.total_expenses = 0;
@@ -91,13 +93,13 @@ let doProjectInfoCalculations = async (data, id) => {
 
     const promises = []
 
-    promises.push(strapi.query('emitted-invoice').find({ project: id }))
-    promises.push(strapi.query('received-grant').find({ project: id }))
-    promises.push(strapi.query('received-invoice').find({ project: id }))
-    promises.push(strapi.query('activity').find({ project: id }))
-    promises.push(strapi.query('ticket').find({ project: id }))
-    promises.push(strapi.query('diet').find({ project: id }))
-    promises.push(strapi.query('emitted-grant').find({ project: id }))
+    promises.push(strapi.query('emitted-invoice').find({ project: id, _limit: -1 }))
+    promises.push(strapi.query('received-grant').find({ project: id, _limit: -1 }))
+    promises.push(strapi.query('received-invoice').find({ project: id, _limit: -1 }))
+    promises.push(strapi.query('activity').find({ project: id, _limit: -1 }))
+    promises.push(strapi.query('ticket').find({ project: id, _limit: -1 }))
+    promises.push(strapi.query('diet').find({ project: id, _limit: -1 }))
+    promises.push(strapi.query('emitted-grant').find({ project: id, _limit: -1 }))
 
     const results = await Promise.all(promises)
 
@@ -109,15 +111,7 @@ let doProjectInfoCalculations = async (data, id) => {
     const diets = results[5];
     const emittedGrants = results[6];
 
-    // const emittedInvoices = await strapi.query('emitted-invoice').find({ project: id });
-    // const receivedGrants = await strapi.query('received-grant').find({ project: id });
-    // const receivedInvoices = await strapi.query('received-invoice').find({ project: id });
-    // const activities = await strapi.query('activity').find({ project: id });
-    // const tickets = await strapi.query('ticket').find({ project: id });
-    // const diets = await strapi.query('diet').find({ project: id });
-    // const emittedGrants = await strapi.query('emitted-grant').find({ project: id });
-
-    data.total_real_hours = _.sumBy(activities, 'hours')
+    data.total_real_hours = _.sumBy(activities, 'hours')   
     data.total_real_incomes = _.sumBy(emittedInvoices, 'total_base') + _.sumBy(receivedGrants, 'total')
     data.total_real_expenses = _.sumBy(receivedInvoices, 'total_base') + _.sumBy(tickets, 'total') + _.sumBy(diets, 'total') + _.sumBy(emittedGrants, 'total')
     const activities_price = activities.map(a => { return { cost: a.hours * a.cost_by_hour } })    
@@ -147,6 +141,9 @@ let doProjectInfoCalculations = async (data, id) => {
     data.estimated_balance = data.total_incomes - data.total_expenses - data.total_estimated_expenses
     data.incomes_expenses = data.total_incomes - data.total_expenses - data.total_estimated_hours_price
 
+    if (!data.leader || !data.leader.id) {
+        delete data.leader
+    }
     return data
 }
 
@@ -157,6 +154,7 @@ let projectsQueue = []
 let updateProjectInfo = async id => {        
     const data = await strapi.query('project').findOne({ id });
     const info = await doProjectInfoCalculations(data, id)
+    // console.log('info', info)
     await strapi.query('project').update({ id: id }, info);
     console.log('updateProjectInfo', id)
     return { id };
@@ -249,11 +247,13 @@ module.exports = {
 
     updateQueuedProjects: async () => {
         const projects = projectsQueue.pop()
-        // console.log('projects', projects)
+        console.log('projects', projects)
         if (projects.current) {
+            console.log('projects.current', projects.current)
             await updateProjectInfo(projects.current)            
         }
         if (projects.previous && projects.current !== projects.previous) {
+            console.log('projects.previous', projects.previous)
             await updateProjectInfo(projects.previous)
         }
         

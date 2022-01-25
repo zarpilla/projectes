@@ -46,7 +46,7 @@ let calculateTotals = async (data) => {
     data.total = 0
     if (!data.code) {
         const serial = await strapi.query('serie').findOne({ id: data.serial });
-        const quotes = await strapi.query('emitted-grant').find({ serial: data.serial });
+        const quotes = await strapi.query('emitted-grant').find({ serial: data.serial, _limit: -1 });
         data.number = quotes.length + 1
         data.code = `${serial.name}-${(quotes.length + 1)}`
     }
