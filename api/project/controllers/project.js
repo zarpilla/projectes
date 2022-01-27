@@ -85,11 +85,11 @@ let doProjectInfoCalculations = async (data, id) => {
                 data.total_expenses = total_expenses;
             }
         }
-
-        data.total_expenses = total_expenses;
-        data.total_incomes = total_incomes;
-        data.total_estimated_hours = estimated_hours;
     }
+
+    data.total_expenses = total_expenses;
+    data.total_incomes = total_incomes;
+    data.total_estimated_hours = estimated_hours;
 
     const promises = []
 

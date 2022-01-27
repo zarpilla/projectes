@@ -20,17 +20,28 @@ module.exports = {
         //         result = updatedResults[i]
         //     })
         // },
-        async beforeUpdate(params, data) {
-            data = await updateProjectInfo(data, params)
-        }
+        // async beforeUpdate(params, data) {
+        //     data = await updateProjectInfo(data, params)
+        // }        
+        async afterCreate(result) {
+            console.log('result', result)
+            await projectController.enqueueProjects({ current: result.id, previous: null })
+            await projectController.updateQueuedProjects()
+        },
+        // async beforeUpdate(params, data) {
+        //     await projectController.enqueueProjects({ current: data.id, previous: null })
+        // },
+        // async afterUpdate(result, params, data) {            
+        //     await projectController.updateQueuedProjects()
+        // },
       },
 };
 
 
-let updateProjectInfo = async (result, params) => {
-    const data = await projectController.calculateProjectInfo(result, params.id)
-    return data
-}
+// let updateProjectInfo = async (result, params) => {
+//     const data = await projectController.calculateProjectInfo(result, params.id)
+//     return data
+// }
 
 let calculateProjectInfo = async (result, params) => {    
     const data = await projectController.calculateProjectInfo({ result, id: params.id })

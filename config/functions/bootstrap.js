@@ -10,4 +10,60 @@
  * See more details here: https://strapi.io/documentation/developer-docs/latest/setup-deployment-guides/configurations.html#bootstrap
  */
 
-module.exports = () => {};
+
+
+ async function setPermissions(role, type, newPermissions) {
+    // Find the ID of the public role
+    const publicRole = await strapi
+      .query("role", "users-permissions")
+      .findOne({ type: role });
+  
+    // List all available permissions
+    const publicPermissions = await strapi
+      .query("permission", "users-permissions")
+      .find({ type: type, role: publicRole.id, _limit: -1 });
+
+    // Update permission to match new config
+    const controllersToUpdate = Object.keys(newPermissions);
+    const updatePromises = publicPermissions
+      .filter((permission) => {
+        // Only update permissions included in newConfig
+        if (!controllersToUpdate.includes(permission.controller)) {
+          return false;
+        }
+        if (!newPermissions[permission.controller].includes(permission.action)) {
+          return false;
+        }
+        return true;
+      })
+      .map((permission) => {
+        // Enable the selected permissions
+        return strapi
+          .query("permission", "users-permissions")
+          .update({ id: permission.id }, { enabled: true });
+      });
+  
+    await Promise.all(updatePromises);
+}
+
+
+async function importSeedData() {
+    // Permissions
+    await setPermissions("authenticated", "application", {
+        "emitted-invoice": ["create", "find", "findone", "update", "delete"],
+    //   global: ["find"],
+    //   page: ["find", "findone"],
+    //   career: ["find", "findone"],
+    //   team: ["find", "findone"],
+    //   article: ["find", "findone"],
+    //   "article-category": ["find"],
+    //   "contact-submission": ["create"],
+    //   "cv-submission": ["create", "email"],
+    //   "subscription-submission": ["create"],
+      // "lead-form-submissions": ["create"],
+    });
+}
+
+module.exports = async () => {
+    await importSeedData();
+};
