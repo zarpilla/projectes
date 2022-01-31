@@ -2,7 +2,8 @@
   "kind": "collectionType",
   "collectionName": "festive_types",
   "info": {
-    "name": "Festive Type"
+    "name": "Festive Type",
+    "description": ""
   },
   "options": {
     "increments": true,
@@ -12,6 +13,10 @@
   "attributes": {
     "name": {
       "type": "string"
+    },
+    "personal": {
+      "type": "boolean",
+      "default": false
     }
   }
 }
