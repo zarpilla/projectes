@@ -52,6 +52,9 @@ async function importSeedData() {
     await setPermissions("authenticated", "application", {
         "emitted-invoice": ["create", "find", "findone", "update", "delete"],
         "received-invoice": ["create", "find", "findone", "update", "delete"],
+        "contact": ["create", "find", "findone", "update", "delete"],
+        "festive-type": ["find"],
+        "festive": ["create", "find", "findone", "update", "delete"],
     //   global: ["find"],
     //   page: ["find", "findone"],
     //   career: ["find", "findone"],

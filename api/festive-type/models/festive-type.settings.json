@@ -1,0 +1,17 @@
+{
+  "kind": "collectionType",
+  "collectionName": "festive_types",
+  "info": {
+    "name": "Festive Type"
+  },
+  "options": {
+    "increments": true,
+    "timestamps": true,
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "name": {
+      "type": "string"
+    }
+  }
+}

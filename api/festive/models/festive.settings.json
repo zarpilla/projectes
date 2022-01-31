@@ -2,7 +2,7 @@
   "kind": "collectionType",
   "collectionName": "festives",
   "info": {
-    "name": "Festiu",
+    "name": "Festive",
     "description": ""
   },
   "options": {
@@ -13,6 +13,13 @@
   "attributes": {
     "date": {
       "type": "date"
+    },
+    "festive_type": {
+      "model": "festive-type"
+    },
+    "users_permissions_user": {
+      "plugin": "users-permissions",
+      "model": "user"
     }
   }
 }

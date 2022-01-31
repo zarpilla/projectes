@@ -1,0 +1,52 @@
+{
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/festive-types",
+      "handler": "festive-type.find",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/festive-types/count",
+      "handler": "festive-type.count",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/festive-types/:id",
+      "handler": "festive-type.findOne",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/festive-types",
+      "handler": "festive-type.create",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "PUT",
+      "path": "/festive-types/:id",
+      "handler": "festive-type.update",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "DELETE",
+      "path": "/festive-types/:id",
+      "handler": "festive-type.delete",
+      "config": {
+        "policies": []
+      }
+    }
+  ]
+}
