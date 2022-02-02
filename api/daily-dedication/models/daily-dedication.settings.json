@@ -27,6 +27,9 @@
     },
     "costByHour": {
       "type": "decimal"
+    },
+    "monthly_salary": {
+      "type": "decimal"
     }
   }
 }
