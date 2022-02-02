@@ -17,7 +17,7 @@ module.exports = {
         },
         async beforeUpdate(params, data) {            
             const dedications = await strapi.query('daily-dedication').find({ users_permissions_user: data.users_permissions_user, _limit: -1 });            
-            const valids = dedications.filter(d => d.id !== params.id)
+            const valids = dedications.filter(d => d.id.toString() !== params.id.toString())
             const invalids = valids.filter(d => (data.to >= d.from && data.to <= d.to) || (data.from <= d.to && data.to >= d.from))
             if (invalids.length) {
                 throw new Error('daily-dedication overlaps')
