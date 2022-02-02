@@ -55,16 +55,7 @@ async function importSeedData() {
         "contact": ["create", "find", "findone", "update", "delete"],
         "festive-type": ["find"],
         "festive": ["create", "find", "findone", "update", "delete"],
-    //   global: ["find"],
-    //   page: ["find", "findone"],
-    //   career: ["find", "findone"],
-    //   team: ["find", "findone"],
-    //   article: ["find", "findone"],
-    //   "article-category": ["find"],
-    //   "contact-submission": ["create"],
-    //   "cv-submission": ["create", "email"],
-    //   "subscription-submission": ["create"],
-      // "lead-form-submissions": ["create"],
+        "daily-dedication": ["create", "find", "findone", "update", "delete"],
     });
 }
 
