@@ -165,6 +165,9 @@
     "ingressos_rebuts": {
       "via": "projecte",
       "collection": "received-income"
+    },
+    "default_dedication_type": {
+      "model": "dedication-type"
     }
   }
 }
