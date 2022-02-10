@@ -1,0 +1,25 @@
+{
+  "collectionName": "components_budget_line_simple_incomes",
+  "info": {
+    "name": "SimpleIncome",
+    "icon": "backspace"
+  },
+  "options": {},
+  "attributes": {
+    "concept": {
+      "type": "string"
+    },
+    "quantity": {
+      "type": "decimal"
+    },
+    "amount": {
+      "type": "decimal"
+    },
+    "total_amount": {
+      "type": "decimal"
+    },
+    "income_type": {
+      "model": "income-type"
+    }
+  }
+}

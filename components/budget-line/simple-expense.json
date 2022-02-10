@@ -1,0 +1,25 @@
+{
+  "collectionName": "components_budget_line_simple_expenses",
+  "info": {
+    "name": "SimpleExpense",
+    "icon": "balance-scale-right"
+  },
+  "options": {},
+  "attributes": {
+    "concept": {
+      "type": "string"
+    },
+    "quantity": {
+      "type": "decimal"
+    },
+    "amount": {
+      "type": "decimal"
+    },
+    "total_amount": {
+      "type": "decimal"
+    },
+    "expense_type": {
+      "model": "expense-type"
+    }
+  }
+}

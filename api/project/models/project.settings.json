@@ -168,6 +168,11 @@
     },
     "default_dedication_type": {
       "model": "dedication-type"
+    },
+    "original_phases": {
+      "type": "component",
+      "repeatable": true,
+      "component": "project-phase.original-project-phase"
     }
   }
 }

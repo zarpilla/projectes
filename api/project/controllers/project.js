@@ -46,6 +46,7 @@ let doProjectInfoCalculations = async (data, id) => {
     var total_estimated_hours_price = 0
     let total_expenses = 0
     // console.log('data.phases', data.phases)
+
     if (data.phases && data.phases.length) {
         for (var i = 0; i < data.phases.length; i++) {
             const phase = data.phases[i]
@@ -54,7 +55,8 @@ let doProjectInfoCalculations = async (data, id) => {
                 for (var j = 0; j < phase.subphases.length; j++) {
                     const subphase = phase.subphases[j]
                     var subphase_estimated_hours = 0
-                    var subphase_total_amount = 0
+                    // var subphase_total_amount = 0
+                    // console.log('subphase', subphase)
                     if (subphase.quantity && subphase.amount) {
                         subphase.total_amount = subphase.quantity * subphase.amount
                         total_incomes += subphase.quantity * subphase.amount
@@ -154,9 +156,11 @@ let projectsQueue = []
 let updateProjectInfo = async id => {        
     const data = await strapi.query('project').findOne({ id });
     const info = await doProjectInfoCalculations(data, id)
+
+    info._internal = true
     // console.log('info', info)
     await strapi.query('project').update({ id: id }, info);
-    console.log('updateProjectInfo', id)
+    // console.log('updateProjectInfo', id)
     return { id };
 }
 
@@ -247,13 +251,13 @@ module.exports = {
 
     updateQueuedProjects: async () => {
         const projects = projectsQueue.pop()
-        console.log('projects', projects)
+        // console.log('projects', projects)
         if (projects.current) {
-            console.log('projects.current', projects.current)
+            // console.log('projects.current', projects.current)
             await updateProjectInfo(projects.current)            
         }
         if (projects.previous && projects.current !== projects.previous) {
-            console.log('projects.previous', projects.previous)
+            // console.log('projects.previous', projects.previous)
             await updateProjectInfo(projects.previous)
         }
         

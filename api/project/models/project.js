@@ -24,16 +24,20 @@ module.exports = {
         //     data = await updateProjectInfo(data, params)
         // }        
         async afterCreate(result) {
-            console.log('result', result)
+            // console.log('result', result)
             await projectController.enqueueProjects({ current: result.id, previous: null })
             await projectController.updateQueuedProjects()
         },
-        // async beforeUpdate(params, data) {
-        //     await projectController.enqueueProjects({ current: data.id, previous: null })
-        // },
-        // async afterUpdate(result, params, data) {            
-        //     await projectController.updateQueuedProjects()
-        // },
+        async beforeUpdate(params, data) {
+            await projectController.enqueueProjects({ current: params.id, previous: null })
+        },
+        async afterUpdate(result, params, data) {
+            // console.log('data', data)
+            if (data._internal) {
+                return
+            }
+            await projectController.updateQueuedProjects()
+        },
       },
 };
 
