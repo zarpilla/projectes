@@ -49,25 +49,27 @@ let doProjectInfoCalculations = async (data, id) => {
         data.total_estimated_hours = infoPhases.total_estimated_hours
         data.total_estimated_hours_price = infoPhases.total_estimated_hours_price
 
-        if (!data.original_phases || data.original_phases.length === 0) {
-            data.original_phases = JSON.parse(JSON.stringify(data.phases))
-            data.original_phases.forEach(p => {
-                delete p.id
-                p.subphases.forEach(sp => {
-                  delete sp.id
-                })
-                p.expenses.forEach(sp => {
-                  delete sp.id
-                })
-            })
-        }
-
-        const infoOriginalPhases = await calculateEstimatedTotals(data, data.original_phases)
-        data = infoOriginalPhases.data
-        data.total_expenses = infoOriginalPhases.total_expenses
-        data.total_incomes = infoOriginalPhases.total_incomes
-        data.total_estimated_hours = infoOriginalPhases.total_estimated_hours
-        data.total_estimated_hours_price = infoOriginalPhases.total_estimated_hours_price
+        // if (!data.original_phases || data.original_phases.length === 0) {
+        //     data.original_phases = JSON.parse(JSON.stringify(data.phases))
+        //     data.original_phases.forEach(p => {
+        //         delete p.id
+        //         p.subphases.forEach(sp => {
+        //           delete sp.id
+        //         })
+        //         p.expenses.forEach(sp => {
+        //           delete sp.id
+        //         })
+        //     })
+        // }
+        
+        if (data.original_phases && data.original_phases.length) {
+            const infoOriginalPhases = await calculateEstimatedTotals(data, data.original_phases)
+            data = infoOriginalPhases.data
+            data.total_expenses = infoOriginalPhases.total_expenses
+            data.total_incomes = infoOriginalPhases.total_incomes
+            data.total_estimated_hours = infoOriginalPhases.total_estimated_hours
+            data.total_estimated_hours_price = infoOriginalPhases.total_estimated_hours_price
+        }        
       
     } else {
         data.total_expenses = 0;
