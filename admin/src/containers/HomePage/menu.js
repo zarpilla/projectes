@@ -20,17 +20,8 @@ const Menu = () => {
 
       const configUrl = `${strapi.backendURL}/content-manager/single-types/application::config.config`;
       const configData = await axios.get(configUrl, headers)    
-      const config = configData.data;
-      const userInfo = auth.getUserInfo();
-      const username = get(userInfo, "username", "");
-        
-      const { data } = await axios.post(`${strapi.backendURL}/auth/local`, {
-        identifier: config.app_username,
-        password: config.app_pwd,
-      });
-      const appUrl = config.front_url;
-      const appQs = `?jwt=${data.jwt}&username=${username}`;
-    
+      const config = configData.data;      
+      const appUrl = config.front_url;    
 
       const result = await axios(menuUrl, headers);
       result.data.homegroup.forEach(hg => {
@@ -52,7 +43,7 @@ const Menu = () => {
               id: "app.components.HomePage.button.blog3",
               onClick: (e) => {
                 e.preventDefault();
-                window.open(`${appUrl}${appQs}${i.navigate}`);
+                window.open(`${appUrl}${i.navigate}`);
               },
               type: "blog",
             }
