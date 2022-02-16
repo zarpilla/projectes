@@ -1,0 +1,24 @@
+{
+  "kind": "collectionType",
+  "collectionName": "document_types",
+  "info": {
+    "name": "Document Type"
+  },
+  "options": {
+    "increments": true,
+    "timestamps": true,
+    "draftAndPublish": true
+  },
+  "attributes": {
+    "name": {
+      "type": "string"
+    },
+    "type": {
+      "type": "enumeration",
+      "enum": [
+        "income",
+        "expense"
+      ]
+    }
+  }
+}

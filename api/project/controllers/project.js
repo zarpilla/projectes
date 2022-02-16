@@ -40,58 +40,41 @@ let doProjectInfoCalculations = async (data, id) => {
         })
         data.total_incomes = total_incomes
     }
-
-    var estimated_hours = 0
-    var total_incomes = 0
-    var total_estimated_hours_price = 0
-    let total_expenses = 0
-    // console.log('data.phases', data.phases)
-
+    
     if (data.phases && data.phases.length) {
-        for (var i = 0; i < data.phases.length; i++) {
-            const phase = data.phases[i]
-            // var phase_estimated_hours = 0
-            if (phase.subphases && phase.subphases.length) {
-                for (var j = 0; j < phase.subphases.length; j++) {
-                    const subphase = phase.subphases[j]
-                    var subphase_estimated_hours = 0
-                    // var subphase_total_amount = 0
-                    // console.log('subphase', subphase)
-                    if (subphase.quantity && subphase.amount) {
-                        subphase.total_amount = subphase.quantity * subphase.amount
-                        total_incomes += subphase.quantity * subphase.amount
-                    }
-                    if (subphase.estimated_hours) {
-                        for (var k = 0; k < subphase.estimated_hours.length; k++) {
-                            const hours = subphase.estimated_hours[k]
-                            subphase_estimated_hours += hours.quantity
-                            // console.log('hours', hours)
-                            estimated_hours += hours.quantity
-                            if (hours.quantity && hours.amount) {
-                                hours.total_amount = hours.quantity * hours.amount
-                                total_estimated_hours_price += hours.total_amount
-                            }
-                        }
-                        subphase.total_estimated_hours = subphase_estimated_hours
-                    }
-                }
-            }
-            if (phase.expenses && phase.expenses.length) {
-                for (var j = 0; j < phase.expenses.length; j++) {
-                    const expense = phase.expenses[j]
-                    if (expense.quantity && expense.amount) {
-                        expense.total_amount = expense.quantity * expense.amount
-                        total_expenses += expense.quantity * expense.amount
-                    }
-                }
-                data.total_expenses = total_expenses;
-            }
-        }
-    }
+        const infoPhases = await calculateEstimatedTotals(data, data.phases)
+        data = infoPhases.data        
+        data.total_expenses = infoPhases.total_expenses
+        data.total_incomes = infoPhases.total_incomes
+        data.total_estimated_hours = infoPhases.total_estimated_hours
+        data.total_estimated_hours_price = infoPhases.total_estimated_hours_price
 
-    data.total_expenses = total_expenses;
-    data.total_incomes = total_incomes;
-    data.total_estimated_hours = estimated_hours;
+        if (!data.original_phases || data.original_phases.length === 0) {
+            data.original_phases = data.phases
+            data.original_phases.forEach(p => {
+                delete p.id
+                p.subphases.forEach(sp => {
+                  delete sp.id
+                })
+                p.expenses.forEach(sp => {
+                  delete sp.id
+                })
+            })
+        }
+
+        const infoOriginalPhases = await calculateEstimatedTotals(data, data.original_phases)
+        data = infoOriginalPhases.data
+        data.total_expenses = infoOriginalPhases.total_expenses
+        data.total_incomes = infoOriginalPhases.total_incomes
+        data.total_estimated_hours = infoOriginalPhases.total_estimated_hours
+        data.total_estimated_hours_price = infoOriginalPhases.total_estimated_hours_price
+      
+    } else {
+        data.total_expenses = 0;
+        data.total_incomes = 0;
+        data.total_estimated_hours = 0;
+        data.total_estimated_hours_price = 0
+    }
 
     const promises = []
 
@@ -137,8 +120,7 @@ let doProjectInfoCalculations = async (data, id) => {
     }
 
     data.total_real_incomes_expenses = data.total_real_incomes - data.total_real_expenses - data.total_real_hours_price
-
-    data.total_estimated_hours_price = total_estimated_hours_price
+    
     data.balance = data.total_incomes - data.total_expenses - data.total_expenses_hours
     data.estimated_balance = data.total_incomes - data.total_expenses - data.total_estimated_expenses
     data.incomes_expenses = data.total_incomes - data.total_expenses - data.total_estimated_hours_price
@@ -147,6 +129,60 @@ let doProjectInfoCalculations = async (data, id) => {
         delete data.leader
     }
     return data
+}
+
+let calculateEstimatedTotals = async (data, phases) => {
+
+    var total_estimated_hours = 0
+    var total_incomes = 0
+    var total_estimated_hours_price = 0
+    let total_expenses = 0
+
+    if (phases && phases.length) {
+        for (var i = 0; i < phases.length; i++) {
+            const phase = phases[i]
+            if (phase.subphases && phase.subphases.length) {
+                for (var j = 0; j < phase.subphases.length; j++) {
+                    const subphase = phase.subphases[j]
+                    var subphase_estimated_hours = 0
+                    if (subphase.quantity && subphase.amount) {
+                        subphase.total_amount = subphase.quantity * subphase.amount
+                        total_incomes += subphase.quantity * subphase.amount
+                    }
+                    if (subphase.estimated_hours) {
+                        for (var k = 0; k < subphase.estimated_hours.length; k++) {
+                            const hours = subphase.estimated_hours[k]
+                            subphase_estimated_hours += hours.quantity
+                            // console.log('hours', hours)
+                            total_estimated_hours += hours.quantity
+                            if (hours.quantity && hours.amount) {
+                                hours.total_amount = hours.quantity * hours.amount
+                                total_estimated_hours_price += hours.total_amount
+                            }
+                        }
+                        subphase.total_estimated_hours = subphase_estimated_hours
+                    }
+                }
+            }
+            if (phase.expenses && phase.expenses.length) {
+                for (var j = 0; j < phase.expenses.length; j++) {
+                    const expense = phase.expenses[j]
+                    if (expense.quantity && expense.amount) {
+                        expense.total_amount = expense.quantity * expense.amount
+                        total_expenses += expense.quantity * expense.amount
+                    }
+                }
+            }
+        }
+    }
+
+    return {
+        data,
+        total_expenses,
+        total_incomes,
+        total_estimated_hours,
+        total_estimated_hours_price
+    }
 }
 
 
@@ -158,9 +194,7 @@ let updateProjectInfo = async id => {
     const info = await doProjectInfoCalculations(data, id)
 
     info._internal = true
-    // console.log('info', info)
     await strapi.query('project').update({ id: id }, info);
-    // console.log('updateProjectInfo', id)
     return { id };
 }
 
@@ -178,15 +212,9 @@ module.exports = {
         }
          
         // Removing some info
-        const newArray = projects.map(({ phases, activities, emitted_invoices, received_invoices, tickets, diets, emitted_grants, received_grants, quotes, ingressos_rebuts, ...item }) => item)
+        const newArray = projects.map(({ phases, activities, emitted_invoices, received_invoices, tickets, diets, emitted_grants, received_grants, quotes, received_incomes, ...item }) => item)
         return newArray.map(entity => sanitizeEntity(entity, { model: strapi.models.project }));        
     },
-
-    // async find(ctx) {
-    //     const projects = await await strapi.query('project').find(ctx.query);
-    //     return projects;
-    // },
-
     payExpense: async ctx => {
         const { id, expense } = ctx.params;
         const project = await strapi.query('project').findOne({ id });
@@ -205,6 +233,9 @@ module.exports = {
                     }
                     if (ctx.request.body.diet && ctx.request.body.diet.id) {
                         expenseItem.diet = ctx.request.body.diet.id
+                    }
+                    if (ctx.request.body.expense && ctx.request.body.expense.id) {
+                        expenseItem.expense = ctx.request.body.expense.id
                     }
                 }
             })
@@ -228,8 +259,11 @@ module.exports = {
                     if (ctx.request.body.emitted && ctx.request.body.emitted.id) {
                         incomeItem.emitted = ctx.request.body.emitted.id
                     }
-                    if (ctx.request.body.ticket && ctx.request.body.grant.id) {
-                        incomeItem.grant = ctx.request.body.ticket.id
+                    if (ctx.request.body.grant && ctx.request.body.grant.id) {
+                        incomeItem.grant = ctx.request.body.grant.id
+                    }
+                    if (ctx.request.body.income && ctx.request.body.income.id) {
+                        incomeItem.income = ctx.request.body.income.id
                     }
                 }
             })
@@ -241,8 +275,8 @@ module.exports = {
         return { id, income, found };
     },
 
-    calculateProjectInfo: async (data, id) => {           
-        return doProjectInfoCalculations(data, id)
+    calculateProjectInfo: async (data, id) => {
+        return await doProjectInfoCalculations(data, id)
     },
 
     enqueueProjects: async projects => {
@@ -251,13 +285,10 @@ module.exports = {
 
     updateQueuedProjects: async () => {
         const projects = projectsQueue.pop()
-        // console.log('projects', projects)
         if (projects.current) {
-            // console.log('projects.current', projects.current)
             await updateProjectInfo(projects.current)            
         }
         if (projects.previous && projects.current !== projects.previous) {
-            // console.log('projects.previous', projects.previous)
             await updateProjectInfo(projects.previous)
         }
         

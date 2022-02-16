@@ -162,10 +162,6 @@
       "repeatable": true,
       "component": "project-phase.project-phase"
     },
-    "ingressos_rebuts": {
-      "via": "projecte",
-      "collection": "received-income"
-    },
     "default_dedication_type": {
       "model": "dedication-type"
     },
@@ -173,6 +169,10 @@
       "type": "component",
       "repeatable": true,
       "component": "project-phase.original-project-phase"
+    },
+    "received_incomes": {
+      "collection": "received-income",
+      "via": "project"
     }
   }
 }

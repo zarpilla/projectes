@@ -52,10 +52,12 @@ async function importSeedData() {
     await setPermissions("authenticated", "application", {
         "emitted-invoice": ["create", "find", "findone", "update", "delete"],
         "received-invoice": ["create", "find", "findone", "update", "delete"],
+        "received-income": ["create", "find", "findone", "update", "delete"],
         "contact": ["create", "find", "findone", "update", "delete"],
         "festive-type": ["find"],
         "festive": ["create", "find", "findone", "update", "delete"],
-        "daily-dedication": ["create", "find", "findone", "update", "delete"],
+        "daily-dedication": ["create", "find", "findone", "update", "delete"],        
+        "document-type": ["find", "findone"],
     });
 }
 

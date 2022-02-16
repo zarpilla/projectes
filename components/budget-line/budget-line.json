@@ -44,6 +44,9 @@
     },
     "income_type": {
       "model": "income-type"
+    },
+    "income": {
+      "model": "received-income"
     }
   }
 }
