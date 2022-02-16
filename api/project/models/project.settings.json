@@ -173,6 +173,10 @@
     "received_incomes": {
       "collection": "received-income",
       "via": "project"
+    },
+    "received_expenses": {
+      "collection": "received-expense",
+      "via": "project"
     }
   }
 }

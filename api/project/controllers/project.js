@@ -50,7 +50,7 @@ let doProjectInfoCalculations = async (data, id) => {
         data.total_estimated_hours_price = infoPhases.total_estimated_hours_price
 
         if (!data.original_phases || data.original_phases.length === 0) {
-            data.original_phases = data.phases
+            data.original_phases = JSON.parse(JSON.stringify(data.phases))
             data.original_phases.forEach(p => {
                 delete p.id
                 p.subphases.forEach(sp => {
@@ -86,6 +86,9 @@ let doProjectInfoCalculations = async (data, id) => {
     promises.push(strapi.query('diet').find({ project: id, _limit: -1 }))
     promises.push(strapi.query('emitted-grant').find({ project: id, _limit: -1 }))
 
+    promises.push(strapi.query('received-income').find({ project: id, _limit: -1 }))
+    promises.push(strapi.query('received-expense').find({ project: id, _limit: -1 }))
+
     const results = await Promise.all(promises)
 
     const emittedInvoices = results[0];
@@ -95,10 +98,12 @@ let doProjectInfoCalculations = async (data, id) => {
     const tickets = results[4];
     const diets = results[5];
     const emittedGrants = results[6];
+    const receivedIncomes = results[6];
+    const receivedExpenses = results[6];
 
     data.total_real_hours = _.sumBy(activities, 'hours')   
-    data.total_real_incomes = _.sumBy(emittedInvoices, 'total_base') + _.sumBy(receivedGrants, 'total')
-    data.total_real_expenses = _.sumBy(receivedInvoices, 'total_base') + _.sumBy(tickets, 'total') + _.sumBy(diets, 'total') + _.sumBy(emittedGrants, 'total')
+    data.total_real_incomes = _.sumBy(emittedInvoices, 'total_base') + _.sumBy(receivedGrants, 'total') + _.sumBy(receivedIncomes, 'total')
+    data.total_real_expenses = _.sumBy(receivedInvoices, 'total_base') + _.sumBy(tickets, 'total') + _.sumBy(diets, 'total') + _.sumBy(emittedGrants, 'total') + _.sumBy(receivedExpenses, 'total')
     const activities_price = activities.map(a => { return { cost: a.hours * a.cost_by_hour } })    
     data.total_real_hours_price = _.sumBy(activities_price, 'cost')
     data.total_real_incomes_expenses = data.total_real_incomes - data.total_real_expenses - data.total_real_hours_price
@@ -212,7 +217,7 @@ module.exports = {
         }
          
         // Removing some info
-        const newArray = projects.map(({ phases, activities, emitted_invoices, received_invoices, tickets, diets, emitted_grants, received_grants, quotes, received_incomes, ...item }) => item)
+        const newArray = projects.map(({ phases, activities, emitted_invoices, received_invoices, tickets, diets, emitted_grants, received_grants, quotes, original_phases, incomes, expenses, strategies, activity_types, estimated_hours, intercooperations, clients, received_expenses, received_incomes, default_dedication_type, ...item }) => item)
         return newArray.map(entity => sanitizeEntity(entity, { model: strapi.models.project }));        
     },
     payExpense: async ctx => {

@@ -42,6 +42,9 @@
     },
     "diet": {
       "model": "diet"
+    },
+    "expense": {
+      "model": "received-expense"
     }
   }
 }

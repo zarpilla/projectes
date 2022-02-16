@@ -1,0 +1,52 @@
+{
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/received-expenses",
+      "handler": "received-expense.find",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/received-expenses/count",
+      "handler": "received-expense.count",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/received-expenses/:id",
+      "handler": "received-expense.findOne",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/received-expenses",
+      "handler": "received-expense.create",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "PUT",
+      "path": "/received-expenses/:id",
+      "handler": "received-expense.update",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "DELETE",
+      "path": "/received-expenses/:id",
+      "handler": "received-expense.delete",
+      "config": {
+        "policies": []
+      }
+    }
+  ]
+}
