@@ -87,7 +87,6 @@ let doProjectInfoCalculations = async (data, id) => {
     promises.push(strapi.query('ticket').find({ project: id, _limit: -1 }))
     promises.push(strapi.query('diet').find({ project: id, _limit: -1 }))
     promises.push(strapi.query('emitted-grant').find({ project: id, _limit: -1 }))
-
     promises.push(strapi.query('received-income').find({ project: id, _limit: -1 }))
     promises.push(strapi.query('received-expense').find({ project: id, _limit: -1 }))
 
@@ -100,8 +99,8 @@ let doProjectInfoCalculations = async (data, id) => {
     const tickets = results[4];
     const diets = results[5];
     const emittedGrants = results[6];
-    const receivedIncomes = results[6];
-    const receivedExpenses = results[6];
+    const receivedIncomes = results[7];
+    const receivedExpenses = results[8];
 
     data.total_real_hours = _.sumBy(activities, 'hours')   
     data.total_real_incomes = _.sumBy(emittedInvoices, 'total_base') + _.sumBy(receivedGrants, 'total') + _.sumBy(receivedIncomes, 'total')
