@@ -40,7 +40,7 @@ let doProjectInfoCalculations = async (data, id) => {
         })
         data.total_incomes = total_incomes
     }
-    
+
     if (data.phases && data.phases.length) {
         const infoPhases = await calculateEstimatedTotals(data, data.phases)
         data = infoPhases.data        
@@ -48,19 +48,9 @@ let doProjectInfoCalculations = async (data, id) => {
         data.total_incomes = infoPhases.total_incomes
         data.total_estimated_hours = infoPhases.total_estimated_hours
         data.total_estimated_hours_price = infoPhases.total_estimated_hours_price
-
-        // if (!data.original_phases || data.original_phases.length === 0) {
-        //     data.original_phases = JSON.parse(JSON.stringify(data.phases))
-        //     data.original_phases.forEach(p => {
-        //         delete p.id
-        //         p.subphases.forEach(sp => {
-        //           delete sp.id
-        //         })
-        //         p.expenses.forEach(sp => {
-        //           delete sp.id
-        //         })
-        //     })
-        // }
+        // not assigned invoices 
+        data.total_real_incomes = infoPhases.total_real_incomes
+        data.total_real_expenses = infoPhases.total_real_expenses
         
         if (data.original_phases && data.original_phases.length) {
             const infoOriginalPhases = await calculateEstimatedTotals(data, data.original_phases)
@@ -76,6 +66,8 @@ let doProjectInfoCalculations = async (data, id) => {
         data.total_incomes = 0;
         data.total_estimated_hours = 0;
         data.total_estimated_hours_price = 0
+        data.total_real_incomes = 0
+        data.total_real_expenses = 0
     }
 
     const promises = []
@@ -103,8 +95,8 @@ let doProjectInfoCalculations = async (data, id) => {
     const receivedExpenses = results[8];
 
     data.total_real_hours = _.sumBy(activities, 'hours')   
-    data.total_real_incomes = _.sumBy(emittedInvoices, 'total_base') + _.sumBy(receivedGrants, 'total') + _.sumBy(receivedIncomes, 'total')
-    data.total_real_expenses = _.sumBy(receivedInvoices, 'total_base') + _.sumBy(tickets, 'total') + _.sumBy(diets, 'total') + _.sumBy(emittedGrants, 'total') + _.sumBy(receivedExpenses, 'total')
+    data.total_real_incomes += _.sumBy(emittedInvoices, 'total_base') + _.sumBy(receivedGrants, 'total') + _.sumBy(receivedIncomes, 'total')
+    data.total_real_expenses += _.sumBy(receivedInvoices, 'total_base') + _.sumBy(tickets, 'total') + _.sumBy(diets, 'total') + _.sumBy(emittedGrants, 'total') + _.sumBy(receivedExpenses, 'total')
     const activities_price = activities.map(a => { return { cost: a.hours * a.cost_by_hour } })    
     data.total_real_hours_price = _.sumBy(activities_price, 'cost')
     data.total_real_incomes_expenses = data.total_real_incomes - data.total_real_expenses - data.total_real_hours_price
@@ -144,6 +136,9 @@ let calculateEstimatedTotals = async (data, phases) => {
     var total_estimated_hours_price = 0
     let total_expenses = 0
 
+    let total_real_incomes = 0
+    let total_real_expenses = 0
+
     if (phases && phases.length) {
         for (var i = 0; i < phases.length; i++) {
             const phase = phases[i]
@@ -159,7 +154,6 @@ let calculateEstimatedTotals = async (data, phases) => {
                         for (var k = 0; k < subphase.estimated_hours.length; k++) {
                             const hours = subphase.estimated_hours[k]
                             subphase_estimated_hours += hours.quantity
-                            // console.log('hours', hours)
                             total_estimated_hours += hours.quantity
                             if (hours.quantity && hours.amount) {
                                 hours.total_amount = hours.quantity * hours.amount
@@ -167,6 +161,9 @@ let calculateEstimatedTotals = async (data, phases) => {
                             }
                         }
                         subphase.total_estimated_hours = subphase_estimated_hours
+                    }
+                    if (subphase.quantity && subphase.amount && subphase.paid && !subphase.income && !subphase.invoice && !subphase.grant) {
+                        total_real_incomes += subphase.quantity * subphase.amount
                     }
                 }
             }
@@ -176,6 +173,9 @@ let calculateEstimatedTotals = async (data, phases) => {
                     if (expense.quantity && expense.amount) {
                         expense.total_amount = expense.quantity * expense.amount
                         total_expenses += expense.quantity * expense.amount
+                    }
+                    if (expense.quantity && expense.amount && expense.paid && !expense.expense && !expense.invoice && !expense.grant && !expense.ticket && !expense.diet) {
+                        total_real_expenses += expense.quantity * expense.amount
                     }
                 }
             }
@@ -187,7 +187,9 @@ let calculateEstimatedTotals = async (data, phases) => {
         total_expenses,
         total_incomes,
         total_estimated_hours,
-        total_estimated_hours_price
+        total_estimated_hours_price,
+        total_real_incomes,
+        total_real_expenses
     }
 }
 
