@@ -219,7 +219,7 @@ module.exports = {
         }
          
         // Removing some info
-        const newArray = projects.map(({ phases, activities, emitted_invoices, received_invoices, tickets, diets, emitted_grants, received_grants, quotes, original_phases, incomes, expenses, strategies, activity_types, estimated_hours, intercooperations, clients, received_expenses, received_incomes, default_dedication_type, ...item }) => item)
+        const newArray = projects.map(({ phases, activities, emitted_invoices, received_invoices, tickets, diets, emitted_grants, received_grants, quotes, original_phases, incomes, expenses, strategies, estimated_hours, intercooperations, clients, received_expenses, received_incomes, default_dedication_type, ...item }) => item)
         return newArray.map(entity => sanitizeEntity(entity, { model: strapi.models.project }));        
     },
     payExpense: async ctx => {
