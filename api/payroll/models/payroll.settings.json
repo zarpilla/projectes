@@ -1,0 +1,45 @@
+{
+  "kind": "collectionType",
+  "collectionName": "payrolls",
+  "info": {
+    "name": "Payroll"
+  },
+  "options": {
+    "increments": true,
+    "timestamps": true,
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "year": {
+      "model": "year"
+    },
+    "month": {
+      "model": "month"
+    },
+    "users_permissions_user": {
+      "plugin": "users-permissions",
+      "model": "user"
+    },
+    "emitted": {
+      "type": "date"
+    },
+    "paid": {
+      "type": "boolean"
+    },
+    "paid_date": {
+      "type": "date"
+    },
+    "total_base": {
+      "type": "decimal"
+    },
+    "total_vat": {
+      "type": "decimal"
+    },
+    "total_irpf": {
+      "type": "decimal"
+    },
+    "total": {
+      "type": "decimal"
+    }
+  }
+}
