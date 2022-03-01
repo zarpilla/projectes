@@ -17,6 +17,9 @@
     "personal": {
       "type": "boolean",
       "default": false
+    },
+    "max": {
+      "type": "integer"
     }
   }
 }
