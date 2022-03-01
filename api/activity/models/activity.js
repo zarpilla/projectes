@@ -33,12 +33,14 @@ module.exports = {
       },
 };
 
-let calculatePrice = async (id, data) => {
-    const dedications = await strapi.query('daily-dedication').find({ users_permissions_user: data.users_permissions_user, _limit: -1 });
-    if (dedications.length) {
-        const dedication = dedications.find(d => d.from <= data.date && d.to >= data.date)
-        if (dedication) {
-            data.cost_by_hour = dedication.costByHour
+let calculatePrice = async (id, data) => {    
+    if (data && !data.cost_by_hour && data.users_permissions_user) {
+        const dedications = await strapi.query('daily-dedication').find({ users_permissions_user: data.users_permissions_user, _limit: -1 });
+        if (dedications.length) {
+            const dedication = dedications.find(d => d.from <= data.date && d.to >= data.date)
+            if (dedication) {
+                data.cost_by_hour = dedication.costByHour
+            }
         }
     }    
     return data
