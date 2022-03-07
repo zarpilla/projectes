@@ -2,7 +2,8 @@
   "kind": "collectionType",
   "collectionName": "legal_forms",
   "info": {
-    "name": "LegalForm"
+    "name": "Legal Forms",
+    "description": ""
   },
   "options": {
     "increments": true,

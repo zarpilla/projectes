@@ -2,7 +2,7 @@
   "kind": "collectionType",
   "collectionName": "months",
   "info": {
-    "name": "Mesos",
+    "name": "Months",
     "description": ""
   },
   "options": {

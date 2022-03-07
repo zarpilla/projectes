@@ -2,7 +2,7 @@
   "kind": "collectionType",
   "collectionName": "emitted_invoices",
   "info": {
-    "name": "Factures Emeses",
+    "name": "Emitted Invoices",
     "description": ""
   },
   "options": {

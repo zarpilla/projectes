@@ -2,7 +2,7 @@
   "kind": "collectionType",
   "collectionName": "activity_types",
   "info": {
-    "name": "Tasques",
+    "name": "Activity Types",
     "description": ""
   },
   "options": {

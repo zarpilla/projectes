@@ -2,7 +2,7 @@
   "kind": "collectionType",
   "collectionName": "received_invoices",
   "info": {
-    "name": "Factures Rebudes",
+    "name": "Received Invoices",
     "description": ""
   },
   "options": {
@@ -81,7 +81,8 @@
         "videos"
       ],
       "plugin": "upload",
-      "required": false
+      "required": false,
+      "pluginOptions": {}
     },
     "payment_method": {
       "model": "payment-method"

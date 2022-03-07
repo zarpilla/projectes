@@ -2,7 +2,7 @@
   "kind": "collectionType",
   "collectionName": "received_grants",
   "info": {
-    "name": "Subvencions Rebudes",
+    "name": "Received Grants",
     "description": ""
   },
   "options": {

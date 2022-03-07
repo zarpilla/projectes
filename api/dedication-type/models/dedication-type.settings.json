@@ -2,7 +2,7 @@
   "kind": "collectionType",
   "collectionName": "dedication_types",
   "info": {
-    "name": "Tipus Dedicacions",
+    "name": "Dedication Types",
     "description": ""
   },
   "options": {

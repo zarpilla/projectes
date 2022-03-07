@@ -2,7 +2,7 @@
   "kind": "collectionType",
   "collectionName": "received_incomes",
   "info": {
-    "name": "Ingressos Rebuts",
+    "name": "Received Incomes",
     "description": ""
   },
   "options": {

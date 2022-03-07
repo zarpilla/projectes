@@ -2,7 +2,7 @@
   "kind": "collectionType",
   "collectionName": "payment_methods",
   "info": {
-    "name": "PaymentMethod",
+    "name": "Payment Methods",
     "description": ""
   },
   "options": {

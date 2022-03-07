@@ -2,7 +2,7 @@
   "kind": "collectionType",
   "collectionName": "project_states",
   "info": {
-    "name": "EstatProjecte",
+    "name": "Project States",
     "description": ""
   },
   "options": {

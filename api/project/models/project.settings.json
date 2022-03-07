@@ -2,7 +2,7 @@
   "kind": "collectionType",
   "collectionName": "projects",
   "info": {
-    "name": "Projectes",
+    "name": "Projects",
     "description": ""
   },
   "options": {
@@ -104,16 +104,16 @@
       "collection": "received-invoice"
     },
     "tickets": {
-      "collection": "ticket",
-      "via": "project"
+      "via": "project",
+      "collection": "ticket"
     },
     "diets": {
-      "collection": "diet",
-      "via": "project"
+      "via": "project",
+      "collection": "diet"
     },
     "emitted_grants": {
-      "collection": "emitted-grant",
-      "via": "project"
+      "via": "project",
+      "collection": "emitted-grant"
     },
     "received_grants": {
       "via": "project",
@@ -124,8 +124,8 @@
       "collection": "activity-type"
     },
     "quotes": {
-      "collection": "quote",
-      "via": "project"
+      "via": "project",
+      "collection": "quote"
     },
     "project_type": {
       "model": "project-type"
@@ -171,12 +171,12 @@
       "component": "project-phase.original-project-phase"
     },
     "received_incomes": {
-      "collection": "received-income",
-      "via": "project"
+      "via": "project",
+      "collection": "received-income"
     },
     "received_expenses": {
-      "collection": "received-expense",
-      "via": "project"
+      "via": "project",
+      "collection": "received-expense"
     }
   }
 }

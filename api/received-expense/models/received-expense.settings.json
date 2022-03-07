@@ -2,7 +2,7 @@
   "kind": "collectionType",
   "collectionName": "received_expenses",
   "info": {
-    "name": "Despeses Rebudes",
+    "name": "Received Expenses",
     "description": ""
   },
   "options": {

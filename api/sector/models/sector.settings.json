@@ -2,7 +2,8 @@
   "kind": "collectionType",
   "collectionName": "sectors",
   "info": {
-    "name": "sector"
+    "name": "Sectors",
+    "description": ""
   },
   "options": {
     "increments": true,

@@ -2,7 +2,7 @@
   "kind": "collectionType",
   "collectionName": "expense_types",
   "info": {
-    "name": "TipusDespeses",
+    "name": "Expense Types",
     "description": ""
   },
   "options": {

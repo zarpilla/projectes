@@ -2,7 +2,7 @@
   "kind": "collectionType",
   "collectionName": "diets",
   "info": {
-    "name": "Dietes",
+    "name": "Diets",
     "description": ""
   },
   "options": {
@@ -76,7 +76,8 @@
         "videos"
       ],
       "plugin": "upload",
-      "required": false
+      "required": false,
+      "pluginOptions": {}
     },
     "payment_method": {
       "model": "payment-method"

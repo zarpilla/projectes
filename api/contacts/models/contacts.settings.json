@@ -2,7 +2,7 @@
   "kind": "collectionType",
   "collectionName": "contacts",
   "info": {
-    "name": "Contactes",
+    "name": "Contacts",
     "description": ""
   },
   "options": {
@@ -37,8 +37,8 @@
       "type": "string"
     },
     "quotes": {
-      "collection": "quote",
-      "via": "client"
+      "via": "client",
+      "collection": "quote"
     },
     "projects": {
       "via": "clients",

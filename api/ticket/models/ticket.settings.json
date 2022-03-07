@@ -2,7 +2,7 @@
   "kind": "collectionType",
   "collectionName": "tickets",
   "info": {
-    "name": "Ticket",
+    "name": "Tickets",
     "description": ""
   },
   "options": {
@@ -76,7 +76,8 @@
         "videos"
       ],
       "plugin": "upload",
-      "required": false
+      "required": false,
+      "pluginOptions": {}
     },
     "payment_method": {
       "model": "payment-method"

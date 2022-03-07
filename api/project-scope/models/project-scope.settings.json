@@ -2,7 +2,7 @@
   "kind": "collectionType",
   "collectionName": "project_scopes",
   "info": {
-    "name": "Ambit",
+    "name": "Scopes",
     "description": ""
   },
   "options": {

@@ -2,7 +2,7 @@
   "kind": "collectionType",
   "collectionName": "contact_types",
   "info": {
-    "name": "ContactType",
+    "name": "Contact Type",
     "description": ""
   },
   "options": {

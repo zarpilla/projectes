@@ -2,7 +2,7 @@
   "kind": "collectionType",
   "collectionName": "project_types",
   "info": {
-    "name": "TipusProjecte",
+    "name": "Project Types",
     "description": ""
   },
   "options": {
