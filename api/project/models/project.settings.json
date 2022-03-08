@@ -177,6 +177,9 @@
     "received_expenses": {
       "via": "project",
       "collection": "received-expense"
+    },
+    "mother": {
+      "model": "project"
     }
   }
 }
