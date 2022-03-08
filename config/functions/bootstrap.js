@@ -60,7 +60,12 @@ async function importSeedData() {
         "festive": ["create", "find", "findone", "update", "delete"],
         "daily-dedication": ["create", "find", "findone", "update", "delete"],        
         "document-type": ["find", "findone"],
+        "users-permissions": ["me", "find", "findone"],
     });
+
+    // await setPermissions("authenticated", "users-permissions", {
+    //   "user": ["me", "find", "findone"],
+    // });
 }
 
 module.exports = async () => {

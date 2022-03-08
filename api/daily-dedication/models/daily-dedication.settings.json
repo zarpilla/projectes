@@ -30,6 +30,25 @@
     },
     "monthly_salary": {
       "type": "decimal"
+    },
+    "scheme": {
+      "type": "enumeration",
+      "enum": [
+        "autonoma",
+        "general"
+      ]
+    },
+    "quota": {
+      "type": "decimal"
+    },
+    "pct_irpf": {
+      "type": "decimal"
+    },
+    "pct_other": {
+      "type": "decimal"
+    },
+    "pct_quota": {
+      "type": "decimal"
     }
   }
 }
