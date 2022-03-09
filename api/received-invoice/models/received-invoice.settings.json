@@ -93,6 +93,10 @@
     "project": {
       "via": "received_invoices",
       "model": "project"
+    },
+    "projects": {
+      "via": "linked_received_invoice",
+      "collection": "project"
     }
   }
 }

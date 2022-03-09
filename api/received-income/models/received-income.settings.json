@@ -96,6 +96,10 @@
     "project": {
       "via": "received_incomes",
       "model": "project"
+    },
+    "projects": {
+      "via": "linked_received_income",
+      "collection": "project"
     }
   }
 }

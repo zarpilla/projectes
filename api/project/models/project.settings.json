@@ -8,7 +8,7 @@
   "options": {
     "increments": true,
     "timestamps": true,
-    "draftAndPublish": false
+    "draftAndPublish": true
   },
   "attributes": {
     "name": {
@@ -180,6 +180,22 @@
     },
     "mother": {
       "model": "project"
+    },
+    "linked_emitted_invoice": {
+      "via": "projects",
+      "model": "emitted-invoice"
+    },
+    "linked_received_invoice": {
+      "via": "projects",
+      "model": "received-invoice"
+    },
+    "linked_received_income": {
+      "via": "projects",
+      "model": "received-income"
+    },
+    "linked_received_expense": {
+      "via": "projects",
+      "model": "received-expense"
     }
   }
 }

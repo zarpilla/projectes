@@ -109,7 +109,7 @@ let doProjectInfoCalculations = async (data, id) => {
     }
 
     if (data.structural_expenses === true) {
-        const indirects = await strapi.query('project').find({ structural_expenses_pct_gt: 0 });
+        const indirects = await strapi.query('project').find({ structural_expenses_pct_gt: 0, published_at_null: false });
         const indirectIncomes = _.sumBy(indirects.map(i => { return { indirect: i.structural_expenses_pct / 100 * i.total_incomes } }), 'indirect')
         const indirectIncomesReal = _.sumBy(indirects.map(i => { return { indirect: i.structural_expenses_pct / 100 * i.total_real_incomes } }), 'indirect')
         data.total_incomes = data.total_incomes + indirectIncomes
@@ -212,7 +212,10 @@ module.exports = {
     async findWithBasicInfo(ctx) {        
         // Calling the default core action
         let projects
-        if (ctx.query._q) {
+        
+        // only published
+        ctx.query.published_at_null = false
+        if (ctx.query._q) {            
             projects = await await strapi.query('project').search(ctx.query);
         }
         else {

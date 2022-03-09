@@ -96,6 +96,10 @@
     "project": {
       "via": "received_expenses",
       "model": "project"
+    },
+    "projects": {
+      "via": "linked_received_expense",
+      "collection": "project"
     }
   }
 }

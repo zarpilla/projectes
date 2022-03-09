@@ -96,6 +96,10 @@
     },
     "pdf": {
       "type": "string"
+    },
+    "projects": {
+      "via": "linked_emitted_invoice",
+      "collection": "project"
     }
   }
 }
