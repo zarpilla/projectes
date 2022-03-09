@@ -196,6 +196,12 @@
     "linked_received_expense": {
       "via": "projects",
       "model": "received-expense"
+    },
+    "region": {
+      "model": "regions"
+    },
+    "purpose": {
+      "type": "richtext"
     }
   }
 }
