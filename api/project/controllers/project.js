@@ -72,31 +72,31 @@ let doProjectInfoCalculations = async (data, id) => {
 
     const promises = []
 
-    promises.push(strapi.query('emitted-invoice').find({ project: id, _limit: -1 }))
-    promises.push(strapi.query('received-grant').find({ project: id, _limit: -1 }))
-    promises.push(strapi.query('received-invoice').find({ project: id, _limit: -1 }))
     promises.push(strapi.query('activity').find({ project: id, _limit: -1 }))
-    promises.push(strapi.query('ticket').find({ project: id, _limit: -1 }))
-    promises.push(strapi.query('diet').find({ project: id, _limit: -1 }))
-    promises.push(strapi.query('emitted-grant').find({ project: id, _limit: -1 }))
-    promises.push(strapi.query('received-income').find({ project: id, _limit: -1 }))
-    promises.push(strapi.query('received-expense').find({ project: id, _limit: -1 }))
+    // promises.push(strapi.query('emitted-invoice').find({ project: id, _limit: -1 }))
+    // promises.push(strapi.query('received-grant').find({ project: id, _limit: -1 }))
+    // promises.push(strapi.query('received-invoice').find({ project: id, _limit: -1 }))    
+    // promises.push(strapi.query('ticket').find({ project: id, _limit: -1 }))
+    // promises.push(strapi.query('diet').find({ project: id, _limit: -1 }))
+    // promises.push(strapi.query('emitted-grant').find({ project: id, _limit: -1 }))
+    // promises.push(strapi.query('received-income').find({ project: id, _limit: -1 }))
+    // promises.push(strapi.query('received-expense').find({ project: id, _limit: -1 }))
 
     const results = await Promise.all(promises)
 
-    const emittedInvoices = results[0];
-    const receivedGrants = results[1];
-    const receivedInvoices = results[2];
-    const activities = results[3];
-    const tickets = results[4];
-    const diets = results[5];
-    const emittedGrants = results[6];
-    const receivedIncomes = results[7];
-    const receivedExpenses = results[8];
+    const activities = results[0];
+    // const emittedInvoices = results[1];
+    // const receivedGrants = results[2];
+    // const receivedInvoices = results[3];    
+    // const tickets = results[4];
+    // const diets = results[5];
+    // const emittedGrants = results[6];
+    // const receivedIncomes = results[7];
+    // const receivedExpenses = results[8];
 
     data.total_real_hours = _.sumBy(activities, 'hours')   
-    data.total_real_incomes += _.sumBy(emittedInvoices, 'total_base') + _.sumBy(receivedGrants, 'total') + _.sumBy(receivedIncomes, 'total')
-    data.total_real_expenses += _.sumBy(receivedInvoices, 'total_base') + _.sumBy(tickets, 'total') + _.sumBy(diets, 'total') + _.sumBy(emittedGrants, 'total') + _.sumBy(receivedExpenses, 'total')
+    // data.total_real_incomes += _.sumBy(emittedInvoices, 'total_base') + _.sumBy(receivedGrants, 'total') + _.sumBy(receivedIncomes, 'total')
+    // data.total_real_expenses += _.sumBy(receivedInvoices, 'total_base') + _.sumBy(tickets, 'total') + _.sumBy(diets, 'total') + _.sumBy(emittedGrants, 'total') + _.sumBy(receivedExpenses, 'total')
     const activities_price = activities.map(a => { return { cost: a.hours * a.cost_by_hour } })    
     data.total_real_hours_price = _.sumBy(activities_price, 'cost')
     data.total_real_incomes_expenses = data.total_real_incomes - data.total_real_expenses - data.total_real_hours_price
@@ -162,7 +162,7 @@ let calculateEstimatedTotals = async (data, phases) => {
                         }
                         subphase.total_estimated_hours = subphase_estimated_hours
                     }
-                    if (subphase.quantity && subphase.amount && subphase.paid && !subphase.income && !subphase.invoice && !subphase.grant) {
+                    if (subphase.quantity && subphase.amount && subphase.paid) {
                         total_real_incomes += subphase.quantity * subphase.amount
                     }
                 }
@@ -174,7 +174,7 @@ let calculateEstimatedTotals = async (data, phases) => {
                         expense.total_amount = expense.quantity * expense.amount
                         total_expenses += expense.quantity * expense.amount
                     }
-                    if (expense.quantity && expense.amount && expense.paid && !expense.expense && !expense.invoice && !expense.grant && !expense.ticket && !expense.diet) {
+                    if (expense.quantity && expense.amount && expense.paid) {
                         total_real_expenses += expense.quantity * expense.amount
                     }
                 }
