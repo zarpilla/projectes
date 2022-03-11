@@ -98,8 +98,9 @@
       "model": "project"
     },
     "projects": {
-      "via": "linked_received_expense",
-      "collection": "project"
+      "via": "linked_received_expenses",
+      "collection": "project",
+      "dominant": true
     }
   }
 }

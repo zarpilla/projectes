@@ -95,8 +95,9 @@
       "model": "project"
     },
     "projects": {
-      "via": "linked_received_invoice",
-      "collection": "project"
+      "via": "linked_received_invoices",
+      "collection": "project",
+      "dominant": true
     }
   }
 }
