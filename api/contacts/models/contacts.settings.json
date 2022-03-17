@@ -36,10 +36,6 @@
     "country": {
       "type": "string"
     },
-    "quotes": {
-      "via": "client",
-      "collection": "quote"
-    },
     "projects": {
       "via": "clients",
       "collection": "project"

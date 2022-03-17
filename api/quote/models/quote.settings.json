@@ -17,8 +17,7 @@
     "number": {
       "type": "integer"
     },
-    "client": {
-      "via": "quotes",
+    "contact": {
       "model": "contacts"
     },
     "lines": {
@@ -61,12 +60,16 @@
     "pdf": {
       "type": "string"
     },
-    "date": {
+    "emitted": {
       "type": "date"
     },
     "project": {
       "via": "quotes",
       "model": "project"
+    },
+    "proforma": {
+      "type": "boolean",
+      "default": false
     }
   }
 }
