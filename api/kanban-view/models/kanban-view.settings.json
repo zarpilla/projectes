@@ -1,0 +1,23 @@
+{
+  "kind": "collectionType",
+  "collectionName": "kanban_views",
+  "info": {
+    "name": "Kanban View"
+  },
+  "options": {
+    "increments": true,
+    "timestamps": true,
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "projectId": {
+      "type": "integer"
+    },
+    "userId": {
+      "type": "integer"
+    },
+    "cardViewJSON": {
+      "type": "text"
+    }
+  }
+}

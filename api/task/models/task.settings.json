@@ -1,0 +1,40 @@
+{
+  "kind": "collectionType",
+  "collectionName": "tasks",
+  "info": {
+    "name": "Task",
+    "description": ""
+  },
+  "options": {
+    "increments": true,
+    "timestamps": true,
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "name": {
+      "type": "string"
+    },
+    "description": {
+      "type": "richtext"
+    },
+    "due_date": {
+      "type": "date"
+    },
+    "task_state": {
+      "model": "task-state"
+    },
+    "users_permissions_users": {
+      "plugin": "users-permissions",
+      "collection": "user",
+      "via": "tasks",
+      "dominant": true
+    },
+    "project": {
+      "model": "project"
+    },
+    "archived": {
+      "type": "boolean",
+      "default": false
+    }
+  }
+}

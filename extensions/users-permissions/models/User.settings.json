@@ -75,6 +75,10 @@
     },
     "monthly_tax": {
       "type": "decimal"
+    },
+    "tasks": {
+      "via": "users_permissions_users",
+      "collection": "task"
     }
   }
 }

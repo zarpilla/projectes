@@ -1,0 +1,21 @@
+{
+  "kind": "collectionType",
+  "collectionName": "task_states",
+  "info": {
+    "name": "Task State",
+    "description": ""
+  },
+  "options": {
+    "increments": true,
+    "timestamps": true,
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "name": {
+      "type": "string"
+    },
+    "order": {
+      "type": "integer"
+    }
+  }
+}

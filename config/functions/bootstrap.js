@@ -63,6 +63,10 @@ async function importSeedData() {
         "document-type": ["find", "findone"],
         "users-permissions": ["me", "find", "findone"],
         "regions": ["find", "findone"],
+        "task": ["create", "find", "findone", "update", "delete"],
+        "task-state": ["find", "findone"],
+        "kanban-view": ["create", "find", "findone", "update", "delete"]
+        
     });
 
     // await setPermissions("authenticated", "users-permissions", {

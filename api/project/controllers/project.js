@@ -10,7 +10,7 @@ const _ = require('lodash');
 
 let doProjectInfoCalculations = async (data, id) => {
     
-    if (!id) {
+    if (!id || !data) {
         return
     }
 

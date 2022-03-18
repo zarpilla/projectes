@@ -1,0 +1,52 @@
+{
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/kanban-views",
+      "handler": "kanban-view.find",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/kanban-views/count",
+      "handler": "kanban-view.count",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/kanban-views/:id",
+      "handler": "kanban-view.findOne",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/kanban-views",
+      "handler": "kanban-view.create",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "PUT",
+      "path": "/kanban-views/:id",
+      "handler": "kanban-view.update",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "DELETE",
+      "path": "/kanban-views/:id",
+      "handler": "kanban-view.delete",
+      "config": {
+        "policies": []
+      }
+    }
+  ]
+}
