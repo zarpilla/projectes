@@ -19,6 +19,10 @@
     "showEstimatedHoursInPhases": {
       "type": "boolean",
       "default": false
+    },
+    "deductible_vat_pct": {
+      "type": "decimal",
+      "default": 100
     }
   }
 }

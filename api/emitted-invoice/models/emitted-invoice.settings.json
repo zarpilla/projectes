@@ -101,6 +101,9 @@
       "via": "linked_emitted_invoices",
       "collection": "project",
       "dominant": true
+    },
+    "vat_paid_date": {
+      "type": "datetime"
     }
   }
 }

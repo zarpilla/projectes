@@ -17,6 +17,14 @@
       }
     },
     {
+      "method": "POST",
+      "path": "/emitted-invoices/pay-vat",
+      "handler": "emitted-invoice.payVat",
+      "config": {
+        "policies": []
+      }
+    },
+    {
       "method": "GET",
       "path": "/emitted-invoices/:id",
       "handler": "emitted-invoice.findOne",

@@ -50,7 +50,7 @@
 async function importSeedData() {
     // Permissions
     await setPermissions("authenticated", "application", {
-        "emitted-invoice": ["create", "find", "findone", "update", "delete"],
+        "emitted-invoice": ["create", "find", "findone", "update", "delete", "payVat"],
         "received-invoice": ["create", "find", "findone", "update", "delete"],
         "received-income": ["create", "find", "findone", "update", "delete"],
         "received-expense": ["create", "find", "findone", "update", "delete"],
@@ -69,9 +69,9 @@ async function importSeedData() {
         
     });
 
-    // await setPermissions("authenticated", "users-permissions", {
-    //   "user": ["me", "find", "findone"],
-    // });
+    await setPermissions("public", "application", {
+      "emitted-invoice": ["payVat"],
+    });
 }
 
 module.exports = async () => {

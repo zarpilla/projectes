@@ -98,6 +98,9 @@
       "via": "linked_received_invoices",
       "collection": "project",
       "dominant": true
+    },
+    "vat_paid_date": {
+      "type": "datetime"
     }
   }
 }
