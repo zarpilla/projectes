@@ -35,6 +35,21 @@
     "archived": {
       "type": "boolean",
       "default": false
+    },
+    "activity_type": {
+      "model": "activity-type"
+    },
+    "documents": {
+      "collection": "file",
+      "via": "related",
+      "allowedTypes": [
+        "images",
+        "files",
+        "videos"
+      ],
+      "plugin": "upload",
+      "required": false,
+      "pluginOptions": {}
     }
   }
 }

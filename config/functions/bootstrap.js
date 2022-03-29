@@ -69,6 +69,11 @@ async function importSeedData() {
         
     });
 
+
+    await setPermissions("authenticated", "upload", {
+      "upload": ["upload"]
+    })
+
     await setPermissions("public", "application", {
       "emitted-invoice": ["payVat"],
     });
