@@ -50,6 +50,11 @@
       "plugin": "upload",
       "required": false,
       "pluginOptions": {}
+    },
+    "checklist": {
+      "type": "component",
+      "repeatable": true,
+      "component": "task.task-checklist"
     }
   }
 }
