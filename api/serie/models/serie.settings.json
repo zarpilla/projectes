@@ -13,6 +13,9 @@
   "attributes": {
     "name": {
       "type": "string"
+    },
+    "leadingZeros": {
+      "type": "integer"
     }
   }
 }

@@ -51,7 +51,9 @@ let calculateTotals = async (data) => {
             const quotes = await strapi.query('received-grant').find({ serial: data.serial, _limit: -1 });
             data.number = quotes.length + 1
         }
-        data.code = `${serial.name}-${data.number}`
+        const zeroPad = (num, places) => String(num).padStart(places, '0')
+        const places = serial.leadingZeros || 1
+        data.code = `${serial.name}-${zeroPad(data.number, places)}`
     }
 
     data.total = ( data.total_base || 0) + ( data.total_vat || 0) - (data.total_irpf || 0)

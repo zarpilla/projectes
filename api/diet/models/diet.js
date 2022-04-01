@@ -56,7 +56,9 @@ let calculateTotals = async (data) => {
             const quotes = await strapi.query('diet').find({ serial: data.serial, _limit: -1 });
             data.number = quotes.length + 1
         }
-        data.code = `${serial.name}-${data.number}`
+        const zeroPad = (num, places) => String(num).padStart(places, '0')
+        const places = serial.leadingZeros || 1
+        data.code = `${serial.name}-${zeroPad(data.number, places)}`
     }
 
     if (data.lines) {
