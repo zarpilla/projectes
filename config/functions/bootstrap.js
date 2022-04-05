@@ -65,7 +65,8 @@ async function importSeedData() {
         "regions": ["find", "findone"],
         "task": ["create", "find", "findone", "update", "delete"],
         "task-state": ["find", "findone"],
-        "kanban-view": ["create", "find", "findone", "update", "delete"]
+        "kanban-view": ["create", "find", "findone", "update", "delete"],
+        "justifications": ["create", "find", "findone", "update", "delete"],
         
     });
 

@@ -1,0 +1,30 @@
+{
+  "kind": "collectionType",
+  "collectionName": "justifications",
+  "info": {
+    "name": "Justifications"
+  },
+  "options": {
+    "increments": true,
+    "timestamps": true,
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "year": {
+      "type": "integer"
+    },
+    "month": {
+      "type": "integer"
+    },
+    "users_permissions_user": {
+      "plugin": "users-permissions",
+      "model": "user"
+    },
+    "project": {
+      "model": "project"
+    },
+    "hours": {
+      "type": "decimal"
+    }
+  }
+}

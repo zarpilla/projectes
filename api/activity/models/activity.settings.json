@@ -43,6 +43,9 @@
     },
     "cost_by_hour": {
       "type": "decimal"
+    },
+    "task": {
+      "model": "task"
     }
   }
 }
