@@ -26,20 +26,19 @@ module.exports = {
         const incomeInfo = await getEntityInfo('received-income')
         const rInvoiceInfo = await getEntityInfo('received-invoice')
         const expenseInfo = await getEntityInfo('received-expense')
+        const me = await strapi.query('me').findOne()
+        if (me.options.deductible_vat_pct) {
+            const total_vat = ( rInvoiceInfo.total_vat + expenseInfo.total_vat - eInvoiceInfo.total_vat - incomeInfo.total_vat ) * me.options.deductible_vat_pct / 100.0
+            const vat_paid_date = new Date()
+            if (total_vat !== 0) {
+                await strapi.query('treasury').create({ comment: 'IVA Saldat', total: total_vat, date: vat_paid_date })
 
-        const total_vat = rInvoiceInfo.total_vat + expenseInfo.total_vat - eInvoiceInfo.total_vat - incomeInfo.total_vat
-        const vat_paid_date = new Date()
-
-        if (total_vat !== 0) {
-            await strapi.query('treasury').create({ comment: 'IVA Saldat', total: total_vat, date: vat_paid_date })
-
-            await payEntity(eInvoiceInfo.documents, 'emitted-invoice', vat_paid_date)
-            await payEntity(incomeInfo.documents, 'received-income', vat_paid_date)
-            await payEntity(rInvoiceInfo.documents, 'received-invoice', vat_paid_date)
-            await payEntity(expenseInfo.documents, 'received-expense', vat_paid_date)
+                await payEntity(eInvoiceInfo.documents, 'emitted-invoice', vat_paid_date)
+                await payEntity(incomeInfo.documents, 'received-income', vat_paid_date)
+                await payEntity(rInvoiceInfo.documents, 'received-invoice', vat_paid_date)
+                await payEntity(expenseInfo.documents, 'received-expense', vat_paid_date)
+            }
         }
-
-        
         return { done: true, emittedInvoices: eInvoiceInfo.documents, receivedIncomes: incomeInfo.documents, receivedInvoices: rInvoiceInfo.documents, receivedExpenses: expenseInfo.documents }
     }
 };
