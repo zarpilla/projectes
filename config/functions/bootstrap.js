@@ -55,6 +55,7 @@ async function importSeedData() {
         "received-income": ["create", "find", "findone", "update", "delete"],
         "received-expense": ["create", "find", "findone", "update", "delete"],
         "payroll": ["create", "find", "findone", "update", "delete"],
+        "project": ["create", "find", "findone", "update", "delete", "findwithbasicinfo", "payexpense", "payincome", "findwitheconomicdetail"],
         "quote": ["create", "find", "findone", "update", "delete"],
         "contact": ["create", "find", "findone", "update", "delete"],
         "festive-type": ["find"],
