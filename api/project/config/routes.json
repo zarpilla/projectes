@@ -31,6 +31,14 @@
       "config": {
         "policies": []
       }
+    },
+    {
+      "method": "GET",
+      "path": "/projects/update-phases",
+      "handler": "project.updatePhases",
+      "config": {
+        "policies": []
+      }
     },    
     {
       "method": "GET",

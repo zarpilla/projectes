@@ -361,6 +361,31 @@ module.exports = {
     return response; // projects.map(entity => sanitizeEntity(entity, { model: strapi.models.project }));
   },
 
+
+  async updatePhases(ctx) {
+
+    const projects = await strapi.query("project").find({ _limit: -1 });
+
+    for(let i = 0; i < projects.length; i++) {
+      const project = projects[i]
+      if (project.phases?.length) {
+        const projectToUpdate = { id: project.id }
+        projectToUpdate.original_phases = project.phases;
+        projectToUpdate.original_phases.forEach((p) => {
+          delete p.id;
+          p.subphases.forEach((sp) => {
+            delete sp.id;
+          });
+          p.expenses.forEach((sp) => {
+            delete sp.id;
+          });
+        });  
+        await strapi.query("project").update({ id: project.id }, projectToUpdate);      
+      }
+    }
+    return { done: true }
+  },
+
   payExpense: async (ctx) => {
     const { id, expense } = ctx.params;
     const project = await strapi.query("project").findOne({ id });

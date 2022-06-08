@@ -73,12 +73,13 @@ async function importSeedData() {
 
 
     await setPermissions("authenticated", "upload", {
-      "upload": ["upload"]
+      "upload": ["upload"],
+      
     })
 
-    // await setPermissions("public", "application", {
-    //   "emitted-invoice": ["payVat"],
-    // });
+    await setPermissions("public", "application", {
+      "project": ["updatephases"],
+    });
 }
 
 module.exports = async () => {
