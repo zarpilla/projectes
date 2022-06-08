@@ -18,6 +18,14 @@
     },
     {
       "method": "GET",
+      "path": "/tasks/email",
+      "handler": "task.email",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "GET",
       "path": "/tasks/:id",
       "handler": "task.findOne",
       "config": {

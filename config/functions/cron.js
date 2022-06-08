@@ -1,5 +1,7 @@
 'use strict';
 
+const taskController = require('../../api/task/controllers/task');
+
 /**
  * Cron config that gives you an opportunity
  * to run scheduled jobs.
@@ -12,10 +14,9 @@
 
 module.exports = {
   /**
-   * Simple example.
-   * Every monday at 1am.
+   * Every day at 3am.
    */
-  // '0 1 * * 1': () => {
-  //
-  // }
+  '0 3 * * *': async () => {
+    await taskController.email()  
+  }
 };
