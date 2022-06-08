@@ -23,6 +23,10 @@
     "deductible_vat_pct": {
       "type": "decimal",
       "default": 100
+    },
+    "showTasksInGantt": {
+      "type": "boolean",
+      "default": true
     }
   }
 }
