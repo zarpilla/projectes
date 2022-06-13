@@ -292,7 +292,7 @@ module.exports = {
     ctx.query.published_at_null = false;
 
     const { query, year, paid, document } = ctx.query
-    ctx.query = query
+    ctx.query = { ...query, _limit: -1 }
 
     if (ctx.query._q) {
       projects = await strapi.query("project").search(ctx.query);
