@@ -291,7 +291,7 @@ module.exports = {
     // only published
     ctx.query.published_at_null = false;
 
-    const { query, year, paid } = ctx.query
+    const { query, year, paid, document } = ctx.query
     ctx.query = query
 
     if (ctx.query._q) {
@@ -368,6 +368,10 @@ module.exports = {
     if (paid != null) {
       response = response.filter(r => r.paid === (paid === 'true'))
     }
+    if (document === 'null') {
+      response = response.filter(r => r.document === null)
+    }
+    
     
 
     // Removing some info
