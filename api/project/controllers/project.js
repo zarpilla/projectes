@@ -290,13 +290,17 @@ module.exports = {
 
     // only published
     ctx.query.published_at_null = false;
+
+    const { query, year, paid } = ctx.query
+    ctx.query = query
+
     if (ctx.query._q) {
       projects = await strapi.query("project").search(ctx.query);
     } else {
       projects = await strapi.query("project").find(ctx.query);
     }
 
-    const response = [];
+    var response = [];
 
     projects.forEach((p) => {
       const projectInfo = {
@@ -330,6 +334,7 @@ module.exports = {
                 sph.income_type && sph.income_type.name
                   ? sph.income_type.name
                   : "",
+              document: sph.income || sph.invoice
             });
           }
         });
@@ -350,11 +355,20 @@ module.exports = {
                 sph.expense_type && sph.expense_type.name
                   ? sph.expense_type.name
                   : "",
+                document: sph.expense || sph.invoice
             });
           }
         });
       });
     });
+
+    if (year) {
+      response = response.filter(r => r.year === year)
+    }
+    if (paid != null) {
+      response = response.filter(r => r.paid === (paid === 'true'))
+    }
+    
 
     // Removing some info
     // const newArray = projects.map(({ phases, activities, emitted_invoices, received_invoices, tickets, diets, emitted_grants, received_grants, quotes, original_phases, incomes, expenses, strategies, estimated_hours, intercooperations, clients, received_expenses, received_incomes, ...item }) => item)
