@@ -17,6 +17,15 @@
     "project": {
       "via": "activity_types",
       "model": "project"
+    },
+    "global": {
+      "type": "boolean",
+      "default": false
+    },
+    "projects": {
+      "collection": "project",
+      "via": "global_activity_types",
+      "dominant": true
     }
   }
 }
