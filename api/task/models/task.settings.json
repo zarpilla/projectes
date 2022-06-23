@@ -55,6 +55,10 @@
       "type": "component",
       "repeatable": true,
       "component": "task.task-checklist"
+    },
+    "created": {
+      "plugin": "users-permissions",
+      "model": "user"
     }
   }
 }

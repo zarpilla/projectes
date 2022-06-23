@@ -24,6 +24,13 @@
     "user": {
       "plugin": "users-permissions",
       "model": "user"
+    },
+    "created": {
+      "plugin": "users-permissions",
+      "model": "user"
+    },
+    "created_date": {
+      "type": "datetime"
     }
   }
 }
