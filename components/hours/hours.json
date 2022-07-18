@@ -37,6 +37,15 @@
     },
     "monthly_quantity": {
       "type": "decimal"
+    },
+    "quantity_type": {
+      "type": "enumeration",
+      "enum": [
+        "total",
+        "week",
+        "month"
+      ],
+      "default": "total"
     }
   }
 }

@@ -191,11 +191,22 @@ let calculateEstimatedTotals = async (data, phases) => {
           if (subphase.estimated_hours) {
             for (var k = 0; k < subphase.estimated_hours.length; k++) {
               const hours = subphase.estimated_hours[k];
-              subphase_estimated_hours += hours.quantity;
-              total_estimated_hours += hours.quantity;
-              if (hours.quantity && hours.amount) {
-                hours.total_amount = hours.quantity * hours.amount;
-                total_estimated_hours_price += hours.total_amount;
+              if (hours.from && hours.to) {
+                let mdiff = 1
+                if (hours.quantity_type && hours.quantity_type === 'month') {
+                  const diff = moment.duration(moment(hours.to, 'YYYY-MM-DD').diff(moment(hours.from, 'YYYY-MM-DD')))
+                  mdiff = Math.round(diff.asMonths())
+                }
+                if (hours.quantity_type && hours.quantity_type === 'week') {
+                  const diff = moment.duration(moment(hours.to, 'YYYY-MM-DD').diff(moment(hours.from, 'YYYY-MM-DD')))
+                  mdiff = Math.round(diff.asWeeks())
+                }
+                subphase_estimated_hours += hours.quantity * mdiff;
+                total_estimated_hours += hours.quantity * mdiff;
+                if (hours.quantity && hours.amount) {
+                  hours.total_amount = hours.quantity * mdiff * hours.amount;
+                  total_estimated_hours_price += hours.total_amount;
+                }
               }
             }
             subphase.total_estimated_hours = subphase_estimated_hours;
