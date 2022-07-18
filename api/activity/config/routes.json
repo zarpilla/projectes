@@ -18,6 +18,14 @@
     },
     {
       "method": "GET",
+      "path": "/activities/import-calendar/:id",
+      "handler": "activity.importCalendar",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "GET",
       "path": "/activities/import",
       "handler": "activity.import",
       "config": {

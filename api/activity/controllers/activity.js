@@ -1,5 +1,7 @@
 'use strict';
 const moment = require('moment')
+const axios = require('axios')
+
 
 /**
  * Read the documentation (https://strapi.io/documentation/developer-docs/latest/development/backend-customization.html#core-controllers)
@@ -8,6 +10,17 @@ const moment = require('moment')
 
 module.exports = {
     // GET /hello
+    importCalendar: async ctx => {
+        const { id } = ctx.params;
+        const user = await strapi.query('user', 'users-permissions').findOne({ id });
+        if (user && user.ical && user.ical.startsWith('http')) {            
+            const ical = await axios.get(user.ical)
+            ctx.send({ id, ical: ical.data })
+            return
+        }
+        ctx.send({ id })
+    },
+
     import: async ctx => {
         //const now = moment().add(-7, 'days').format('YYYY-MM-DD')
         //const activities = await strapi.services.activity.find();
@@ -33,6 +46,6 @@ module.exports = {
 
         //return sanitizeEntity(entity, { model: strapi.models.article });
         //ctx.send(now);
-        ctx.send(projects2)
+        // ctx.send(projects2)
     },
   };

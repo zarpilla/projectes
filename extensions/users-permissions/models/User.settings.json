@@ -79,6 +79,9 @@
     "tasks": {
       "via": "users_permissions_users",
       "collection": "task"
+    },
+    "ical": {
+      "type": "string"
     }
   }
 }

@@ -24,9 +24,9 @@
       "model": "task-state"
     },
     "users_permissions_users": {
+      "via": "tasks",
       "plugin": "users-permissions",
       "collection": "user",
-      "via": "tasks",
       "dominant": true
     },
     "project": {
