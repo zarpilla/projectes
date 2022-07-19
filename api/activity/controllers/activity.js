@@ -1,6 +1,7 @@
 'use strict';
 const moment = require('moment')
-const axios = require('axios')
+// const axios = require('axios')
+const ical = require('node-ical')
 
 
 /**
@@ -14,11 +15,16 @@ module.exports = {
         const { id } = ctx.params;
         const user = await strapi.query('user', 'users-permissions').findOne({ id });
         if (user && user.ical && user.ical.startsWith('http')) {            
-            const ical = await axios.get(user.ical)
-            ctx.send({ id, ical: ical.data })
+            const resp = await ical.async.fromURL(user.ical)
+            const events = []
+            for(let k in resp) {
+                if (resp[k].type === 'VEVENT')
+                events.push(resp[k])
+            }
+            ctx.send({ ical: events })
             return
         }
-        ctx.send({ id })
+        ctx.send({ ical: [] })
     },
 
     import: async ctx => {
