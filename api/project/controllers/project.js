@@ -337,7 +337,7 @@ module.exports = {
               total_amount_real: sph.paid ? sph.quantity * sph.amount : 0,
               paid: sph.paid,
               date: sph.date,
-              income_esti: sph.quantity * sph.amount,
+              income_esti: 0, //sph.quantity * sph.amount,
               income_real: sph.paid ? sph.quantity * sph.amount : 0,
               year: moment(sph.date, "YYYY-MM-DD").format("YYYY"),
               month: moment(sph.date, "YYYY-MM-DD").format("MM"),
@@ -357,8 +357,54 @@ module.exports = {
               total_amount_esti: -1 * sph.quantity * sph.amount,
               total_amount_real: sph.paid ? -1 * sph.quantity * sph.amount : 0,
               paid: sph.paid,
-              expense_esti: -1 * Math.abs(sph.quantity * sph.amount),
+              expense_esti: 0, //-1 * Math.abs(sph.quantity * sph.amount),
               expense_real: sph.paid ? -1 * sph.quantity * sph.amount : 0,
+              date: sph.date,
+              year: moment(sph.date, "YYYY-MM-DD").format("YYYY"),
+              month: moment(sph.date, "YYYY-MM-DD").format("MM"),
+              row_type:
+                sph.expense_type && sph.expense_type.name
+                  ? sph.expense_type.name
+                  : "",
+                document: sph.expense || sph.invoice
+            });
+          }
+        });
+      });
+
+
+      p.original_phases.forEach((ph) => {
+        ph.subphases.forEach((sph) => {
+          if (sph.quantity && sph.amount) {
+            response.push({
+              ...projectInfo,
+              type: "income",
+              total_amount_esti: sph.quantity * sph.amount,
+              total_amount_real: sph.paid ? sph.quantity * sph.amount : 0,
+              paid: sph.paid,
+              date: sph.date,
+              income_esti: sph.quantity * sph.amount,
+              income_real: 0,
+              year: moment(sph.date, "YYYY-MM-DD").format("YYYY"),
+              month: moment(sph.date, "YYYY-MM-DD").format("MM"),
+              row_type:
+                sph.income_type && sph.income_type.name
+                  ? sph.income_type.name
+                  : "",
+              document: sph.income || sph.invoice
+            });
+          }
+        });
+        ph.expenses.forEach((sph) => {
+          if (sph.quantity && sph.amount) {
+            response.push({
+              ...projectInfo,
+              type: "expense",
+              total_amount_esti: -1 * sph.quantity * sph.amount,
+              total_amount_real: sph.paid ? -1 * sph.quantity * sph.amount : 0,
+              paid: sph.paid,
+              expense_esti: -1 * Math.abs(sph.quantity * sph.amount),
+              expense_real: 0,
               date: sph.date,
               year: moment(sph.date, "YYYY-MM-DD").format("YYYY"),
               month: moment(sph.date, "YYYY-MM-DD").format("MM"),
