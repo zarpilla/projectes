@@ -332,9 +332,7 @@ module.exports = {
           if (sph.quantity && sph.amount) {
             response.push({
               ...projectInfo,
-              type: "income",
-              total_amount_esti: sph.quantity * sph.amount,
-              total_amount_real: sph.paid ? sph.quantity * sph.amount : 0,
+              type: "income",              
               paid: sph.paid,
               date: sph.date,
               income_esti: 0, //sph.quantity * sph.amount,
@@ -354,8 +352,6 @@ module.exports = {
             response.push({
               ...projectInfo,
               type: "expense",
-              total_amount_esti: -1 * sph.quantity * sph.amount,
-              total_amount_real: sph.paid ? -1 * sph.quantity * sph.amount : 0,
               paid: sph.paid,
               expense_esti: 0, //-1 * Math.abs(sph.quantity * sph.amount),
               expense_real: sph.paid ? -1 * sph.quantity * sph.amount : 0,
@@ -379,8 +375,6 @@ module.exports = {
             response.push({
               ...projectInfo,
               type: "income",
-              total_amount_esti: sph.quantity * sph.amount,
-              total_amount_real: sph.paid ? sph.quantity * sph.amount : 0,
               paid: sph.paid,
               date: sph.date,
               income_esti: sph.quantity * sph.amount,
@@ -400,8 +394,6 @@ module.exports = {
             response.push({
               ...projectInfo,
               type: "expense",
-              total_amount_esti: -1 * sph.quantity * sph.amount,
-              total_amount_real: sph.paid ? -1 * sph.quantity * sph.amount : 0,
               paid: sph.paid,
               expense_esti: -1 * Math.abs(sph.quantity * sph.amount),
               expense_real: 0,
