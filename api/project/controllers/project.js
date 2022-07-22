@@ -357,8 +357,8 @@ module.exports = {
               total_amount_esti: -1 * sph.quantity * sph.amount,
               total_amount_real: sph.paid ? -1 * sph.quantity * sph.amount : 0,
               paid: sph.paid,
-              expense_esti: -1 * sph.quantity * sph.amount,
-              expense_real: -1 * sph.paid ? sph.quantity * sph.amount : 0,
+              expense_esti: -1 * Math.abs(sph.quantity * sph.amount),
+              expense_real: sph.paid ? -1 * sph.quantity * sph.amount : 0,
               date: sph.date,
               year: moment(sph.date, "YYYY-MM-DD").format("YYYY"),
               month: moment(sph.date, "YYYY-MM-DD").format("MM"),
@@ -370,6 +370,18 @@ module.exports = {
             });
           }
         });
+      });
+
+      response.push({
+        ...projectInfo,
+        type: "hours",
+        date: "",
+        total_estimated_hours_price: -1 * p.total_estimated_hours_price,
+        total_real_hours_price: -1 * p.total_real_hours_price,
+        year: "2099",
+        month: "99",
+        row_type: "",
+        document: "0"
       });
     });
 
