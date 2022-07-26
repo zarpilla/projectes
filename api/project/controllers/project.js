@@ -184,10 +184,10 @@ let calculateEstimatedTotals = async (data, phases) => {
         for (var j = 0; j < phase.subphases.length; j++) {
           const subphase = phase.subphases[j];
           var subphase_estimated_hours = 0;
-          if (subphase.quantity && subphase.amount) {
-            subphase.total_amount = subphase.quantity * subphase.amount;
-            total_incomes += subphase.quantity * subphase.amount;
-          }
+          
+          subphase.total_amount = (subphase.quantity ? subphase.quantity : 0) * (subphase.amount ? subphase.amount : 0);
+          total_incomes += (subphase.quantity ? subphase.quantity : 0) * (subphase.amount ? subphase.amount : 0);
+
           if (subphase.estimated_hours) {
             for (var k = 0; k < subphase.estimated_hours.length; k++) {
               const hours = subphase.estimated_hours[k];
@@ -203,28 +203,25 @@ let calculateEstimatedTotals = async (data, phases) => {
                 }
                 subphase_estimated_hours += hours.quantity * mdiff;
                 total_estimated_hours += hours.quantity * mdiff;
-                if (hours.quantity && hours.amount) {
-                  hours.total_amount = hours.quantity * mdiff * hours.amount;
-                  total_estimated_hours_price += hours.total_amount;
-                }
+
+                hours.total_amount = (hours.quantity ? hours.quantity : 0) * mdiff * (hours.amount ? hours.amount : 0);
+                total_estimated_hours_price += hours.total_amount;
               }
             }
             subphase.total_estimated_hours = subphase_estimated_hours;
           }
-          if (subphase.quantity && subphase.amount && subphase.paid) {
-            total_real_incomes += subphase.quantity * subphase.amount;
+          if (subphase.paid) {
+            total_real_incomes += (subphase.quantity ? subphase.quantity : 0) * (subphase.amount ? subphase.amount : 0);
           }
         }
       }
       if (phase.expenses && phase.expenses.length) {
         for (var j = 0; j < phase.expenses.length; j++) {
           const expense = phase.expenses[j];
-          if (expense.quantity && expense.amount) {
-            expense.total_amount = expense.quantity * expense.amount;
-            total_expenses += expense.quantity * expense.amount;
-          }
-          if (expense.quantity && expense.amount && expense.paid) {
-            total_real_expenses += expense.quantity * expense.amount;
+          expense.total_amount = (expense.quantity ? expense.quantity : 0) * (expense.amount ? expense.amount : 0);
+          total_expenses += (expense.quantity ? expense.quantity : 0) * (expense.amount ? expense.amount : 0);
+          if (expense.paid) {
+            total_expenses += (expense.quantity ? expense.quantity : 0) * (expense.amount ? expense.amount : 0);
           }
         }
       }
@@ -335,7 +332,7 @@ module.exports = {
               type: "income",              
               paid: sph.paid,
               date: sph.date,
-              income_esti: 0, //sph.quantity * sph.amount,
+              income_esti: sph.quantity * sph.amount,
               income_real: sph.paid ? sph.quantity * sph.amount : 0,
               year: moment(sph.date, "YYYY-MM-DD").format("YYYY"),
               month: moment(sph.date, "YYYY-MM-DD").format("MM"),
@@ -353,7 +350,7 @@ module.exports = {
               ...projectInfo,
               type: "expense",
               paid: sph.paid,
-              expense_esti: 0, //-1 * Math.abs(sph.quantity * sph.amount),
+              expense_esti: -1 * Math.abs(sph.quantity * sph.amount),
               expense_real: sph.paid ? -1 * sph.quantity * sph.amount : 0,
               date: sph.date,
               year: moment(sph.date, "YYYY-MM-DD").format("YYYY"),
@@ -369,46 +366,46 @@ module.exports = {
       });
 
 
-      p.original_phases.forEach((ph) => {
-        ph.subphases.forEach((sph) => {
-          if (sph.quantity && sph.amount) {
-            response.push({
-              ...projectInfo,
-              type: "income",
-              paid: sph.paid,
-              date: sph.date,
-              income_esti: sph.quantity * sph.amount,
-              income_real: 0,
-              year: moment(sph.date, "YYYY-MM-DD").format("YYYY"),
-              month: moment(sph.date, "YYYY-MM-DD").format("MM"),
-              row_type:
-                sph.income_type && sph.income_type.name
-                  ? sph.income_type.name
-                  : "",
-              document: sph.income || sph.invoice
-            });
-          }
-        });
-        ph.expenses.forEach((sph) => {
-          if (sph.quantity && sph.amount) {
-            response.push({
-              ...projectInfo,
-              type: "expense",
-              paid: sph.paid,
-              expense_esti: -1 * Math.abs(sph.quantity * sph.amount),
-              expense_real: 0,
-              date: sph.date,
-              year: moment(sph.date, "YYYY-MM-DD").format("YYYY"),
-              month: moment(sph.date, "YYYY-MM-DD").format("MM"),
-              row_type:
-                sph.expense_type && sph.expense_type.name
-                  ? sph.expense_type.name
-                  : "",
-                document: sph.expense || sph.invoice
-            });
-          }
-        });
-      });
+      // p.original_phases.forEach((ph) => {
+      //   ph.subphases.forEach((sph) => {
+      //     if (sph.quantity && sph.amount) {
+      //       response.push({
+      //         ...projectInfo,
+      //         type: "income",
+      //         paid: sph.paid,
+      //         date: sph.date,
+      //         income_esti: sph.quantity * sph.amount,
+      //         income_real: 0,
+      //         year: moment(sph.date, "YYYY-MM-DD").format("YYYY"),
+      //         month: moment(sph.date, "YYYY-MM-DD").format("MM"),
+      //         row_type:
+      //           sph.income_type && sph.income_type.name
+      //             ? sph.income_type.name
+      //             : "",
+      //         document: sph.income || sph.invoice
+      //       });
+      //     }
+      //   });
+      //   ph.expenses.forEach((sph) => {
+      //     if (sph.quantity && sph.amount) {
+      //       response.push({
+      //         ...projectInfo,
+      //         type: "expense",
+      //         paid: sph.paid,
+      //         expense_esti: -1 * Math.abs(sph.quantity * sph.amount),
+      //         expense_real: 0,
+      //         date: sph.date,
+      //         year: moment(sph.date, "YYYY-MM-DD").format("YYYY"),
+      //         month: moment(sph.date, "YYYY-MM-DD").format("MM"),
+      //         row_type:
+      //           sph.expense_type && sph.expense_type.name
+      //             ? sph.expense_type.name
+      //             : "",
+      //           document: sph.expense || sph.invoice
+      //       });
+      //     }
+      //   });
+      // });
 
       response.push({
         ...projectInfo,
