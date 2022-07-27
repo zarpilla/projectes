@@ -426,9 +426,9 @@ module.exports = {
     if (paid != null) {
       response = response.filter(r => r.paid === (paid === 'true'))
     }
-    if (document === 'null') {
-      response = response.filter(r => r.document === null)
-    }
+    // if (document === 'null') {
+    //   response = response.filter(r => r.document === null)
+    // }
     
     
 
