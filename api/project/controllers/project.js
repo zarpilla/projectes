@@ -221,7 +221,7 @@ let calculateEstimatedTotals = async (data, phases) => {
           expense.total_amount = (expense.quantity ? expense.quantity : 0) * (expense.amount ? expense.amount : 0);
           total_expenses += (expense.quantity ? expense.quantity : 0) * (expense.amount ? expense.amount : 0);
           if (expense.paid) {
-            total_expenses += (expense.quantity ? expense.quantity : 0) * (expense.amount ? expense.amount : 0);
+            total_real_expenses += (expense.quantity ? expense.quantity : 0) * (expense.amount ? expense.amount : 0);
           }
         }
       }
