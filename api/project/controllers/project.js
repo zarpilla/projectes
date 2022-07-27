@@ -297,15 +297,21 @@ module.exports = {
     let projects;
 
     // only published
-    ctx.query.published_at_null = false;
+    // ctx.query.published_at_null = false;
+
 
     const { query, year, paid, document } = ctx.query
-    ctx.query = { ...query, _limit: -1 }
+    // ctx.query = { _limit: -1 }
 
     if (ctx.query._q) {
       projects = await strapi.query("project").search(ctx.query);
     } else {
-      projects = await strapi.query("project").find(ctx.query);
+      projects = await strapi.query("project").find({ _limit: -1 });
+    }
+
+    projects = projects.filter(p => p.published_at !== null)
+    if (ctx.query && ctx.query._where && ctx.query._where.project_state_eq) {
+      projects = projects.filter(p => p.project_state && p.project_state.id == ctx.query._where.project_state_eq)
     }
 
     var response = [];
