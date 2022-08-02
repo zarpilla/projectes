@@ -2,7 +2,8 @@
   "collectionName": "components_budget_line_simple_expenses",
   "info": {
     "name": "SimpleExpense",
-    "icon": "balance-scale-right"
+    "icon": "balance-scale-right",
+    "description": ""
   },
   "options": {},
   "attributes": {
@@ -20,6 +21,9 @@
     },
     "expense_type": {
       "model": "expense-type"
+    },
+    "date": {
+      "type": "date"
     }
   }
 }
