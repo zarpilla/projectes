@@ -281,12 +281,12 @@ module.exports = {
         strategies,
         estimated_hours,
         intercooperations,
-        clients,
         received_expenses,
         received_incomes,
         ...item
       }) => item
-    );
+    ).map(p => { return { ...p, clients: p.clients ? p.clients.map(c => { return { id: c.id, name: c.name} }) : null } })
+
     return newArray.map((entity) =>
       sanitizeEntity(entity, { model: strapi.models.project })
     );
