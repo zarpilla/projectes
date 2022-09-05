@@ -82,6 +82,10 @@
     },
     "ical": {
       "type": "string"
+    },
+    "excel_decimal": {
+      "type": "string",
+      "maxLength": 1
     }
   }
 }
