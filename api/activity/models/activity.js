@@ -21,7 +21,9 @@ module.exports = {
             await projectController.enqueueProjects({ current: data?.project, previous: null })
         },
         async afterUpdate(result, params, data) {
-            projectController.updateQueuedProjects()
+            if (!data._internal) {
+                projectController.updateQueuedProjects()
+            }
         },
         async beforeDelete(params) {        
             const activity = await strapi.query('activity').findOne(params);            

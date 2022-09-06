@@ -25,6 +25,14 @@
       }
     },
     {
+      "method": "POST",
+      "path": "/activities/move",
+      "handler": "activity.move",
+      "config": {
+        "policies": []
+      }
+    },
+    {
       "method": "GET",
       "path": "/activities/import",
       "handler": "activity.import",

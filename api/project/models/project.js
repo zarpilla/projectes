@@ -36,7 +36,6 @@ module.exports = {
             await projectController.enqueueProjects({ current: params.id, previous: null })
         },
         async afterUpdate(result, params, data) {
-            // console.log('data', data)
             if (data._internal) {
                 return
             }
