@@ -338,7 +338,7 @@ module.exports = {
               type: "income",              
               paid: sph.paid,
               date: sph.date,
-              income_esti: sph.quantity * sph.amount,
+              income_esti: 0,
               income_real: sph.paid ? sph.quantity * sph.amount : 0,
               year: moment(sph.date, "YYYY-MM-DD").format("YYYY"),
               month: moment(sph.date, "YYYY-MM-DD").format("MM"),
@@ -356,7 +356,7 @@ module.exports = {
               ...projectInfo,
               type: "expense",
               paid: sph.paid,
-              expense_esti: -1 * Math.abs(sph.quantity * sph.amount),
+              expense_esti: 0,
               expense_real: sph.paid ? -1 * sph.quantity * sph.amount : 0,
               date: sph.date,
               year: moment(sph.date, "YYYY-MM-DD").format("YYYY"),
@@ -372,46 +372,46 @@ module.exports = {
       });
 
 
-      // p.original_phases.forEach((ph) => {
-      //   ph.subphases.forEach((sph) => {
-      //     if (sph.quantity && sph.amount) {
-      //       response.push({
-      //         ...projectInfo,
-      //         type: "income",
-      //         paid: sph.paid,
-      //         date: sph.date,
-      //         income_esti: sph.quantity * sph.amount,
-      //         income_real: 0,
-      //         year: moment(sph.date, "YYYY-MM-DD").format("YYYY"),
-      //         month: moment(sph.date, "YYYY-MM-DD").format("MM"),
-      //         row_type:
-      //           sph.income_type && sph.income_type.name
-      //             ? sph.income_type.name
-      //             : "",
-      //         document: sph.income || sph.invoice
-      //       });
-      //     }
-      //   });
-      //   ph.expenses.forEach((sph) => {
-      //     if (sph.quantity && sph.amount) {
-      //       response.push({
-      //         ...projectInfo,
-      //         type: "expense",
-      //         paid: sph.paid,
-      //         expense_esti: -1 * Math.abs(sph.quantity * sph.amount),
-      //         expense_real: 0,
-      //         date: sph.date,
-      //         year: moment(sph.date, "YYYY-MM-DD").format("YYYY"),
-      //         month: moment(sph.date, "YYYY-MM-DD").format("MM"),
-      //         row_type:
-      //           sph.expense_type && sph.expense_type.name
-      //             ? sph.expense_type.name
-      //             : "",
-      //           document: sph.expense || sph.invoice
-      //       });
-      //     }
-      //   });
-      // });
+      p.original_phases.forEach((ph) => {
+        ph.subphases.forEach((sph) => {
+          if (sph.quantity && sph.amount) {
+            response.push({
+              ...projectInfo,
+              type: "income",
+              // paid: sph.paid,
+              date: sph.date,
+              income_esti: sph.quantity * sph.amount,
+              income_real: 0,
+              year: moment(sph.date, "YYYY-MM-DD").format("YYYY"),
+              month: moment(sph.date, "YYYY-MM-DD").format("MM"),
+              row_type:
+                sph.income_type && sph.income_type.name
+                  ? sph.income_type.name
+                  : "",
+              document: sph.income || sph.invoice
+            });
+          }
+        });
+        ph.expenses.forEach((sph) => {
+          if (sph.quantity && sph.amount) {
+            response.push({
+              ...projectInfo,
+              type: "expense",
+              // paid: sph.paid,
+              expense_esti: -1 * Math.abs(sph.quantity * sph.amount),
+              expense_real: 0,
+              date: sph.date,
+              year: moment(sph.date, "YYYY-MM-DD").format("YYYY"),
+              month: moment(sph.date, "YYYY-MM-DD").format("MM"),
+              row_type:
+                sph.expense_type && sph.expense_type.name
+                  ? sph.expense_type.name
+                  : "",
+                document: sph.expense || sph.invoice
+            });
+          }
+        });
+      });
 
       response.push({
         ...projectInfo,
