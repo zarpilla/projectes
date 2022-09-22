@@ -450,7 +450,7 @@ module.exports = {
 
     for(let i = 0; i < projects.length; i++) {
       const project = projects[i]
-      if (project.phases?.length && (!project.original_phases || !project.original_phases.length)) {
+      if (project.phases && project.phases.length && (!project.original_phases || !project.original_phases.length)) {
         const projectToUpdate = { id: project.id }
         projectToUpdate.original_phases = project.phases;
         projectToUpdate.original_phases.forEach((p) => {

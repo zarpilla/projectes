@@ -18,7 +18,9 @@ module.exports = {
         },
         async beforeUpdate(params, data) {
             data = await calculatePrice(params.id, data)
-            await projectController.enqueueProjects({ current: data?.project, previous: null })
+            if (data && data.project) {
+                await projectController.enqueueProjects({ current: data.project, previous: null })
+            }
         },
         async afterUpdate(result, params, data) {
             if (!data._internal) {
@@ -26,8 +28,10 @@ module.exports = {
             }
         },
         async beforeDelete(params) {        
-            const activity = await strapi.query('activity').findOne(params);            
-            await projectController.enqueueProjects({ current: null, previous: activity.project?.id })
+            const activity = await strapi.query('activity').findOne(params);   
+            if (activity.project && activity.project.id) {
+                await projectController.enqueueProjects({ current: null, previous: activity.project.id })
+            }                
         },
         async afterDelete(result, params) {
             projectController.updateQueuedProjects()
