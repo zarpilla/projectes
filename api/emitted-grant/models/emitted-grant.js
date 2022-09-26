@@ -23,9 +23,18 @@ module.exports = {
             data.updatable_admin = false
             // console.log('invoice data', data)
             data = await calculateTotals(data)
-            if (data.project && invoice.project) {
-                await projectController.enqueueProjects({ current: data.project, previous: invoice.project.id })
-            }
+            if (data && data.project) {
+                await projectController.enqueueProjects({
+                  current: data.project,
+                  previous: null,
+                });
+              }
+              if (invoice && invoice.project) {
+                await projectController.enqueueProjects({
+                  current: null,
+                  previous: invoice.project.id,
+                });
+              }
         },
         async afterUpdate(result, params, data) {            
             projectController.updateQueuedProjects()

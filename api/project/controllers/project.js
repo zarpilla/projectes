@@ -538,10 +538,10 @@ module.exports = {
 
   updateQueuedProjects: async () => {
     const projects = projectsQueue.pop();
-    if (projects.current) {
+    if (projects && projects.current) {
       await updateProjectInfo(projects.current);
     }
-    if (projects.previous && projects.current !== projects.previous) {
+    if (projects && projects.previous && projects.current !== projects.previous) {
       await updateProjectInfo(projects.previous);
     }
   },

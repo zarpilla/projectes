@@ -27,6 +27,9 @@
     },
     "irpf": {
       "type": "decimal"
+    },
+    "date": {
+      "type": "date"
     }
   }
 }

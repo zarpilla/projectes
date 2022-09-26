@@ -25,9 +25,15 @@ module.exports = {
       }
       data.updatable_admin = false;
       data = await calculateTotals(data);
-      if (data.project && invoice.project) {
+      if (data && data.project) {
         await projectController.enqueueProjects({
           current: data.project,
+          previous: null,
+        });
+      }
+      if (invoice && invoice.project) {
+        await projectController.enqueueProjects({
+          current: null,
           previous: invoice.project.id,
         });
       }
@@ -40,7 +46,13 @@ module.exports = {
       if (invoice.updatable === false) {
         throw new Error("Ticket updatable");
       }
-      if (data.project && invoice.project) {
+      if (data && data.project) {
+        await projectController.enqueueProjects({
+          current: data.project,
+          previous: null,
+        });
+      }
+      if (invoice && invoice.project) {
         await projectController.enqueueProjects({
           current: null,
           previous: invoice.project.id,
