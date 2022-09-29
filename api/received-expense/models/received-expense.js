@@ -25,16 +25,12 @@ module.exports = {
       }
       data.updatable_admin = false;
       data = await calculateTotals(data);
-      if (data && data.project) {
+      let p1 = data && data.project ? data.project : null;
+      let p2 = invoice && invoice.project ? invoice.project.id : null;
+      if (p1 || p2) {
         await projectController.enqueueProjects({
-          current: data.project,
-          previous: null,
-        });
-      }
-      if (invoice && invoice.project) {
-        await projectController.enqueueProjects({
-          current: null,
-          previous: invoice.project.id,
+          current: p1,
+          previous: p2,
         });
       }
     },
