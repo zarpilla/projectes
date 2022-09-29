@@ -209,6 +209,9 @@
     "global_activity_types": {
       "via": "projects",
       "collection": "activity-type"
+    },
+    "grantable_amount": {
+      "type": "decimal"
     }
   }
 }
