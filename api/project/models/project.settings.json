@@ -212,6 +212,10 @@
     },
     "grantable_amount": {
       "type": "decimal"
+    },
+    "treasury_annotations": {
+      "via": "project",
+      "collection": "treasury"
     }
   }
 }
