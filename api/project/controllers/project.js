@@ -283,6 +283,7 @@ module.exports = {
         intercooperations,
         received_expenses,
         received_incomes,
+        treasury_annotations,
         ...item
       }) => item
     ).map(p => { return { ...p, clients: p.clients ? p.clients.map(c => { return { id: c.id, name: c.name} }) : null } })
