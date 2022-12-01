@@ -2,6 +2,14 @@
   "routes": [
     {
       "method": "GET",
+      "path": "/activities/total-by-day",
+      "handler": "activity.totalByDay",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "GET",
       "path": "/activities",
       "handler": "activity.find",
       "config": {

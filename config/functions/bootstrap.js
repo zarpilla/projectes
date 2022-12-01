@@ -50,7 +50,7 @@
 async function importSeedData() {
     // Permissions
     await setPermissions("authenticated", "application", {
-        "activity": ["create", "find", "update", "delete", "importcalendar", "move"],
+        "activity": ["create", "find", "update", "delete", "importcalendar", "move", "totalByDay"],
         "emitted-invoice": ["create", "find", "findone", "update", "delete", "payvat"],
         "received-invoice": ["create", "find", "findone", "update", "delete"],
         "received-income": ["create", "find", "findone", "update", "delete"],

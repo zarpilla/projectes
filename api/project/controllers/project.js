@@ -258,9 +258,9 @@ module.exports = {
     // only published
     ctx.query.published_at_null = false;
     if (ctx.query._q) {
-      projects = await await strapi.query("project").search(ctx.query);
+      projects = await strapi.query("project").search(ctx.query);
     } else {
-      projects = await await strapi.query("project").find(ctx.query);
+      projects = await strapi.query("project").find(ctx.query);
     }
 
     // Removing some info

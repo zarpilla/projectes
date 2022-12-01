@@ -1,6 +1,7 @@
 "use strict";
+const { sanitizeEntity } = require("strapi-utils");
+const _ = require("lodash");
 const moment = require("moment");
-// const axios = require('axios')
 const ical = require("node-ical");
 const projectController = require("../../project/controllers/project");
 
@@ -10,6 +11,39 @@ const projectController = require("../../project/controllers/project");
  */
 
 module.exports = {
+
+  totalByDay: async (ctx) => {
+
+    let activities;
+    if (ctx.query._q) {
+      activities = await strapi.query("activity").search(ctx.query);
+    } else {
+      activities = await strapi.query("activity").find(ctx.query);
+    }
+    
+    const activitiesByDay = activities.map((entity) => {
+        const { hours, date, rest } = entity
+        return { hours, date }
+      }    
+    );
+
+    const grouped = _(activitiesByDay)
+    .groupBy("date")
+    .map((rows, id) => {      
+      return {
+        date: id,
+        hours: _.sumBy(rows, 'hours'),
+      }
+    })
+
+    // return activities.map((entity) => {
+    //   const { hours, date, rest } = entity
+    //   return { hours, date }
+    // }    
+    // );
+    ctx.send(grouped);
+  },
+
   importCalendar: async (ctx) => {
     const { id } = ctx.params;
     const user = await strapi
