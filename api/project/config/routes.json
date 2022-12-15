@@ -39,7 +39,23 @@
       "config": {
         "policies": []
       }
-    },    
+    },
+    {
+      "method": "GET",
+      "path": "/projects/:id/children",
+      "handler": "project.findChildren",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/projects/:id/calculate",
+      "handler": "project.doCalculateProjectInfo",
+      "config": {
+        "policies": []
+      }
+    },
     {
       "method": "GET",
       "path": "/projects/:id",

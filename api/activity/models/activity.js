@@ -45,7 +45,7 @@ let calculatePrice = async (id, data) => {
         if (dedications.length) {
             const dedication = dedications.find(d => d.from <= data.date && d.to >= data.date)
             if (dedication) {
-                data.cost_by_hour = dedication.costByHour
+                data.cost_by_hour = dedication.costByHour || 0
             }
         }
     }    

@@ -47,6 +47,9 @@
     },
     "income": {
       "model": "received-income"
+    },
+    "date_estimate_document": {
+      "type": "date"
     }
   }
 }

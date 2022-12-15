@@ -8,7 +8,7 @@ const moment = require("moment");
  * to customize this controller
  */
 
-let doProjectInfoCalculations = async (data, id) => {
+const doProjectInfoCalculations = async (data, id) => {
   if (!id || !data) {
     return;
   }
@@ -43,7 +43,16 @@ let doProjectInfoCalculations = async (data, id) => {
   }
 
   if (data.phases && data.phases.length) {
-    const infoPhases = await calculateEstimatedTotals(data, data.phases);
+    const dailyDedications = await strapi
+      .query("daily-dedication")
+      .find({ _limit: -1 });
+    const festives = await strapi.query("festive").find({ _limit: -1 });
+    const infoPhases = await calculateEstimatedTotals(
+      data,
+      data.phases,
+      dailyDedications,
+      festives
+    );
     data = infoPhases.data;
     data.total_expenses = infoPhases.total_expenses;
     data.total_incomes = infoPhases.total_incomes;
@@ -56,7 +65,9 @@ let doProjectInfoCalculations = async (data, id) => {
     if (data.original_phases && data.original_phases.length) {
       const infoOriginalPhases = await calculateEstimatedTotals(
         data,
-        data.original_phases
+        data.original_phases,
+        dailyDedications,
+        festives
       );
       data = infoOriginalPhases.data;
       data.total_expenses = infoOriginalPhases.total_expenses;
@@ -168,7 +179,12 @@ let doProjectInfoCalculations = async (data, id) => {
   return data;
 };
 
-let calculateEstimatedTotals = async (data, phases) => {
+const calculateEstimatedTotals = async (
+  data,
+  phases,
+  dailyDedications,
+  festives
+) => {
   var total_estimated_hours = 0;
   var total_incomes = 0;
   var total_estimated_hours_price = 0;
@@ -184,44 +200,156 @@ let calculateEstimatedTotals = async (data, phases) => {
         for (var j = 0; j < phase.subphases.length; j++) {
           const subphase = phase.subphases[j];
           var subphase_estimated_hours = 0;
-          
-          subphase.total_amount = (subphase.quantity ? subphase.quantity : 0) * (subphase.amount ? subphase.amount : 0);
-          total_incomes += (subphase.quantity ? subphase.quantity : 0) * (subphase.amount ? subphase.amount : 0);
+
+          subphase.total_amount =
+            (subphase.quantity ? subphase.quantity : 0) *
+            (subphase.amount ? subphase.amount : 0);
+          total_incomes +=
+            (subphase.quantity ? subphase.quantity : 0) *
+            (subphase.amount ? subphase.amount : 0);
 
           if (subphase.estimated_hours) {
             for (var k = 0; k < subphase.estimated_hours.length; k++) {
               const hours = subphase.estimated_hours[k];
-              if (hours.from && hours.to) {
-                let mdiff = 1
-                if (hours.quantity_type && hours.quantity_type === 'month') {
-                  const diff = moment.duration(moment(hours.to, 'YYYY-MM-DD').diff(moment(hours.from, 'YYYY-MM-DD')))
-                  mdiff = Math.round(diff.asMonths())
-                }
-                if (hours.quantity_type && hours.quantity_type === 'week') {
-                  const diff = moment.duration(moment(hours.to, 'YYYY-MM-DD').diff(moment(hours.from, 'YYYY-MM-DD')))
-                  mdiff = Math.round(diff.asWeeks())
-                }
-                subphase_estimated_hours += hours.quantity * mdiff;
-                total_estimated_hours += hours.quantity * mdiff;
+              hours.total_amount = 0;
+              if (
+                hours.from &&
+                hours.to &&
+                hours.users_permissions_user &&
+                hours.users_permissions_user.id
+              ) {
+                let mdiff = 1;
 
-                hours.total_amount = (hours.quantity ? hours.quantity : 0) * mdiff * (hours.amount ? hours.amount : 0);
-                total_estimated_hours_price += hours.total_amount;
+                if (hours.quantity_type && hours.quantity_type === "month") {
+                  mdiff = Math.round(
+                    moment
+                      .duration(
+                        moment(hours.to, "YYYY-MM-DD").diff(
+                          moment(hours.from, "YYYY-MM-DD")
+                        )
+                      )
+                      .asDays()
+                  );
+                  let diff = 0;
+                  for (let i = 0; i < mdiff; i++) {
+                    const day = moment(hours.from, "YYYY-MM-DD").add(i, "days");
+
+                    const festive = festives.find(
+                      (f) =>
+                        f.date === day.format("YYYY-MM-DD") &&
+                        ((f.users_permissions_user &&
+                          f.users_permissions_user.id ==
+                            hours.users_permissions_user.id) ||
+                          !f.users_permissions_user)
+                    );
+
+                    if (![0, 6].includes(day.day()) && !festive) {
+                      diff++;
+                      const q = hours.quantity / 5 / 4.3;
+                      subphase_estimated_hours += q;
+                      total_estimated_hours += q;
+
+                      const dd = dailyDedications.find(
+                        (d) =>
+                          d.users_permissions_user.id ===
+                            hours.users_permissions_user.id &&
+                          d.from <= day.format("YYYY-MM-DD") &&
+                          d.to >= day.format("YYYY-MM-DD")
+                      );
+                      const costByHour =
+                        dd && dd.costByHour ? dd.costByHour : hours.amount;
+                      hours.total_amount += q * costByHour;
+                      total_estimated_hours_price += q * costByHour;
+                    }
+                  }
+                } else if (
+                  hours.quantity_type &&
+                  hours.quantity_type === "week"
+                ) {
+                  mdiff = Math.round(
+                    moment
+                      .duration(
+                        moment(hours.to, "YYYY-MM-DD").diff(
+                          moment(hours.from, "YYYY-MM-DD")
+                        )
+                      )
+                      .asDays()
+                  );
+                  let diff = 0;
+                  for (let i = 0; i < mdiff; i++) {
+                    const day = moment(hours.from, "YYYY-MM-DD").add(i, "days");
+
+                    const festive = festives.find(
+                      (f) =>
+                        f.date === day.format("YYYY-MM-DD") &&
+                        ((f.users_permissions_user &&
+                          f.users_permissions_user.id ==
+                            hours.users_permissions_user.id) ||
+                          !f.users_permissions_user)
+                    );
+
+                    if (![0, 6].includes(day.day()) && !festive) {
+                      diff++;
+                      const q = hours.quantity / 5;
+                      subphase_estimated_hours += q;
+                      total_estimated_hours += q;
+
+                      const dd = dailyDedications.find(
+                        (d) =>
+                          d.users_permissions_user.id ===
+                            hours.users_permissions_user.id &&
+                          d.from <= day.format("YYYY-MM-DD") &&
+                          d.to >= day.format("YYYY-MM-DD")
+                      );
+                      const costByHour =
+                        dd && dd.costByHour ? dd.costByHour : hours.amount;
+                      hours.total_amount += q * costByHour;
+                      total_estimated_hours_price += q * costByHour;
+                    }
+                  }
+                } else {
+                  subphase_estimated_hours += hours.quantity * mdiff;
+                  total_estimated_hours += hours.quantity * mdiff;
+
+                  const dd = dailyDedications.find(
+                    (d) =>
+                      d.users_permissions_user.id ===
+                        hours.users_permissions_user.id &&
+                      d.from <= hours.from &&
+                      d.to >= hours.from
+                  );
+                  const costByHour =
+                    dd && dd.costByHour ? dd.costByHour : hours.amount;
+
+                  hours.total_amount =
+                    (hours.quantity ? hours.quantity : 0) * mdiff * costByHour;
+                  total_estimated_hours_price +=
+                    (hours.quantity ? hours.quantity : 0) * mdiff * costByHour;
+                }
               }
             }
             subphase.total_estimated_hours = subphase_estimated_hours;
           }
           if (subphase.paid) {
-            total_real_incomes += (subphase.quantity ? subphase.quantity : 0) * (subphase.amount ? subphase.amount : 0);
+            total_real_incomes +=
+              (subphase.quantity ? subphase.quantity : 0) *
+              (subphase.amount ? subphase.amount : 0);
           }
         }
       }
       if (phase.expenses && phase.expenses.length) {
         for (var j = 0; j < phase.expenses.length; j++) {
           const expense = phase.expenses[j];
-          expense.total_amount = (expense.quantity ? expense.quantity : 0) * (expense.amount ? expense.amount : 0);
-          total_expenses += (expense.quantity ? expense.quantity : 0) * (expense.amount ? expense.amount : 0);
+          expense.total_amount =
+            (expense.quantity ? expense.quantity : 0) *
+            (expense.amount ? expense.amount : 0);
+          total_expenses +=
+            (expense.quantity ? expense.quantity : 0) *
+            (expense.amount ? expense.amount : 0);
           if (expense.paid) {
-            total_real_expenses += (expense.quantity ? expense.quantity : 0) * (expense.amount ? expense.amount : 0);
+            total_real_expenses +=
+              (expense.quantity ? expense.quantity : 0) *
+              (expense.amount ? expense.amount : 0);
           }
         }
       }
@@ -241,7 +369,7 @@ let calculateEstimatedTotals = async (data, phases) => {
 
 let projectsQueue = [];
 
-let updateProjectInfo = async (id) => {
+const updateProjectInfo = async (id) => {
   const data = await strapi.query("project").findOne({ id });
   const info = await doProjectInfoCalculations(data, id);
 
@@ -264,29 +392,40 @@ module.exports = {
     }
 
     // Removing some info
-    const newArray = projects.map(
-      ({
-        phases,
-        activities,
-        emitted_invoices,
-        received_invoices,
-        tickets,
-        diets,
-        emitted_grants,
-        received_grants,
-        quotes,
-        original_phases,
-        incomes,
-        expenses,
-        strategies,
-        estimated_hours,
-        intercooperations,
-        received_expenses,
-        received_incomes,
-        treasury_annotations,
-        ...item
-      }) => item
-    ).map(p => { return { ...p, clients: p.clients ? p.clients.map(c => { return { id: c.id, name: c.name} }) : null } })
+    const newArray = projects
+      .map(
+        ({
+          phases,
+          activities,
+          emitted_invoices,
+          received_invoices,
+          tickets,
+          diets,
+          emitted_grants,
+          received_grants,
+          quotes,
+          original_phases,
+          incomes,
+          expenses,
+          strategies,
+          estimated_hours,
+          intercooperations,
+          received_expenses,
+          received_incomes,
+          treasury_annotations,
+          ...item
+        }) => item
+      )
+      .map((p) => {
+        return {
+          ...p,
+          clients: p.clients
+            ? p.clients.map((c) => {
+                return { id: c.id, name: c.name };
+              })
+            : null,
+        };
+      });
 
     return newArray.map((entity) =>
       sanitizeEntity(entity, { model: strapi.models.project })
@@ -300,8 +439,7 @@ module.exports = {
     // only published
     // ctx.query.published_at_null = false;
 
-
-    const { query, year, paid, document } = ctx.query
+    const { query, year, paid, document } = ctx.query;
     // ctx.query = { _limit: -1 }
 
     if (ctx.query._q) {
@@ -310,9 +448,13 @@ module.exports = {
       projects = await strapi.query("project").find({ _limit: -1 });
     }
 
-    projects = projects.filter(p => p.published_at !== null)
+    projects = projects.filter((p) => p.published_at !== null);
     if (ctx.query && ctx.query._where && ctx.query._where.project_state_eq) {
-      projects = projects.filter(p => p.project_state && p.project_state.id == ctx.query._where.project_state_eq)
+      projects = projects.filter(
+        (p) =>
+          p.project_state &&
+          p.project_state.id == ctx.query._where.project_state_eq
+      );
     }
 
     var response = [];
@@ -336,7 +478,7 @@ module.exports = {
           if (sph.quantity && sph.amount) {
             response.push({
               ...projectInfo,
-              type: "income",              
+              type: "income",
               paid: sph.paid,
               date: sph.date,
               income_esti: 0,
@@ -347,7 +489,7 @@ module.exports = {
                 sph.income_type && sph.income_type.name
                   ? sph.income_type.name
                   : "",
-              document: sph.income || sph.invoice
+              document: sph.income || sph.invoice,
             });
           }
         });
@@ -366,12 +508,11 @@ module.exports = {
                 sph.expense_type && sph.expense_type.name
                   ? sph.expense_type.name
                   : "",
-                document: sph.expense || sph.invoice
+              document: sph.expense || sph.invoice,
             });
           }
         });
       });
-
 
       p.original_phases.forEach((ph) => {
         ph.subphases.forEach((sph) => {
@@ -389,7 +530,7 @@ module.exports = {
                 sph.income_type && sph.income_type.name
                   ? sph.income_type.name
                   : "",
-              document: sph.income || sph.invoice
+              document: sph.income || sph.invoice,
             });
           }
         });
@@ -408,7 +549,7 @@ module.exports = {
                 sph.expense_type && sph.expense_type.name
                   ? sph.expense_type.name
                   : "",
-                document: sph.expense || sph.invoice
+              document: sph.expense || sph.invoice,
             });
           }
         });
@@ -423,36 +564,86 @@ module.exports = {
         year: "2099",
         month: "99",
         row_type: "",
-        document: "0"
+        document: "0",
       });
     });
 
     if (year) {
-      response = response.filter(r => r.year === year)
+      response = response.filter((r) => r.year === year);
     }
     if (paid != null) {
-      response = response.filter(r => r.paid === (paid === 'true'))
+      response = response.filter((r) => r.paid === (paid === "true"));
     }
     // if (document === 'null') {
     //   response = response.filter(r => r.document === null)
     // }
-    
-    
 
     // Removing some info
     // const newArray = projects.map(({ phases, activities, emitted_invoices, received_invoices, tickets, diets, emitted_grants, received_grants, quotes, original_phases, incomes, expenses, strategies, estimated_hours, intercooperations, clients, received_expenses, received_incomes, ...item }) => item)
     return response; // projects.map(entity => sanitizeEntity(entity, { model: strapi.models.project }));
   },
 
+  async findChildren(ctx) {
+    const { id, expense } = ctx.params;
+    const { mother } = await strapi.query("project").findOne({ id });
+    if (mother && mother.id == id) {
+      const childrenAll = await strapi.query("project").find({ mother: id, _limit: -1 });
+      const children = childrenAll.filter(c => c.id != mother.id)
+
+      const flattenMap = (arrays, prop) => _.flatten(arrays.map(a => a[prop]));
+
+      const totals = { total_estimated_hours: _.sumBy(children, 'total_estimated_hours'),
+      total_real_hours: _.sumBy(children, 'total_real_hours'),
+      total_expenses: _.sumBy(children, 'total_expenses'),
+      total_incomes: _.sumBy(children, 'total_incomes'),
+      total_expenses_hours: _.sumBy(children, 'total_expenses_hours'),
+      balance: _.sumBy(children, 'balance'),
+      total_estimated_expenses: _.sumBy(children, 'total_estimated_expenses'),
+      estimated_balance: _.sumBy(children, 'estimated_balance'),
+      incomes_expenses: _.sumBy(children, 'incomes_expenses'),
+      dedicated_hours: _.sumBy(children, 'dedicated_hours'),
+      invoice_hours: _.sumBy(children, 'invoice_hours'),
+      invoice_hours_price: _.sumBy(children, 'invoice_hours_price'),
+      total_dedicated_hours: _.sumBy(children, 'total_dedicated_hours'),
+      total_real_incomes: _.sumBy(children, 'total_real_incomes'),
+      total_real_expenses: _.sumBy(children, 'total_real_expenses'),
+      total_real_incomes_expenses: _.sumBy(children, 'total_real_incomes_expenses'),
+      structural_expenses: _.sumBy(children, 'structural_expenses'),
+      total_estimated_hours_price: _.sumBy(children, 'total_estimated_hours_price'),
+      total_real_hours_price: _.sumBy(children, 'total_real_hours_price'),
+      total_real_expenses: _.sumBy(children, 'total_real_expenses'),
+      grantable_amount: _.sumBy(children, 'grantable_amount'),
+      // phases: flattenMap(children, 'phases'),
+      // original_phases: flattenMap(children, 'original_phases'),
+      // emitted_invoices: flattenMap(children, 'emitted_invoices'),
+      // received_grants: flattenMap(children, 'received_grants'),
+      // received_invoices: flattenMap(children, 'received_invoices'),
+      // tickets: flattenMap(children, 'tickets'),
+      // diets: flattenMap(children, 'diets'),
+      // received_incomes: flattenMap(children, 'received_incomes'),
+      // received_expenses: flattenMap(children, 'received_expenses'),
+    }
+
+    
+      
+      return { children, totals }
+    } else {
+      return {}
+    }
+    
+  },
 
   async updatePhases(ctx) {
-
     const projects = await strapi.query("project").find({ _limit: -1 });
 
-    for(let i = 0; i < projects.length; i++) {
-      const project = projects[i]
-      if (project.phases && project.phases.length && (!project.original_phases || !project.original_phases.length)) {
-        const projectToUpdate = { id: project.id }
+    for (let i = 0; i < projects.length; i++) {
+      const project = projects[i];
+      if (
+        project.phases &&
+        project.phases.length &&
+        (!project.original_phases || !project.original_phases.length)
+      ) {
+        const projectToUpdate = { id: project.id };
         projectToUpdate.original_phases = project.phases;
         projectToUpdate.original_phases.forEach((p) => {
           delete p.id;
@@ -462,11 +653,13 @@ module.exports = {
           p.expenses.forEach((sp) => {
             delete sp.id;
           });
-        });  
-        await strapi.query("project").update({ id: project.id }, projectToUpdate);      
+        });
+        await strapi
+          .query("project")
+          .update({ id: project.id }, projectToUpdate);
       }
     }
-    return { done: true }
+    return { done: true };
   },
 
   payExpense: async (ctx) => {
@@ -529,8 +722,16 @@ module.exports = {
     return { id, income, found };
   },
 
+
   calculateProjectInfo: async (data, id) => {
     return await doProjectInfoCalculations(data, id);
+  },
+
+  doCalculateProjectInfo: async (ctx) => {
+    const { id } = ctx.params;
+    const data = await strapi.query("project").findOne({ id });
+    const result = await doProjectInfoCalculations(data, id);
+    return result
   },
 
   enqueueProjects: async (projects) => {
@@ -542,7 +743,11 @@ module.exports = {
     if (projects && projects.current) {
       await updateProjectInfo(projects.current);
     }
-    if (projects && projects.previous && projects.current !== projects.previous) {
+    if (
+      projects &&
+      projects.previous &&
+      projects.current !== projects.previous
+    ) {
       await updateProjectInfo(projects.previous);
     }
   },

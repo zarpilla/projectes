@@ -45,6 +45,9 @@
     },
     "expense": {
       "model": "received-expense"
+    },
+    "date_estimate_document": {
+      "type": "date"
     }
   }
 }

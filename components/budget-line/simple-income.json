@@ -32,6 +32,9 @@
     },
     "date": {
       "type": "date"
+    },
+    "date_estimate_document": {
+      "type": "date"
     }
   }
 }
