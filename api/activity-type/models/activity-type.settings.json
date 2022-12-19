@@ -23,8 +23,8 @@
       "default": false
     },
     "projects": {
-      "collection": "project",
       "via": "global_activity_types",
+      "collection": "project",
       "dominant": true
     }
   }

@@ -21,8 +21,8 @@
       "type": "date"
     },
     "project": {
-      "model": "project",
-      "via": "treasury_annotations"
+      "via": "treasury_annotations",
+      "model": "project"
     }
   }
 }

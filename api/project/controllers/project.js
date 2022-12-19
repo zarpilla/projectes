@@ -690,6 +690,7 @@ module.exports = {
       total_real_hours_price: _.sumBy(children, 'total_real_hours_price'),
       total_real_expenses: _.sumBy(children, 'total_real_expenses'),
       grantable_amount: _.sumBy(children, 'grantable_amount'),
+      grantable_amount_total: _.sumBy(children, 'grantable_amount_total'),
       // phases: flattenMap(children, 'phases'),
       // original_phases: flattenMap(children, 'original_phases'),
       // emitted_invoices: flattenMap(children, 'emitted_invoices'),

@@ -213,9 +213,30 @@
     "grantable_amount": {
       "type": "decimal"
     },
+    "grantable_amount_total": {
+      "type": "decimal"
+    },
+    "grantable_intercooperation": {
+      "type": "boolean"
+    },
+    "grantable_date": {
+      "type": "date"
+    },
     "treasury_annotations": {
       "via": "project",
       "collection": "treasury"
+    },
+    "documents": {
+      "collection": "file",
+      "via": "related",
+      "allowedTypes": [
+        "images",
+        "files",
+        "videos"
+      ],
+      "plugin": "upload",
+      "required": false,
+      "pluginOptions": {}
     }
   }
 }
