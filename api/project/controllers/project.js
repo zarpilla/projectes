@@ -193,6 +193,8 @@ const calculateEstimatedTotals = async (
   let total_real_incomes = 0;
   let total_real_expenses = 0;
 
+  const totalsByDay = []
+
   if (phases && phases.length) {
     for (var i = 0; i < phases.length; i++) {
       const phase = phases[i];
@@ -230,7 +232,6 @@ const calculateEstimatedTotals = async (
                       )
                       .asDays()
                   );
-                  let diff = 0;
                   for (let i = 0; i < mdiff; i++) {
                     const day = moment(hours.from, "YYYY-MM-DD").add(i, "days");
 
@@ -244,7 +245,6 @@ const calculateEstimatedTotals = async (
                     );
 
                     if (![0, 6].includes(day.day()) && !festive) {
-                      diff++;
                       const q = hours.quantity / 5 / 4.3;
                       subphase_estimated_hours += q;
                       total_estimated_hours += q;
@@ -260,6 +260,8 @@ const calculateEstimatedTotals = async (
                         dd && dd.costByHour ? dd.costByHour : hours.amount;
                       hours.total_amount += q * costByHour;
                       total_estimated_hours_price += q * costByHour;
+
+                      totalsByDay.push({ day, q, costByHour })
                     }
                   }
                 } else if (
@@ -275,7 +277,6 @@ const calculateEstimatedTotals = async (
                       )
                       .asDays()
                   );
-                  let diff = 0;
                   for (let i = 0; i < mdiff; i++) {
                     const day = moment(hours.from, "YYYY-MM-DD").add(i, "days");
 
@@ -289,7 +290,6 @@ const calculateEstimatedTotals = async (
                     );
 
                     if (![0, 6].includes(day.day()) && !festive) {
-                      diff++;
                       const q = hours.quantity / 5;
                       subphase_estimated_hours += q;
                       total_estimated_hours += q;
@@ -305,6 +305,8 @@ const calculateEstimatedTotals = async (
                         dd && dd.costByHour ? dd.costByHour : hours.amount;
                       hours.total_amount += q * costByHour;
                       total_estimated_hours_price += q * costByHour;
+
+                      totalsByDay.push({ day, q, costByHour })
                     }
                   }
                 } else {
@@ -325,6 +327,8 @@ const calculateEstimatedTotals = async (
                     (hours.quantity ? hours.quantity : 0) * mdiff * costByHour;
                   total_estimated_hours_price +=
                     (hours.quantity ? hours.quantity : 0) * mdiff * costByHour;
+
+                  totalsByDay.push({ day: moment(hours.from, "YYYY-MM-DD"), q: hours.quantity, costByHour })
                 }
               }
             }
@@ -364,6 +368,7 @@ const calculateEstimatedTotals = async (
     total_estimated_hours_price,
     total_real_incomes,
     total_real_expenses,
+    totalsByDay
   };
 };
 
@@ -434,19 +439,29 @@ module.exports = {
 
   async findWithEconomicDetail(ctx) {
     // Calling the default core action
-    let projects;
-
+    
     // only published
     // ctx.query.published_at_null = false;
 
     const { query, year, paid, document } = ctx.query;
     // ctx.query = { _limit: -1 }
 
+    const promises = []
     if (ctx.query._q) {
-      projects = await strapi.query("project").search(ctx.query);
+      promises.push(strapi.query("project").search(ctx.query))      
     } else {
-      projects = await strapi.query("project").find({ _limit: -1 });
+      promises.push(strapi.query("project").find({ _limit: -1 }))
     }
+
+    promises.push(strapi.query("activity").find({ _limit: -1 }))
+    promises.push(strapi.query("daily-dedication").find({ _limit: -1 }))
+    promises.push(strapi.query("festive").find({ _limit: -1 }))
+
+    const results = await Promise.all(promises)
+    let projects = results[0];
+    const activities = results[1]
+    const dailyDedications = results[2]
+    const festives = results[3]
 
     projects = projects.filter((p) => p.published_at !== null);
     if (ctx.query && ctx.query._where && ctx.query._where.project_state_eq) {
@@ -459,7 +474,24 @@ module.exports = {
 
     var response = [];
 
-    projects.forEach((p) => {
+    const activitiesPYM = activities.filter(a => a.date && a.project && a.project.id).map(a => { return { ...a, pym: `${a.project.id}.${moment(a.date, 'YYYY-MM-DD').year()}.${moment(a.date, 'YYYY-MM-DD').month()}` }})
+    const groupedActivities = _(activitiesPYM)
+    .groupBy("pym")
+    .map((rows, id) => {      
+      return {
+        projectId: parseInt(id.split('.')[0]),
+        year: parseInt(id.split('.')[1]),
+        month: parseInt(id.split('.')[2]) + 1,
+        cost: _.sumBy(rows, (r) => r.hours * r.cost_by_hour),
+      }
+    })
+
+    // console.log('activities', activities.length)
+    // console.log('grouped', grouped)
+
+    // const activities = await strapi.query("activity").find({ _limit: -1 });
+
+    projects.forEach(async (p) => {
       const projectInfo = {
         id: p.id,
         project_name: p.name,
@@ -474,13 +506,15 @@ module.exports = {
       };
 
       p.phases.forEach((ph) => {
-        ph.subphases.forEach((sph) => {
+        ph.subphases.forEach((sph) => {          
           if (sph.quantity && sph.amount) {
+            const document = sph.income || sph.invoice
+            const date = sph.paid && document ? ( document.paid_date || document.emitted ) : sph.date
             response.push({
               ...projectInfo,
               type: "income",
               paid: sph.paid,
-              date: sph.date,
+              date: date,
               income_esti: 0,
               income_real: sph.paid ? sph.quantity * sph.amount : 0,
               year: moment(sph.date, "YYYY-MM-DD").format("YYYY"),
@@ -489,26 +523,28 @@ module.exports = {
                 sph.income_type && sph.income_type.name
                   ? sph.income_type.name
                   : "",
-              document: sph.income || sph.invoice,
+              document
             });
           }
         });
         ph.expenses.forEach((sph) => {
           if (sph.quantity && sph.amount) {
+            const document = sph.expense || sph.invoice
+            const date = sph.paid && document ? ( document.paid_date || document.emitted ) : sph.date
             response.push({
               ...projectInfo,
               type: "expense",
               paid: sph.paid,
               expense_esti: 0,
               expense_real: sph.paid ? -1 * sph.quantity * sph.amount : 0,
-              date: sph.date,
-              year: moment(sph.date, "YYYY-MM-DD").format("YYYY"),
-              month: moment(sph.date, "YYYY-MM-DD").format("MM"),
+              date,
+              year: moment(date, "YYYY-MM-DD").format("YYYY"),
+              month: moment(date, "YYYY-MM-DD").format("MM"),
               row_type:
                 sph.expense_type && sph.expense_type.name
                   ? sph.expense_type.name
                   : "",
-              document: sph.expense || sph.invoice,
+              document,
             });
           }
         });
@@ -516,26 +552,35 @@ module.exports = {
 
       p.original_phases.forEach((ph) => {
         ph.subphases.forEach((sph) => {
+
+          // if (sph && sph.estimated_hours && sph.estimated_hours.length) {
+          //   console.log('sph', sph.estimated_hours)
+          // }
+
           if (sph.quantity && sph.amount) {
+            const document = sph.income || sph.invoice
+            const date = sph.date_estimate_document || sph.date
             response.push({
               ...projectInfo,
               type: "income",
               // paid: sph.paid,
-              date: sph.date,
+              date: date,
               income_esti: sph.quantity * sph.amount,
               income_real: 0,
-              year: moment(sph.date, "YYYY-MM-DD").format("YYYY"),
-              month: moment(sph.date, "YYYY-MM-DD").format("MM"),
+              year: moment(date, "YYYY-MM-DD").format("YYYY"),
+              month: moment(date, "YYYY-MM-DD").format("MM"),
               row_type:
                 sph.income_type && sph.income_type.name
                   ? sph.income_type.name
                   : "",
-              document: sph.income || sph.invoice,
+              document,
             });
           }
         });
         ph.expenses.forEach((sph) => {
           if (sph.quantity && sph.amount) {
+            const document = sph.expense || sph.invoice
+            const date = sph.date_estimate_document || sph.date
             response.push({
               ...projectInfo,
               type: "expense",
@@ -543,29 +588,61 @@ module.exports = {
               expense_esti: -1 * Math.abs(sph.quantity * sph.amount),
               expense_real: 0,
               date: sph.date,
-              year: moment(sph.date, "YYYY-MM-DD").format("YYYY"),
-              month: moment(sph.date, "YYYY-MM-DD").format("MM"),
+              year: moment(date, "YYYY-MM-DD").format("YYYY"),
+              month: moment(date, "YYYY-MM-DD").format("MM"),
               row_type:
                 sph.expense_type && sph.expense_type.name
                   ? sph.expense_type.name
                   : "",
-              document: sph.expense || sph.invoice,
+              document
             });
           }
         });
       });
 
-      response.push({
-        ...projectInfo,
-        type: "hours",
-        date: "",
-        total_estimated_hours_price: -1 * p.total_estimated_hours_price,
-        total_real_hours_price: -1 * p.total_real_hours_price,
-        year: "2099",
-        month: "99",
-        row_type: "",
-        document: "0",
-      });
+      const projectActivities = groupedActivities.filter(a => a.projectId === projectInfo.id)
+
+      projectActivities.forEach(pa => {
+        response.push({
+          ...projectInfo,
+          type: "real_hours",
+          date: "",
+          total_estimated_hours_price: 0,
+          total_real_hours_price: -1 *  (pa.cost || 0),
+          year: pa.year,
+          month: pa.month,
+          row_type: "",
+          document: "0",
+        });
+      })
+
+      const { totalsByDay } = await calculateEstimatedTotals({}, p.original_phases, dailyDedications, festives)
+
+      const totalsByDayPYM = totalsByDay.map(a => { return { ...a, ym: `${moment(a.day, 'YYYY-MM-DD').year()}.${moment(a.day, 'YYYY-MM-DD').month()}` }})
+      const groupedTotalsByDay = _(totalsByDayPYM)
+      .groupBy("ym")
+      .map((rows, id) => {      
+        return {
+          year: parseInt(id.split('.')[0]),
+          month: parseInt(id.split('.')[1]) + 1,
+          cost: _.sumBy(rows, (r) => r.q * r.costByHour),
+        }
+      })
+
+      groupedTotalsByDay.forEach(g => {
+        response.push({
+          ...projectInfo,
+          type: "estimated_hours",
+          date: "",
+          total_estimated_hours_price: -1 *  (g.cost || 0),
+          total_real_hours_price: 0,
+          year: g.year,
+          month: g.month,
+          row_type: "",
+          document: "0",
+        });
+      })
+
     });
 
     if (year) {
