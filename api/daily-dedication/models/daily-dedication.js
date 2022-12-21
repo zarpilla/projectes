@@ -26,8 +26,10 @@ module.exports = {
             const activities = await strapi.query('activity').find({ users_permissions_user: data.users_permissions_user, date_gte: data.from , date_lte: data.to, _limit: -1 });
             const activitiesPrice = activities.filter(a => a.cost_by_hour !== data.costByHour, data)            
             activitiesPrice.forEach(async ap => {
-                const activity = { cost_by_hour: data.costByHour }
-                await strapi.query('activity').update( { id: ap.id }, activity)
+                if (ap.cost_by_hour !== data.costByHour && data.costByHour) {
+                    const activity = { cost_by_hour: data.costByHour }
+                    await strapi.query('activity').update( { id: ap.id }, activity)
+                }
             });
         }
       },
