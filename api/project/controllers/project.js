@@ -509,7 +509,7 @@ module.exports = {
         ph.subphases.forEach((sph) => {          
           if (sph.quantity && sph.amount) {
             const document = sph.income || sph.invoice
-            const date = sph.paid && document ? ( document.paid_date || document.emitted ) : sph.date
+            const date = sph.paid && document ? document.emitted : sph.date_estimate_document
             response.push({
               ...projectInfo,
               type: "income",
@@ -517,8 +517,8 @@ module.exports = {
               date: date,
               income_esti: 0,
               income_real: sph.paid ? sph.quantity * sph.amount : 0,
-              year: moment(sph.date, "YYYY-MM-DD").format("YYYY"),
-              month: moment(sph.date, "YYYY-MM-DD").format("MM"),
+              year: moment(date, "YYYY-MM-DD").format("YYYY"),
+              month: moment(date, "YYYY-MM-DD").format("MM"),
               row_type:
                 sph.income_type && sph.income_type.name
                   ? sph.income_type.name
@@ -530,7 +530,7 @@ module.exports = {
         ph.expenses.forEach((sph) => {
           if (sph.quantity && sph.amount) {
             const document = sph.expense || sph.invoice
-            const date = sph.paid && document ? ( document.paid_date || document.emitted ) : sph.date
+            const date = sph.paid && document ? document.emitted : sph.date_estimate_document
             response.push({
               ...projectInfo,
               type: "expense",
