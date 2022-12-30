@@ -257,7 +257,7 @@ const calculateEstimatedTotals = async (
                           d.to >= day.format("YYYY-MM-DD")
                       );
                       const costByHour =
-                        dd && dd.costByHour ? dd.costByHour : hours.amount;
+                        dd && dd.costByHour ? dd.costByHour : 0;
                       hours.total_amount += q * costByHour;
                       total_estimated_hours_price += q * costByHour;
 
@@ -302,7 +302,7 @@ const calculateEstimatedTotals = async (
                           d.to >= day.format("YYYY-MM-DD")
                       );
                       const costByHour =
-                        dd && dd.costByHour ? dd.costByHour : hours.amount;
+                        dd && dd.costByHour ? dd.costByHour : 0;
                       hours.total_amount += q * costByHour;
                       total_estimated_hours_price += q * costByHour;
 
@@ -321,7 +321,7 @@ const calculateEstimatedTotals = async (
                       d.to >= hours.from
                   );
                   const costByHour =
-                    dd && dd.costByHour ? dd.costByHour : hours.amount;
+                    dd && dd.costByHour ? dd.costByHour : 0;
 
                   hours.total_amount =
                     (hours.quantity ? hours.quantity : 0) * mdiff * costByHour;
