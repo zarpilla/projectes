@@ -328,7 +328,21 @@ const calculateEstimatedTotals = async (
                   total_estimated_hours_price +=
                     (hours.quantity ? hours.quantity : 0) * mdiff * costByHour;
 
-                  totalsByDay.push({ day: moment(hours.from, "YYYY-MM-DD"), q: hours.quantity, costByHour })
+                  mdiff = Math.round(
+                    moment
+                      .duration(
+                        moment(hours.to, "YYYY-MM-DD").diff(
+                          moment(hours.from, "YYYY-MM-DD")
+                        )
+                      )
+                      .asMonths()
+                  );
+
+                  for (let i = 0; i < mdiff; i++) {
+                    const day = moment(hours.from, "YYYY-MM-DD").add(i, "month");
+
+                    totalsByDay.push({ day: day, q: hours.quantity / mdiff, costByHour })
+                  }
                 }
               }
             }
