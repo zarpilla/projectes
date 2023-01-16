@@ -17,6 +17,14 @@
       }
     },
     {
+      "method": "POST",
+      "path": "/payrolls/create-all",
+      "handler": "payroll.createAll",
+      "config": {
+        "policies": []
+      }
+    },
+    {
       "method": "GET",
       "path": "/payrolls/:id",
       "handler": "payroll.findOne",
