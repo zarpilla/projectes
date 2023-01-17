@@ -432,6 +432,70 @@ module.exports = {
           received_expenses,
           received_incomes,
           treasury_annotations,
+          linked_emitted_invoices,
+          linked_received_expenses,
+          linked_received_incomes,
+          linked_received_invoices,
+          ...item
+        }) => item
+      )
+      .map((p) => {
+        return {
+          ...p,
+          clients: p.clients
+            ? p.clients.map((c) => {
+                return { id: c.id, name: c.name };
+              })
+            : null,
+        };
+      });
+
+    return newArray.map((entity) =>
+      sanitizeEntity(entity, { model: strapi.models.project })
+    );
+  },
+
+  async findWithPhases(ctx) {
+    // Calling the default core action
+    let projects;
+
+    // only published
+    ctx.query.published_at_null = false;
+    if (ctx.query._q) {
+      projects = await strapi.query("project").search(ctx.query);
+    } else {
+      projects = await strapi.query("project").find(ctx.query);
+    }
+
+    // Removing some info
+    const newArray = projects
+      .map(
+        ({
+          phases,
+          activities,
+          emitted_invoices,
+          received_invoices,
+          tickets,
+          diets,
+          emitted_grants,
+          received_grants,
+          quotes,
+          // original_phases,
+          incomes,
+          expenses,
+          strategies,
+          // estimated_hours,
+          intercooperations,
+          received_expenses,
+          received_incomes,
+          treasury_annotations,
+          clients,
+          activity_types,
+          linked_emitted_invoices,
+          linked_received_expenses,
+          linked_received_incomes,
+          linked_received_invoices,
+          global_activity_types,
           ...item
         }) => item
       )

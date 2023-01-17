@@ -26,6 +26,14 @@
     },
     {
       "method": "GET",
+      "path": "/projects/phases",
+      "handler": "project.findWithPhases",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "GET",
       "path": "/projects/economic-detail",
       "handler": "project.findWithEconomicDetail",
       "config": {
