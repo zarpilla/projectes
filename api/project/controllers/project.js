@@ -458,61 +458,20 @@ module.exports = {
   async findWithPhases(ctx) {
     // Calling the default core action
     let projects;
-
-    // only published
-    ctx.query.published_at_null = false;
+    const { published_at_null, _limit, ...where } = ctx.query
+    
     if (ctx.query._q) {
-      projects = await strapi.query("project").search(ctx.query);
+      projects = await strapi.query("project").model.fetchAll({ withRelated: ['original_phases'] });
     } else {
-      projects = await strapi.query("project").find(ctx.query);
+      projects = await strapi.query("project").model.query(qb => {
+        qb.select('id', 'name', 'published_at').where(where._where || {});
+      }).fetchAll({ withRelated: ['original_phases'] })
     }
 
-    // Removing some info
-    const newArray = projects
-      .map(
-        ({
-          phases,
-          activities,
-          emitted_invoices,
-          received_invoices,
-          tickets,
-          diets,
-          emitted_grants,
-          received_grants,
-          quotes,
-          // original_phases,
-          incomes,
-          expenses,
-          strategies,
-          // estimated_hours,
-          intercooperations,
-          received_expenses,
-          received_incomes,
-          treasury_annotations,
-          clients,
-          activity_types,
-          linked_emitted_invoices,
-          linked_received_expenses,
-          linked_received_incomes,
-          linked_received_invoices,
-          global_activity_types,
-          ...item
-        }) => item
-      )
-      .map((p) => {
-        return {
-          ...p,
-          clients: p.clients
-            ? p.clients.map((c) => {
-                return { id: c.id, name: c.name };
-              })
-            : null,
-        };
-      });
-
-    return newArray.map((entity) =>
+    return projects.map((entity) =>
       sanitizeEntity(entity, { model: strapi.models.project })
-    );
+    ).filter(p => p.published_at !== '');
+
   },
 
   async findWithEconomicDetail(ctx) {
