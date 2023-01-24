@@ -22,10 +22,10 @@ module.exports = {
   },
 
   /**
-   * Every 3 minutes.
+   * Every 2 minutes.
    */
 
-  '*/3 * * * *': async () => {
+  '*/2 * * * *': async () => {
     await projectController.updateDirtyProjects()
   },
 
