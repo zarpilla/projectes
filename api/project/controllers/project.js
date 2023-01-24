@@ -389,7 +389,6 @@ module.exports = {
     const projects = await strapi
       .query("project")
       .find({ dirty: true, _limit: -1 });
-    console.log("updateDirtyProjects", projects.length);
     for (let i = 0; i < projects.length; i++) {
       const project = projects[i];
       const data = await doProjectInfoCalculations(project, project.id);
@@ -397,7 +396,6 @@ module.exports = {
       data.dirty = false;
       await strapi.query("project").update({ id: project.id }, data);
     }
-    console.log("updateDirtyProjects end");
     return true;
   },
   async findWithBasicInfo(ctx) {
