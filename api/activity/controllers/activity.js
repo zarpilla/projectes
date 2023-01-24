@@ -11,35 +11,32 @@ const projectController = require("../../project/controllers/project");
  */
 
 module.exports = {
-
   totalByDay: async (ctx) => {
-
     let activities;
     if (ctx.query._q) {
       activities = await strapi.query("activity").search(ctx.query);
     } else {
       activities = await strapi.query("activity").find(ctx.query);
     }
-    
+
     const activitiesByDay = activities.map((entity) => {
-        const { hours, date, rest } = entity
-        return { hours, date }
-      }    
-    );
+      const { hours, date, rest } = entity;
+      return { hours, date };
+    });
 
     const grouped = _(activitiesByDay)
-    .groupBy("date")
-    .map((rows, id) => {      
-      return {
-        date: id,
-        hours: _.sumBy(rows, 'hours'),
-      }
-    })
+      .groupBy("date")
+      .map((rows, id) => {
+        return {
+          date: id,
+          hours: _.sumBy(rows, "hours"),
+        };
+      });
 
     // return activities.map((entity) => {
     //   const { hours, date, rest } = entity
     //   return { hours, date }
-    // }    
+    // }
     // );
     ctx.send(grouped);
   },
@@ -62,7 +59,7 @@ module.exports = {
   },
 
   move: async (ctx) => {
-    const { user, from, to, start, end } = ctx.request.body;    
+    const { user, from, to, start, end } = ctx.request.body;
     if (to) {
       const filter = {
         _limit: -1,
@@ -82,8 +79,8 @@ module.exports = {
           .update({ id: activity.id }, activityToUpdate);
         console.log("{ id: activity.id }", { id: activity.id });
       }
-      await projectController.enqueueProjects({ current: to, previous: from });
-      await projectController.updateQueuedProjects();
+      await projectController.setDirty(to);
+      await projectController.setDirty(from);
     }
 
     ctx.send({ user, from, to, start, end });

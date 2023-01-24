@@ -51,12 +51,13 @@ async function importSeedData() {
     // Permissions
     await setPermissions("authenticated", "application", {
         "activity": ["create", "find", "update", "delete", "importcalendar", "move", "totalByDay"],
+        "activity-type": ["create", "find", "getBasic"],
         "emitted-invoice": ["create", "find", "findone", "update", "delete", "payvat"],
         "received-invoice": ["create", "find", "findone", "update", "delete"],
         "received-income": ["create", "find", "findone", "update", "delete"],
         "received-expense": ["create", "find", "findone", "update", "delete"],
         "payroll": ["create", "find", "findone", "update", "delete", "createAll"],
-        "project": ["create", "find", "findone", "update", "delete", "findwithbasicinfo", "findwithphases", "payexpense", "payincome", "findwitheconomicdetail", "findChildren", "doCalculateProjectInfo"],
+        "project": ["create", "find", "findone", "update", "delete", "findwithbasicinfo", "findwithphases", "payexpense", "payincome", "findwitheconomicdetail", "findChildren", "doCalculateProjectInfo", "getProjectIsDirty"],
         "quote": ["create", "find", "findone", "update", "delete"],
         "contact": ["create", "find", "findone", "update", "delete"],
         "festive-type": ["find"],

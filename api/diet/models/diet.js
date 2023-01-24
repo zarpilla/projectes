@@ -1,6 +1,6 @@
 "use strict";
 const projectController = require("../../project/controllers/project");
-
+const entity = "diet"
 /**
  * Read the documentation (https://strapi.io/documentation/developer-docs/latest/development/backend-customization.html#lifecycle-hooks)
  * to customize this model
@@ -10,51 +10,41 @@ module.exports = {
   lifecycles: {
     async beforeCreate(data) {
       data = await calculateTotals(data);
-      await projectController.enqueueProjects({
-        current: data.project,
-        previous: null,
-      });
     },
     async afterCreate(result) {
-      // await
-      projectController.updateQueuedProjects();
+      result.projects.forEach((p) => {
+        projectController.setDirty(p.id);
+      });
     },
     async beforeUpdate(params, data) {
-      const invoice = await strapi.query("diet").findOne(params);
+      const invoice = await strapi.query(entity).findOne(params);
       if (invoice.updatable === false && !(data.updatable_admin === true)) {
-        throw new Error("diet not updatable");
+        throw new Error("received-expense NOT updatable");
       }
       data.updatable_admin = false;
       data = await calculateTotals(data);
-      let p1 = data && data.project ? data.project : null;
-      let p2 = invoice && invoice.project ? invoice.project.id : null;
-      if (p1 || p2) {
-        await projectController.enqueueProjects({
-          current: p1,
-          previous: p2,
-        });
-      }
     },
     async afterUpdate(result, params, data) {
-      // await
-      projectController.updateQueuedProjects();
-    },
-    async beforeDelete(params) {
-      const invoice = await strapi.query("diet").findOne(params);
-      if (invoice.updatable === false) {
-        throw new Error("diet not updatable");
+      if (result.projects) {
+        result.projects.forEach((p) => {
+          projectController.setDirty(p.id);
+        });
       }
-      if (invoice.project && invoice.project.id) {
-        await projectController.enqueueProjects({
-          current: null,
-          previous: invoice.project.id,
+      if (data.projects) {
+        data.projects.forEach((p) => {
+          projectController.setDirty(p.id);
         });
       }
     },
-    async afterDelete(result, params) {
-      // await
-      projectController.updateQueuedProjects();
-    },
+    async beforeDelete(params) {
+      const invoice = await strapi.query(entity).findOne(params);
+      if (invoice.updatable === false) {
+        throw new Error("received-expense NOT updatable");
+      }
+      if (invoice.project) {
+        await projectController.setDirty(invoice.project.id);
+      }
+    }
   },
 };
 

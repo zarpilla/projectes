@@ -1,6 +1,7 @@
 'use strict';
 
 const taskController = require('../../api/task/controllers/task');
+const projectController = require('../../api/project/controllers/project');
 
 /**
  * Cron config that gives you an opportunity
@@ -18,5 +19,15 @@ module.exports = {
    */
   '0 3 * * *': async () => {
     await taskController.email()  
-  }
+  },
+
+  /**
+   * Every 3 minutes.
+   */
+
+  '*/3 * * * *': async () => {
+    await projectController.updateDirtyProjects()
+  },
+
+  
 };

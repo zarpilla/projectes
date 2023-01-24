@@ -66,6 +66,14 @@
     },
     {
       "method": "GET",
+      "path": "/projects/:id/dirty",
+      "handler": "project.getProjectIsDirty",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "GET",
       "path": "/projects/:id",
       "handler": "project.findOne",
       "config": {

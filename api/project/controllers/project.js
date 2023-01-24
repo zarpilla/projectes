@@ -88,30 +88,11 @@ const doProjectInfoCalculations = async (data, id) => {
   const promises = [];
 
   promises.push(strapi.query("activity").find({ project: id, _limit: -1 }));
-  // promises.push(strapi.query('emitted-invoice').find({ project: id, _limit: -1 }))
-  // promises.push(strapi.query('received-grant').find({ project: id, _limit: -1 }))
-  // promises.push(strapi.query('received-invoice').find({ project: id, _limit: -1 }))
-  // promises.push(strapi.query('ticket').find({ project: id, _limit: -1 }))
-  // promises.push(strapi.query('diet').find({ project: id, _limit: -1 }))
-  // promises.push(strapi.query('emitted-grant').find({ project: id, _limit: -1 }))
-  // promises.push(strapi.query('received-income').find({ project: id, _limit: -1 }))
-  // promises.push(strapi.query('received-expense').find({ project: id, _limit: -1 }))
 
   const results = await Promise.all(promises);
 
   const activities = results[0];
-  // const emittedInvoices = results[1];
-  // const receivedGrants = results[2];
-  // const receivedInvoices = results[3];
-  // const tickets = results[4];
-  // const diets = results[5];
-  // const emittedGrants = results[6];
-  // const receivedIncomes = results[7];
-  // const receivedExpenses = results[8];
-
   data.total_real_hours = _.sumBy(activities, "hours");
-  // data.total_real_incomes += _.sumBy(emittedInvoices, 'total_base') + _.sumBy(receivedGrants, 'total') + _.sumBy(receivedIncomes, 'total')
-  // data.total_real_expenses += _.sumBy(receivedInvoices, 'total_base') + _.sumBy(tickets, 'total') + _.sumBy(diets, 'total') + _.sumBy(emittedGrants, 'total') + _.sumBy(receivedExpenses, 'total')
   const activities_price = activities.map((a) => {
     return { cost: a.hours * a.cost_by_hour };
   });
@@ -193,7 +174,7 @@ const calculateEstimatedTotals = async (
   let total_real_incomes = 0;
   let total_real_expenses = 0;
 
-  const totalsByDay = []
+  const totalsByDay = [];
 
   if (phases && phases.length) {
     for (var i = 0; i < phases.length; i++) {
@@ -261,7 +242,7 @@ const calculateEstimatedTotals = async (
                       hours.total_amount += q * costByHour;
                       total_estimated_hours_price += q * costByHour;
 
-                      totalsByDay.push({ day, q, costByHour })
+                      totalsByDay.push({ day, q, costByHour });
                     }
                   }
                 } else if (
@@ -306,7 +287,7 @@ const calculateEstimatedTotals = async (
                       hours.total_amount += q * costByHour;
                       total_estimated_hours_price += q * costByHour;
 
-                      totalsByDay.push({ day, q, costByHour })
+                      totalsByDay.push({ day, q, costByHour });
                     }
                   }
                 } else {
@@ -320,8 +301,7 @@ const calculateEstimatedTotals = async (
                       d.from <= hours.from &&
                       d.to >= hours.from
                   );
-                  const costByHour =
-                    dd && dd.costByHour ? dd.costByHour : 0;
+                  const costByHour = dd && dd.costByHour ? dd.costByHour : 0;
 
                   hours.total_amount =
                     (hours.quantity ? hours.quantity : 0) * mdiff * costByHour;
@@ -339,9 +319,16 @@ const calculateEstimatedTotals = async (
                   );
 
                   for (let i = 0; i < mdiff; i++) {
-                    const day = moment(hours.from, "YYYY-MM-DD").add(i, "month");
+                    const day = moment(hours.from, "YYYY-MM-DD").add(
+                      i,
+                      "month"
+                    );
 
-                    totalsByDay.push({ day: day, q: hours.quantity / mdiff, costByHour })
+                    totalsByDay.push({
+                      day: day,
+                      q: hours.quantity / mdiff,
+                      costByHour,
+                    });
                   }
                 }
               }
@@ -382,7 +369,7 @@ const calculateEstimatedTotals = async (
     total_estimated_hours_price,
     total_real_incomes,
     total_real_expenses,
-    totalsByDay
+    totalsByDay,
   };
 };
 
@@ -398,6 +385,21 @@ const updateProjectInfo = async (id) => {
 };
 
 module.exports = {
+  async updateDirtyProjects(ctx) {
+    const projects = await strapi
+      .query("project")
+      .find({ dirty: true, _limit: -1 });
+    console.log("updateDirtyProjects", projects.length);
+    for (let i = 0; i < projects.length; i++) {
+      const project = projects[i];
+      const data = await doProjectInfoCalculations(project, project.id);
+      data._internal = true;
+      data.dirty = false;
+      await strapi.query("project").update({ id: project.id }, data);
+    }
+    console.log("updateDirtyProjects end");
+    return true;
+  },
   async findWithBasicInfo(ctx) {
     // Calling the default core action
     let projects;
@@ -458,47 +460,51 @@ module.exports = {
   async findWithPhases(ctx) {
     // Calling the default core action
     let projects;
-    const { published_at_null, _limit, ...where } = ctx.query
-    
+    const { published_at_null, _limit, ...where } = ctx.query;
+
     if (ctx.query._q) {
-      projects = await strapi.query("project").model.fetchAll({ withRelated: ['original_phases'] });
+      projects = await strapi
+        .query("project")
+        .model.fetchAll({ withRelated: ["original_phases"] });
     } else {
-      projects = await strapi.query("project").model.query(qb => {
-        qb.select('id', 'name', 'published_at').where(where._where || {});
-      }).fetchAll({ withRelated: ['original_phases'] })
+      projects = await strapi
+        .query("project")
+        .model.query((qb) => {
+          qb.select("id", "name", "published_at").where(where._where || {});
+        })
+        .fetchAll({ withRelated: ["original_phases"] });
     }
 
-    return projects.map((entity) =>
-      sanitizeEntity(entity, { model: strapi.models.project })
-    ).filter(p => p.published_at !== '');
-
+    return projects
+      .map((entity) => sanitizeEntity(entity, { model: strapi.models.project }))
+      .filter((p) => p.published_at !== "");
   },
 
   async findWithEconomicDetail(ctx) {
     // Calling the default core action
-    
+
     // only published
     // ctx.query.published_at_null = false;
 
     const { query, year, paid, document } = ctx.query;
     // ctx.query = { _limit: -1 }
 
-    const promises = []
+    const promises = [];
     if (ctx.query._q) {
-      promises.push(strapi.query("project").search(ctx.query))      
+      promises.push(strapi.query("project").search(ctx.query));
     } else {
-      promises.push(strapi.query("project").find({ _limit: -1 }))
+      promises.push(strapi.query("project").find({ _limit: -1 }));
     }
 
-    promises.push(strapi.query("activity").find({ _limit: -1 }))
-    promises.push(strapi.query("daily-dedication").find({ _limit: -1 }))
-    promises.push(strapi.query("festive").find({ _limit: -1 }))
+    promises.push(strapi.query("activity").find({ _limit: -1 }));
+    promises.push(strapi.query("daily-dedication").find({ _limit: -1 }));
+    promises.push(strapi.query("festive").find({ _limit: -1 }));
 
-    const results = await Promise.all(promises)
+    const results = await Promise.all(promises);
     let projects = results[0];
-    const activities = results[1]
-    const dailyDedications = results[2]
-    const festives = results[3]
+    const activities = results[1];
+    const dailyDedications = results[2];
+    const festives = results[3];
 
     projects = projects.filter((p) => p.published_at !== null);
     if (ctx.query && ctx.query._where && ctx.query._where.project_state_eq) {
@@ -511,17 +517,27 @@ module.exports = {
 
     var response = [];
 
-    const activitiesPYM = activities.filter(a => a.date && a.project && a.project.id).map(a => { return { ...a, pym: `${a.project.id}.${moment(a.date, 'YYYY-MM-DD').year()}.${moment(a.date, 'YYYY-MM-DD').month()}` }})
+    const activitiesPYM = activities
+      .filter((a) => a.date && a.project && a.project.id)
+      .map((a) => {
+        return {
+          ...a,
+          pym: `${a.project.id}.${moment(a.date, "YYYY-MM-DD").year()}.${moment(
+            a.date,
+            "YYYY-MM-DD"
+          ).month()}`,
+        };
+      });
     const groupedActivities = _(activitiesPYM)
-    .groupBy("pym")
-    .map((rows, id) => {      
-      return {
-        projectId: parseInt(id.split('.')[0]),
-        year: parseInt(id.split('.')[1]),
-        month: parseInt(id.split('.')[2]) + 1,
-        cost: _.sumBy(rows, (r) => r.hours * r.cost_by_hour),
-      }
-    })
+      .groupBy("pym")
+      .map((rows, id) => {
+        return {
+          projectId: parseInt(id.split(".")[0]),
+          year: parseInt(id.split(".")[1]),
+          month: parseInt(id.split(".")[2]) + 1,
+          cost: _.sumBy(rows, (r) => r.hours * r.cost_by_hour),
+        };
+      });
 
     // console.log('activities', activities.length)
     // console.log('grouped', grouped)
@@ -543,10 +559,13 @@ module.exports = {
       };
 
       p.phases.forEach((ph) => {
-        ph.subphases.forEach((sph) => {          
+        ph.subphases.forEach((sph) => {
           if (sph.quantity && sph.amount) {
-            const document = sph.income || sph.invoice
-            const date = sph.paid && document ? document.emitted : sph.date_estimate_document
+            const document = sph.income || sph.invoice;
+            const date =
+              sph.paid && document
+                ? document.emitted
+                : sph.date_estimate_document;
             response.push({
               ...projectInfo,
               type: "income",
@@ -560,14 +579,17 @@ module.exports = {
                 sph.income_type && sph.income_type.name
                   ? sph.income_type.name
                   : "",
-              document
+              document,
             });
           }
         });
         ph.expenses.forEach((sph) => {
           if (sph.quantity && sph.amount) {
-            const document = sph.expense || sph.invoice
-            const date = sph.paid && document ? document.emitted : sph.date_estimate_document
+            const document = sph.expense || sph.invoice;
+            const date =
+              sph.paid && document
+                ? document.emitted
+                : sph.date_estimate_document;
             response.push({
               ...projectInfo,
               type: "expense",
@@ -589,14 +611,13 @@ module.exports = {
 
       p.original_phases.forEach((ph) => {
         ph.subphases.forEach((sph) => {
-
           // if (sph && sph.estimated_hours && sph.estimated_hours.length) {
           //   console.log('sph', sph.estimated_hours)
           // }
 
           if (sph.quantity && sph.amount) {
-            const document = sph.income || sph.invoice
-            const date = sph.date_estimate_document || sph.date
+            const document = sph.income || sph.invoice;
+            const date = sph.date_estimate_document || sph.date;
             response.push({
               ...projectInfo,
               type: "income",
@@ -616,8 +637,8 @@ module.exports = {
         });
         ph.expenses.forEach((sph) => {
           if (sph.quantity && sph.amount) {
-            const document = sph.expense || sph.invoice
-            const date = sph.date_estimate_document || sph.date
+            const document = sph.expense || sph.invoice;
+            const date = sph.date_estimate_document || sph.date;
             response.push({
               ...projectInfo,
               type: "expense",
@@ -631,55 +652,69 @@ module.exports = {
                 sph.expense_type && sph.expense_type.name
                   ? sph.expense_type.name
                   : "",
-              document
+              document,
             });
           }
         });
       });
 
-      const projectActivities = groupedActivities.filter(a => a.projectId === projectInfo.id)
+      const projectActivities = groupedActivities.filter(
+        (a) => a.projectId === projectInfo.id
+      );
 
-      projectActivities.forEach(pa => {
+      projectActivities.forEach((pa) => {
         response.push({
           ...projectInfo,
           type: "real_hours",
           date: "",
           total_estimated_hours_price: 0,
-          total_real_hours_price: -1 *  (pa.cost || 0),
+          total_real_hours_price: -1 * (pa.cost || 0),
           year: pa.year,
           month: pa.month,
           row_type: "",
           document: "0",
         });
-      })
+      });
 
-      const { totalsByDay } = await calculateEstimatedTotals({}, p.original_phases, dailyDedications, festives)
+      const { totalsByDay } = await calculateEstimatedTotals(
+        {},
+        p.original_phases,
+        dailyDedications,
+        festives
+      );
 
-      const totalsByDayPYM = totalsByDay.map(a => { return { ...a, ym: `${moment(a.day, 'YYYY-MM-DD').year()}.${moment(a.day, 'YYYY-MM-DD').month()}` }})
-      const groupedTotalsByDay = _(totalsByDayPYM)
-      .groupBy("ym")
-      .map((rows, id) => {      
+      const totalsByDayPYM = totalsByDay.map((a) => {
         return {
-          year: parseInt(id.split('.')[0]),
-          month: parseInt(id.split('.')[1]) + 1,
-          cost: _.sumBy(rows, (r) => r.q * r.costByHour),
-        }
-      })
+          ...a,
+          ym: `${moment(a.day, "YYYY-MM-DD").year()}.${moment(
+            a.day,
+            "YYYY-MM-DD"
+          ).month()}`,
+        };
+      });
+      const groupedTotalsByDay = _(totalsByDayPYM)
+        .groupBy("ym")
+        .map((rows, id) => {
+          return {
+            year: parseInt(id.split(".")[0]),
+            month: parseInt(id.split(".")[1]) + 1,
+            cost: _.sumBy(rows, (r) => r.q * r.costByHour),
+          };
+        });
 
-      groupedTotalsByDay.forEach(g => {
+      groupedTotalsByDay.forEach((g) => {
         response.push({
           ...projectInfo,
           type: "estimated_hours",
           date: "",
-          total_estimated_hours_price: -1 *  (g.cost || 0),
+          total_estimated_hours_price: -1 * (g.cost || 0),
           total_real_hours_price: 0,
           year: g.year,
           month: g.month,
           row_type: "",
           document: "0",
         });
-      })
-
+      });
     });
 
     if (year) {
@@ -701,51 +736,58 @@ module.exports = {
     const { id, expense } = ctx.params;
     const { mother } = await strapi.query("project").findOne({ id });
     if (mother && mother.id == id) {
-      const childrenAll = await strapi.query("project").find({ mother: id, _limit: -1 });
-      const children = childrenAll.filter(c => c.id != mother.id)
+      const childrenAll = await strapi
+        .query("project")
+        .find({ mother: id, _limit: -1 });
+      const children = childrenAll.filter((c) => c.id != mother.id);
 
-      const flattenMap = (arrays, prop) => _.flatten(arrays.map(a => a[prop]));
+      const flattenMap = (arrays, prop) =>
+        _.flatten(arrays.map((a) => a[prop]));
 
-      const totals = { total_estimated_hours: _.sumBy(children, 'total_estimated_hours'),
-      total_real_hours: _.sumBy(children, 'total_real_hours'),
-      total_expenses: _.sumBy(children, 'total_expenses'),
-      total_incomes: _.sumBy(children, 'total_incomes'),
-      total_expenses_hours: _.sumBy(children, 'total_expenses_hours'),
-      balance: _.sumBy(children, 'balance'),
-      total_estimated_expenses: _.sumBy(children, 'total_estimated_expenses'),
-      estimated_balance: _.sumBy(children, 'estimated_balance'),
-      incomes_expenses: _.sumBy(children, 'incomes_expenses'),
-      dedicated_hours: _.sumBy(children, 'dedicated_hours'),
-      invoice_hours: _.sumBy(children, 'invoice_hours'),
-      invoice_hours_price: _.sumBy(children, 'invoice_hours_price'),
-      total_dedicated_hours: _.sumBy(children, 'total_dedicated_hours'),
-      total_real_incomes: _.sumBy(children, 'total_real_incomes'),
-      total_real_expenses: _.sumBy(children, 'total_real_expenses'),
-      total_real_incomes_expenses: _.sumBy(children, 'total_real_incomes_expenses'),
-      structural_expenses: _.sumBy(children, 'structural_expenses'),
-      total_estimated_hours_price: _.sumBy(children, 'total_estimated_hours_price'),
-      total_real_hours_price: _.sumBy(children, 'total_real_hours_price'),
-      total_real_expenses: _.sumBy(children, 'total_real_expenses'),
-      grantable_amount: _.sumBy(children, 'grantable_amount'),
-      grantable_amount_total: _.sumBy(children, 'grantable_amount_total'),
-      // phases: flattenMap(children, 'phases'),
-      // original_phases: flattenMap(children, 'original_phases'),
-      // emitted_invoices: flattenMap(children, 'emitted_invoices'),
-      // received_grants: flattenMap(children, 'received_grants'),
-      // received_invoices: flattenMap(children, 'received_invoices'),
-      // tickets: flattenMap(children, 'tickets'),
-      // diets: flattenMap(children, 'diets'),
-      // received_incomes: flattenMap(children, 'received_incomes'),
-      // received_expenses: flattenMap(children, 'received_expenses'),
-    }
+      const totals = {
+        total_estimated_hours: _.sumBy(children, "total_estimated_hours"),
+        total_real_hours: _.sumBy(children, "total_real_hours"),
+        total_expenses: _.sumBy(children, "total_expenses"),
+        total_incomes: _.sumBy(children, "total_incomes"),
+        total_expenses_hours: _.sumBy(children, "total_expenses_hours"),
+        balance: _.sumBy(children, "balance"),
+        total_estimated_expenses: _.sumBy(children, "total_estimated_expenses"),
+        estimated_balance: _.sumBy(children, "estimated_balance"),
+        incomes_expenses: _.sumBy(children, "incomes_expenses"),
+        dedicated_hours: _.sumBy(children, "dedicated_hours"),
+        invoice_hours: _.sumBy(children, "invoice_hours"),
+        invoice_hours_price: _.sumBy(children, "invoice_hours_price"),
+        total_dedicated_hours: _.sumBy(children, "total_dedicated_hours"),
+        total_real_incomes: _.sumBy(children, "total_real_incomes"),
+        total_real_expenses: _.sumBy(children, "total_real_expenses"),
+        total_real_incomes_expenses: _.sumBy(
+          children,
+          "total_real_incomes_expenses"
+        ),
+        structural_expenses: _.sumBy(children, "structural_expenses"),
+        total_estimated_hours_price: _.sumBy(
+          children,
+          "total_estimated_hours_price"
+        ),
+        total_real_hours_price: _.sumBy(children, "total_real_hours_price"),
+        total_real_expenses: _.sumBy(children, "total_real_expenses"),
+        grantable_amount: _.sumBy(children, "grantable_amount"),
+        grantable_amount_total: _.sumBy(children, "grantable_amount_total"),
+        // phases: flattenMap(children, 'phases'),
+        // original_phases: flattenMap(children, 'original_phases'),
+        // emitted_invoices: flattenMap(children, 'emitted_invoices'),
+        // received_grants: flattenMap(children, 'received_grants'),
+        // received_invoices: flattenMap(children, 'received_invoices'),
+        // tickets: flattenMap(children, 'tickets'),
+        // diets: flattenMap(children, 'diets'),
+        // received_incomes: flattenMap(children, 'received_incomes'),
+        // received_expenses: flattenMap(children, 'received_expenses'),
+      };
 
-    
-      
-      return { children, totals }
+      return { children, totals };
     } else {
-      return {}
+      return {};
     }
-    
   },
 
   async updatePhases(ctx) {
@@ -837,7 +879,6 @@ module.exports = {
     return { id, income, found };
   },
 
-
   calculateProjectInfo: async (data, id) => {
     return await doProjectInfoCalculations(data, id);
   },
@@ -846,24 +887,29 @@ module.exports = {
     const { id } = ctx.params;
     const data = await strapi.query("project").findOne({ id });
     const result = await doProjectInfoCalculations(data, id);
-    return result
+    return result;
   },
 
-  enqueueProjects: async (projects) => {
-    projectsQueue.push(projects);
+  getProjectIsDirty: async (ctx) => {
+    const { id } = ctx.params;
+    const projects = await strapi
+      .query("project")
+      .model.query((qb) => {
+        qb.select("id", "dirty").where({ id: id });
+      })
+      .fetchAll();
+
+      const p = projects.map((entity) =>
+      sanitizeEntity(entity, { model: strapi.models.project })
+    )
+
+    return { id: id, dirty: p[0].dirty }
   },
 
-  updateQueuedProjects: async () => {
-    const projects = projectsQueue.pop();
-    if (projects && projects.current) {
-      await updateProjectInfo(projects.current);
-    }
-    if (
-      projects &&
-      projects.previous &&
-      projects.current !== projects.previous
-    ) {
-      await updateProjectInfo(projects.previous);
+  setDirty: async (id) => {
+    console.log("setDirty", id);
+    if (parseInt(id) > 0) {
+      await strapi.query("project").update({ id: id }, { dirty: true });
     }
   },
 };

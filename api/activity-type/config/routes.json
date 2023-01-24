@@ -18,6 +18,14 @@
     },
     {
       "method": "GET",
+      "path": "/activity-types/basic",
+      "handler": "activity-type.getBasic",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "GET",
       "path": "/activity-types/global",
       "handler": "activity-type.updateGlobal",
       "config": {

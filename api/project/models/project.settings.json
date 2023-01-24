@@ -237,6 +237,10 @@
       "plugin": "upload",
       "required": false,
       "pluginOptions": {}
+    },
+    "dirty": {
+      "type": "boolean",
+      "default": false
     }
   }
 }

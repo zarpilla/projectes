@@ -10,32 +10,21 @@ const projectController = require('../../project/controllers/project');
 module.exports = {
     lifecycles: {
         async beforeCreate(data) {
-            data = await calculatePrice(0, data)
-            await projectController.enqueueProjects({ current: data.project, previous: null })
-        },
-        async afterCreate(result) {
-            projectController.updateQueuedProjects()
-        },
+            data = await calculatePrice(0, data)            
+            await projectController.setDirty(data.project)
+        },        
         async beforeUpdate(params, data) {
             data = await calculatePrice(params.id, data)
             if (data && data.project) {
-                await projectController.enqueueProjects({ current: data.project, previous: null })
+                await projectController.setDirty(data.project)
             }
-        },
-        async afterUpdate(result, params, data) {
-            if (!data._internal) {
-                projectController.updateQueuedProjects()
-            }
-        },
+        },        
         async beforeDelete(params) {        
             const activity = await strapi.query('activity').findOne(params);   
             if (activity.project && activity.project.id) {
-                await projectController.enqueueProjects({ current: null, previous: activity.project.id })
+                await projectController.setDirty(activity.project.id)
             }                
-        },
-        async afterDelete(result, params) {
-            projectController.updateQueuedProjects()
-        }
+        },        
       },
 };
 
