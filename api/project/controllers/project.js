@@ -8,7 +8,7 @@ const moment = require("moment");
  * to customize this controller
  */
 
-const doProjectInfoCalculations = async (data, id) => {
+const doProjectInfoCalculations = async (data, id, dailyDedications, festives) => {
   if (!id || !data) {
     return;
   }
@@ -43,10 +43,10 @@ const doProjectInfoCalculations = async (data, id) => {
   }
 
   if (data.phases && data.phases.length) {
-    const dailyDedications = await strapi
-      .query("daily-dedication")
-      .find({ _limit: -1 });
-    const festives = await strapi.query("festive").find({ _limit: -1 });
+    // const dailyDedications = await strapi
+    //   .query("daily-dedication")
+    //   .find({ _limit: -1 });
+    // const festives = await strapi.query("festive").find({ _limit: -1 });
     const infoPhases = await calculateEstimatedTotals(
       data,
       data.phases,
@@ -375,23 +375,18 @@ const calculateEstimatedTotals = async (
 
 let projectsQueue = [];
 
-const updateProjectInfo = async (id) => {
-  const data = await strapi.query("project").findOne({ id });
-  const info = await doProjectInfoCalculations(data, id);
-
-  info._internal = true;
-  await strapi.query("project").update({ id: id }, info);
-  return { id };
-};
-
 module.exports = {
   async updateDirtyProjects(ctx) {
     const projects = await strapi
       .query("project")
       .find({ dirty: true, _limit: -1 });
+    const dailyDedications = await strapi
+      .query("daily-dedication")
+      .find({ _limit: -1 });
+    const festives = await strapi.query("festive").find({ _limit: -1 });
     for (let i = 0; i < projects.length; i++) {
       const project = projects[i];
-      const data = await doProjectInfoCalculations(project, project.id);
+      const data = await doProjectInfoCalculations(project, project.id, dailyDedications, festives);
       data._internal = true;
       data.dirty = false;
       await strapi.query("project").update({ id: project.id }, data);
@@ -877,14 +872,14 @@ module.exports = {
     return { id, income, found };
   },
 
-  calculateProjectInfo: async (data, id) => {
-    return await doProjectInfoCalculations(data, id);
-  },
-
   doCalculateProjectInfo: async (ctx) => {
     const { id } = ctx.params;
     const data = await strapi.query("project").findOne({ id });
-    const result = await doProjectInfoCalculations(data, id);
+    const dailyDedications = await strapi
+      .query("daily-dedication")
+      .find({ _limit: -1 });
+    const festives = await strapi.query("festive").find({ _limit: -1 });
+    const result = await doProjectInfoCalculations(data, id, dailyDedications, festives);
     return result;
   },
 

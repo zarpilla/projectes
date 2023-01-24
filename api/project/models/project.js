@@ -10,10 +10,7 @@ const projectController = require('../controllers/project');
 
 module.exports = {
     lifecycles: {
-        async afterFindOne(result, params, populate) {
-            // result = await calculateProjectInfo(result, params)
-        },
-        async afterCreate(result) {
+        async beforeCreate(data) {
             data.dirty = true
         },
         async beforeUpdate(params, data) {
@@ -24,8 +21,3 @@ module.exports = {
         },        
       },
 };
-
-let calculateProjectInfo = async (result, params) => {
-    const data = await projectController.calculateProjectInfo(result, params.id)
-    return data
-}
