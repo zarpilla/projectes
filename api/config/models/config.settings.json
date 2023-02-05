@@ -13,12 +13,6 @@
   "attributes": {
     "front_url": {
       "type": "string"
-    },
-    "app_pwd": {
-      "type": "string"
-    },
-    "app_username": {
-      "type": "string"
     }
   }
 }
