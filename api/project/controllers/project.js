@@ -385,11 +385,16 @@ module.exports = {
       .find({ _limit: -1 });
     const festives = await strapi.query("festive").find({ _limit: -1 });
     for (let i = 0; i < projects.length; i++) {
-      const project = projects[i];
-      const data = await doProjectInfoCalculations(project, project.id, dailyDedications, festives);
-      data._internal = true;
-      data.dirty = false;
-      await strapi.query("project").update({ id: project.id }, data);
+      try {
+        const project = projects[i];
+        const data = await doProjectInfoCalculations(project, project.id, dailyDedications, festives);
+        data._internal = true;
+        data.dirty = false;
+        await strapi.query("project").update({ id: project.id }, data);
+      }
+      catch (e) {
+        console.error(e)
+      }      
     }
     return true;
   },
