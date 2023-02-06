@@ -13,11 +13,17 @@ module.exports = {
         async beforeCreate(data) {
             data.dirty = true
         },
+        async afterCreate() {
+            await projectController.updateDirtyProjects()
+        },
         async beforeUpdate(params, data) {
             if (data._internal) {
                 return
             }
             data.dirty = true
-        },        
+        }, 
+        async afterUpdate() {
+            await projectController.updateDirtyProjects()
+        },       
       },
 };
