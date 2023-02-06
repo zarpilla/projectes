@@ -376,7 +376,7 @@ const calculateEstimatedTotals = async (
 let projectsQueue = [];
 
 module.exports = {
-  async updateDirtyProjects(ctx) {
+  async updateDirtyProjects(id) {
     const projects = await strapi
       .query("project")
       .find({ dirty: true, _limit: -1 });
@@ -384,9 +384,10 @@ module.exports = {
       .query("daily-dedication")
       .find({ _limit: -1 });
     const festives = await strapi.query("festive").find({ _limit: -1 });
-    for (let i = 0; i < projects.length; i++) {
+    const filtered = id && id > 0 ? projects.filter(p => p.id == id) : projects
+    for (let i = 0; i < filtered.length; i++) {
       try {
-        const project = projects[i];
+        const project = filtered[i];
         const data = await doProjectInfoCalculations(project, project.id, dailyDedications, festives);
         data._internal = true;
         data.dirty = false;

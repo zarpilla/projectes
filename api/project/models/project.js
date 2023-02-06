@@ -13,8 +13,8 @@ module.exports = {
         async beforeCreate(data) {
             data.dirty = true
         },
-        async afterCreate() {
-            await projectController.updateDirtyProjects()
+        async afterCreate(data) {
+            await projectController.updateDirtyProjects(data.id)
         },
         async beforeUpdate(params, data) {
             if (data._internal) {
@@ -22,8 +22,8 @@ module.exports = {
             }
             data.dirty = true
         }, 
-        async afterUpdate() {
-            await projectController.updateDirtyProjects()
+        async afterUpdate(data) {
+            await projectController.updateDirtyProjects(data.id)
         },       
       },
 };
