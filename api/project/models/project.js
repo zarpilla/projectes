@@ -10,9 +10,9 @@ const projectController = require('../controllers/project');
 
 module.exports = {
     lifecycles: {
-        async beforeCreate(result, params, populate) {
-            result = await calculateProjectInfo(result, params)
-        },
+        // async afterFindOne(result, params, populate) {
+        //     result = await calculateProjectInfo(result, params)
+        // },
         async afterCreate(result) {
             await projectController.enqueueProjects({ current: result.id, previous: null })
             await projectController.updateQueuedProjects()
