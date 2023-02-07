@@ -1,0 +1,20 @@
+{
+  "kind": "collectionType",
+  "collectionName": "dirty_queues",
+  "info": {
+    "name": "dirty-queue"
+  },
+  "options": {
+    "increments": true,
+    "timestamps": true,
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "entity": {
+      "type": "string"
+    },
+    "entityId": {
+      "type": "integer"
+    }
+  }
+}

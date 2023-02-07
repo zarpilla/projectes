@@ -1,0 +1,52 @@
+{
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/dirty-queues",
+      "handler": "dirty-queue.find",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/dirty-queues/count",
+      "handler": "dirty-queue.count",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/dirty-queues/:id",
+      "handler": "dirty-queue.findOne",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/dirty-queues",
+      "handler": "dirty-queue.create",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "PUT",
+      "path": "/dirty-queues/:id",
+      "handler": "dirty-queue.update",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "DELETE",
+      "path": "/dirty-queues/:id",
+      "handler": "dirty-queue.delete",
+      "config": {
+        "policies": []
+      }
+    }
+  ]
+}

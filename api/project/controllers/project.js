@@ -8,7 +8,12 @@ const moment = require("moment");
  * to customize this controller
  */
 
-const doProjectInfoCalculations = async (data, id, dailyDedications, festives) => {
+const doProjectInfoCalculations = async (
+  data,
+  id,
+  dailyDedications,
+  festives
+) => {
   if (!id || !data) {
     return;
   }
@@ -85,13 +90,11 @@ const doProjectInfoCalculations = async (data, id, dailyDedications, festives) =
     data.total_real_expenses = 0;
   }
 
-  const promises = [];
+  // const promises = [];
+  // promises.push(strapi.query("activity").find({ project: id, _limit: -1 }));
+  // const results = await Promise.all(promises);
+  const activities = data.activities; // results[0];
 
-  promises.push(strapi.query("activity").find({ project: id, _limit: -1 }));
-
-  const results = await Promise.all(promises);
-
-  const activities = results[0];
   data.total_real_hours = _.sumBy(activities, "hours");
   const activities_price = activities.map((a) => {
     return { cost: a.hours * a.cost_by_hour };
@@ -158,6 +161,26 @@ const doProjectInfoCalculations = async (data, id, dailyDedications, festives) =
     delete data.leader;
   }
   return data;
+};
+
+const updateProjectInfo = async (id) => {
+  const data = await strapi.query("project").findOne({ id });
+  const dailyDedications = await strapi
+    .query("daily-dedication")
+    .find({ _limit: -1 });
+  const festives = await strapi.query("festive").find({ _limit: -1 });
+
+  const info = await doProjectInfoCalculations(
+    data,
+    id,
+    dailyDedications,
+    festives
+  );
+
+  info._internal = true;
+  await strapi.query("project").update({ id: id }, info);
+
+  return { id };
 };
 
 const calculateEstimatedTotals = async (
@@ -376,27 +399,49 @@ const calculateEstimatedTotals = async (
 let projectsQueue = [];
 
 module.exports = {
-  async updateDirtyProjects(id) {
-    const projects = await strapi
-      .query("project")
-      .find({ dirty: true, _limit: -1 });
+  async updateDirtyProject(id) {
+    const project = await strapi.query("project").findOne({ id: id });
+
     const dailyDedications = await strapi
       .query("daily-dedication")
       .find({ _limit: -1 });
     const festives = await strapi.query("festive").find({ _limit: -1 });
-    const filtered = id && id > 0 ? projects.filter(p => p.id == id) : projects
-    for (let i = 0; i < filtered.length; i++) {
-      try {
-        const project = filtered[i];
-        const data = await doProjectInfoCalculations(project, project.id, dailyDedications, festives);
-        data._internal = true;
-        data.dirty = false;
-        await strapi.query("project").update({ id: project.id }, data);
-      }
-      catch (e) {
-        console.error(e)
-      }      
+
+    const data = await doProjectInfoCalculations(
+      project,
+      id,
+      dailyDedications,
+      festives
+    );
+
+    // data._internal = true;
+    data.dirty = false;
+
+    return data;
+  },
+  async updateDirtyProjects() {
+    const projects = await strapi
+      .query("dirty-queue")
+      .find({ entity: "project", _limit: -1 });
+
+    await strapi.query("dirty-queue").delete({ _limit: -1 });
+
+    const uniqueProjects = _.union(projects.map((p) => p.entityId));
+
+    if (uniqueProjects.length === 0) {
+      return;
     }
+
+    // console.log('filtered', filtered)
+    for (let i = 0; i < uniqueProjects.length; i++) {
+      try {
+        const id = uniqueProjects[i];
+        await strapi.query("project").update({ id: id }, { dirty: false });
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
     return true;
   },
   async findWithBasicInfo(ctx) {
@@ -885,7 +930,12 @@ module.exports = {
       .query("daily-dedication")
       .find({ _limit: -1 });
     const festives = await strapi.query("festive").find({ _limit: -1 });
-    const result = await doProjectInfoCalculations(data, id, dailyDedications, festives);
+    const result = await doProjectInfoCalculations(
+      data,
+      id,
+      dailyDedications,
+      festives
+    );
     return result;
   },
 
@@ -898,17 +948,38 @@ module.exports = {
       })
       .fetchAll();
 
-      const p = projects.map((entity) =>
+    const p = projects.map((entity) =>
       sanitizeEntity(entity, { model: strapi.models.project })
-    )
+    );
 
-    return { id: id, dirty: p[0].dirty }
+    return { id: id, dirty: p[0].dirty };
   },
 
   setDirty: async (id) => {
     console.log("setDirty", id);
     if (parseInt(id) > 0) {
-      await strapi.query("project").update({ id: id }, { dirty: true });
+      await strapi
+        .query("dirty-queue")
+        .create({ entityId: id, entity: "project" });
+      // await strapi.query("project").update({ id: id }, { dirty: true });
+    }
+  },
+
+  enqueueProjects: async (projects) => {
+    projectsQueue.push(projects);
+  },
+
+  updateQueuedProjects: async () => {
+    const projects = projectsQueue.pop();
+    if (projects && projects.current) {
+      await updateProjectInfo(projects.current);
+    }
+    if (
+      projects &&
+      projects.previous &&
+      projects.current !== projects.previous
+    ) {
+      await updateProjectInfo(projects.previous);
     }
   },
 };

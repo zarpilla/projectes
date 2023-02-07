@@ -10,20 +10,21 @@ const projectController = require('../controllers/project');
 
 module.exports = {
     lifecycles: {
-        async beforeCreate(data) {
-            data.dirty = true
+        async beforeCreate(result, params, populate) {
+            result = await calculateProjectInfo(result, params)
         },
-        async afterCreate(data) {
-            await projectController.updateDirtyProjects(data.id)
+        async afterCreate(result) {
+            await projectController.enqueueProjects({ current: result.id, previous: null })
+            await projectController.updateQueuedProjects()
         },
         async beforeUpdate(params, data) {
+            await projectController.enqueueProjects({ current: params.id, previous: null })
+        }, 
+        async afterUpdate(result, params, data) {
             if (data._internal) {
                 return
             }
-            data.dirty = true
-        }, 
-        async afterUpdate(data) {
-            await projectController.updateDirtyProjects(data.id)
+            await projectController.updateQueuedProjects()
         },       
       },
 };
