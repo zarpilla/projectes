@@ -9,7 +9,7 @@
 module.exports = {
     lifecycles: {
         async afterFindOne(result, params, populate) {
-            if (!result.pdf) {
+            if (result && !result.pdf) {
                 const config = await strapi.query('config').findOne();
                 const pdf = `${config.front_url}quote/${params.id}`
                 result.pdf = pdf

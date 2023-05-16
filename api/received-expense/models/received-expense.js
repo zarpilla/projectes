@@ -39,10 +39,10 @@ module.exports = {
     },
     async beforeDelete(params) {
       const invoice = await strapi.query(entity).findOne(params);
-      if (invoice.updatable === false) {
+      if (invoice && invoice.updatable === false) {
         throw new Error("received-expense NOT updatable");
       }
-      if (invoice.project) {
+      if (invoice && invoice.project) {
         await projectController.setDirty(invoice.project.id);
       }
     }

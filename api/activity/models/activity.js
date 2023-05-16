@@ -19,12 +19,12 @@ module.exports = {
                 await projectController.setDirty(data.project)
             }
         },        
-        async beforeDelete(params) {        
-            const activity = await strapi.query('activity').findOne(params);   
-            if (activity.project && activity.project.id) {
-                await projectController.setDirty(activity.project.id)
-            }                
-        },        
+        // async beforeDelete(params) {        
+        //     const activity = await strapi.query('activity').findOne(params);   
+        //     if (activity.project && activity.project.id) {
+        //         await projectController.setDirty(activity.project.id)
+        //     }                
+        // },        
       },
 };
 

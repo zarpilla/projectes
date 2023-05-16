@@ -1,0 +1,28 @@
+{
+  "kind": "collectionType",
+  "collectionName": "workday_logs",
+  "info": {
+    "name": "Workday Log",
+    "description": ""
+  },
+  "options": {
+    "increments": true,
+    "timestamps": true,
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "date": {
+      "type": "date"
+    },
+    "users_permissions_user": {
+      "plugin": "users-permissions",
+      "model": "user"
+    },
+    "hour_in": {
+      "type": "time"
+    },
+    "hour_out": {
+      "type": "time"
+    }
+  }
+}

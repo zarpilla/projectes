@@ -71,6 +71,7 @@ async function importSeedData() {
         "treasury": ["create", "find", "findone", "update", "delete"],
         "kanban-view": ["create", "find", "findone", "update", "delete"],
         "justifications": ["create", "find", "findone", "update", "delete"],
+        "workday-log": ["create", "find", "findone", "update", "delete"],
         
     });
 

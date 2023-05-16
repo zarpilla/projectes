@@ -26,6 +26,14 @@
     },
     {
       "method": "GET",
+      "path": "/projects/reset",
+      "handler": "project.reset",
+      "config": {
+        "policies": []
+      }
+    },    
+    {
+      "method": "GET",
       "path": "/projects/phases",
       "handler": "project.findWithPhases",
       "config": {

@@ -399,6 +399,35 @@ const calculateEstimatedTotals = async (
 let projectsQueue = [];
 
 module.exports = {
+  async reset() {
+    // await strapi.query("project").delete({ _limit: -1 });
+    // await strapi.query("activity").delete({ _limit: -1 });
+    // await strapi.query("activity-type").delete({ _limit: -1 });
+    // await strapi.query("daily-dedication").delete({ _limit: -1 });
+    // await strapi.query("contacts").delete({ _limit: -1 });
+    // await strapi.query("emitted-invoice").delete({ _limit: -1 });
+    // await strapi.query("festive").delete({ _limit: -1 });
+    // await strapi.query("kanban-view").delete({ _limit: -1 });
+    // await strapi.query("payroll").delete({ _limit: -1 });
+    // await strapi.query("quote").delete({ _limit: -1 });
+    // await strapi.query("received-expense").delete({ _limit: -1 });
+    // await strapi.query("received-income").delete({ _limit: -1 });
+    // await strapi.query("received-invoice").delete({ _limit: -1 });
+    // await strapi.query("project-scope").delete({ _limit: -1 });
+    // await strapi.query("serie").delete({ _limit: -1 });
+    // await strapi.query("task").delete({ _limit: -1 });
+    // await strapi.query("time-counter").delete({ _limit: -1 });
+    // await strapi.query("treasury").delete({ _limit: -1 });
+    // await strapi.query("year").delete({ _limit: -1 });
+    
+
+    // comment activity beforeDelete
+    // delete users-permissions_user manually
+    // to fill: year, festive
+
+    return []
+
+  },
   async updateDirtyProject(id) {
     const project = await strapi.query("project").findOne({ id: id });
 
@@ -956,7 +985,7 @@ module.exports = {
   },
 
   setDirty: async (id) => {
-    console.log("setDirty", id);
+    // console.log("setDirty", id);
     if (parseInt(id) > 0) {
       await strapi
         .query("dirty-queue")

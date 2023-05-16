@@ -1,0 +1,52 @@
+{
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/workday-logs",
+      "handler": "workday-log.find",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/workday-logs/count",
+      "handler": "workday-log.count",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/workday-logs/:id",
+      "handler": "workday-log.findOne",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/workday-logs",
+      "handler": "workday-log.create",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "PUT",
+      "path": "/workday-logs/:id",
+      "handler": "workday-log.update",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "DELETE",
+      "path": "/workday-logs/:id",
+      "handler": "workday-log.delete",
+      "config": {
+        "policies": []
+      }
+    }
+  ]
+}
