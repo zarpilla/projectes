@@ -14,6 +14,8 @@ const doProjectInfoCalculations = async (
   dailyDedications,
   festives
 ) => {
+
+  // console.log('doProjectInfoCalculations')
   if (!id || !data) {
     return;
   }
@@ -163,12 +165,23 @@ const doProjectInfoCalculations = async (
   return data;
 };
 
-const updateProjectInfo = async (id) => {
+const updateProjectInfo = async (id, updateEstimated) => {
+
+  // console.log("updateProjectInfo 0");
+  // var start = new Date()
+
   const data = await strapi.query("project").findOne({ id });
+
+  // var end = new Date() - start
+  // console.log("updateProjectInfo 1", end);
+
   const dailyDedications = await strapi
     .query("daily-dedication")
     .find({ _limit: -1 });
   const festives = await strapi.query("festive").find({ _limit: -1 });
+
+  // var end = new Date() - start
+  // console.log("updateProjectInfo 2", end);
 
   const info = await doProjectInfoCalculations(
     data,
@@ -177,8 +190,24 @@ const updateProjectInfo = async (id) => {
     festives
   );
 
+  // var end = new Date() - start
+  // console.log("updateProjectInfo 3", end);
+
+  // console.log("updateProjectInfo info", info);
+
+  if (!updateEstimated) {
+    delete info.incomes
+    delete info.expenses
+    delete info.phases
+    delete info.original_phases
+  }
+  
+
   info._internal = true;
   await strapi.query("project").update({ id: id }, info);
+
+  // var end = new Date() - start
+  // console.log("updateProjectInfo 4", end);
 
   return { id };
 };
@@ -953,18 +982,34 @@ module.exports = {
   },
 
   doCalculateProjectInfo: async (ctx) => {
+
+    console.log("doCalculateProjectInfo 0", end);
     const { id } = ctx.params;
+    var start = new Date()
     const data = await strapi.query("project").findOne({ id });
+    var end = new Date() - start
+    console.log("doCalculateProjectInfo 1", end);
     const dailyDedications = await strapi
       .query("daily-dedication")
       .find({ _limit: -1 });
+      
+    var end = new Date() - start
+    console.log("doCalculateProjectInfo 2", end);
+
     const festives = await strapi.query("festive").find({ _limit: -1 });
+    
+    var end = new Date() - start
+    console.log("doCalculateProjectInfo 3", end);
+
     const result = await doProjectInfoCalculations(
       data,
       id,
       dailyDedications,
       festives
     );
+    var end = new Date() - start
+    console.log("doCalculateProjectInfo 4", end);
+
     return result;
   },
 
@@ -987,10 +1032,11 @@ module.exports = {
   setDirty: async (id) => {
     // console.log("setDirty", id);
     if (parseInt(id) > 0) {
+      await updateProjectInfo(id, false)
+
       await strapi
         .query("dirty-queue")
-        .create({ entityId: id, entity: "project" });
-      // await strapi.query("project").update({ id: id }, { dirty: true });
+        .create({ entityId: id, entity: "project" });      
     }
   },
 
@@ -1001,14 +1047,14 @@ module.exports = {
   updateQueuedProjects: async () => {
     const projects = projectsQueue.pop();
     if (projects && projects.current) {
-      await updateProjectInfo(projects.current);
+      await updateProjectInfo(projects.current, true);
     }
     if (
       projects &&
       projects.previous &&
       projects.current !== projects.previous
     ) {
-      await updateProjectInfo(projects.previous);
+      await updateProjectInfo(projects.previous, true);
     }
   },
 };
