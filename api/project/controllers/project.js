@@ -588,6 +588,8 @@ module.exports = {
     // only published
     // ctx.query.published_at_null = false;
 
+    const start = +new Date()
+
     const { query, year, paid, document } = ctx.query;
     // ctx.query = { _limit: -1 }
 
@@ -598,15 +600,20 @@ module.exports = {
       promises.push(strapi.query("project").find({ _limit: -1 }));
     }
 
-    promises.push(strapi.query("activity").find({ _limit: -1 }));
+    
+
+    promises.push(strapi.query("activity").find({ _limit: 0 }));
     promises.push(strapi.query("daily-dedication").find({ _limit: -1 }));
     promises.push(strapi.query("festive").find({ _limit: -1 }));
 
     const results = await Promise.all(promises);
     let projects = results[0];
-    const activities = results[1];
+    //const activities = results[1];
     const dailyDedications = results[2];
     const festives = results[3];
+
+    var end = +new Date()
+    console.log('end -start', new Date() - start)
 
     projects = projects.filter((p) => p.published_at !== null);
     if (ctx.query && ctx.query._where && ctx.query._where.project_state_eq) {
@@ -617,14 +624,23 @@ module.exports = {
       );
     }
 
+    console.log('projects', projects[0].activities ? projects[0].activities[0] : 0)
+
+    const activities = []
+    projects.forEach(p => {
+      p.activities.forEach(a => {
+        activities.push(a)
+      })
+    })
+
     var response = [];
 
     const activitiesPYM = activities
-      .filter((a) => a.date && a.project && a.project.id)
+      .filter((a) => a.date && a.project)
       .map((a) => {
         return {
           ...a,
-          pym: `${a.project.id}.${moment(a.date, "YYYY-MM-DD").year()}.${moment(
+          pym: `${a.project}.${moment(a.date, "YYYY-MM-DD").year()}.${moment(
             a.date,
             "YYYY-MM-DD"
           ).month()}`,
