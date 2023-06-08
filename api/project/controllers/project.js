@@ -284,12 +284,16 @@ const getEstimateYear = (item) => {
 }
 
 const getRealYear = (item) => {
-  if (item.paid_date) {
+  if (item && item.paid_date) {
     return item.paid_date.substring(0, 4)
   }
-  if (item.emitted) {
+  if (item && item.emitted) {
     return item.emitted.substring(0, 4)
   }
+  if (item && item.date) {
+    return item.date.substring(0, 4)
+  }
+  return '9999'
 }
 
 const calculateEstimatedTotals = async (
