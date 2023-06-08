@@ -50,16 +50,17 @@ const doProjectInfoCalculations = async (
   }
 
   if (data.phases && data.phases.length) {
-    // const dailyDedications = await strapi
-    //   .query("daily-dedication")
-    //   .find({ _limit: -1 });
-    // const festives = await strapi.query("festive").find({ _limit: -1 });
+
     const infoPhases = await calculateEstimatedTotals(
       data,
       data.phases,
       dailyDedications,
-      festives
+      festives,
+      true
     );
+
+    var allByYear1 = JSON.parse(JSON.stringify(infoPhases.totalsByYear))
+
     data = infoPhases.data;
     data.total_expenses = infoPhases.total_expenses;
     data.total_incomes = infoPhases.total_incomes;
@@ -74,8 +75,12 @@ const doProjectInfoCalculations = async (
         data,
         data.original_phases,
         dailyDedications,
-        festives
+        festives,
+        false
       );
+
+      var allByYear2 = JSON.parse(JSON.stringify(infoOriginalPhases.totalsByYear))
+
       data = infoOriginalPhases.data;
       data.total_expenses = infoOriginalPhases.total_expenses;
       data.total_incomes = infoOriginalPhases.total_incomes;
@@ -92,16 +97,61 @@ const doProjectInfoCalculations = async (
     data.total_real_expenses = 0;
   }
 
-  // const promises = [];
-  // promises.push(strapi.query("activity").find({ project: id, _limit: -1 }));
-  // const results = await Promise.all(promises);
-  const activities = data.activities; // results[0];
+  const activities = data.activities; 
 
   data.total_real_hours = _.sumBy(activities, "hours");
   const activities_price = activities.map((a) => {
     return { cost: a.hours * a.cost_by_hour };
   });
   data.total_real_hours_price = _.sumBy(activities_price, "cost");
+
+  const activitiesByYear = _(data.activities.map(a => { return { ...a, year: getEstimateYear(a)}}))
+      .groupBy("year")
+      .map((rows, year) => {
+        return {
+          year: year,
+          total_real_hours: _.sumBy(rows, 'hours'),
+          total_real_hours_price: _.sumBy(rows, (a) => a.hours * a.cost_by_hour)
+        };
+      });
+
+  var allByYear3 = JSON.parse(JSON.stringify(activitiesByYear))  
+
+  let allByYearArray = _.concat(allByYear1, allByYear2, allByYear3)
+  
+  const allByYear = 
+    JSON.parse(JSON.stringify(
+    _(allByYearArray)
+      .groupBy("year")
+      .map((rows, year) => {
+        return {
+          year: year,
+          total_incomes: _.sumBy(rows, 'total_incomes') | 0,
+          total_expenses: _.sumBy(rows, 'total_expenses') | 0,
+          total_real_incomes: _.sumBy(rows, 'total_real_incomes') | 0,
+          total_real_expenses: _.sumBy(rows, 'total_real_expenses') | 0,
+          total_estimated_hours: _.sumBy(rows, 'total_estimated_hours') | 0,
+          total_estimated_hours_price: _.sumBy(rows, 'total_estimated_hours_price') | 0,
+          total_real_hours: _.sumBy(rows, 'total_real_hours') | 0,
+          total_real_hours_price: _.sumBy(rows, 'total_real_hours_price') | 0,
+          total_real_incomes_expenses: (_.sumBy(rows, 'total_real_incomes') | 0)  - (_.sumBy(rows, 'total_real_expenses') | 0) - (_.sumBy(rows, 'total_real_hours_price') | 0),
+          incomes_expenses: (_.sumBy(rows, 'total_incomes') | 0) - (_.sumBy(rows, 'total_expenses') | 0) - (_.sumBy(rows, 'total_estimated_hours_price') | 0)
+          // data.total_real_expenses -
+          // data.total_real_hours_price
+          /*
+          data.balance =
+    data.total_incomes - data.total_expenses - data.total_expenses_hours;
+  data.estimated_balance =
+    data.total_incomes - data.total_expenses - data.total_estimated_expenses;
+  data.incomes_expenses =
+    data.total_incomes - data.total_expenses - data.total_estimated_hours_price;
+    */
+        };
+      })
+    ));
+
+  data.allByYear = allByYear
+
   data.total_real_incomes_expenses =
     data.total_real_incomes -
     data.total_real_expenses -
@@ -212,11 +262,42 @@ const updateProjectInfo = async (id, updateEstimated) => {
   return { id };
 };
 
+const addToYear = (years, year, property, value) => {
+  if (!years[`y_${year}`]) {
+    years[`y_${year}`] = {}
+  }
+  if (!years[`y_${year}`][property]) {
+    years[`y_${year}`][property] = 0
+  }
+  years[`y_${year}`][property] += value
+  return years
+}
+
+const getEstimateYear = (item) => {
+  if (item && item.date) {
+    return item.date.substring(0, 4)
+  }
+  if (item && item.date_estimate_document) {
+    return item.date_estimate_document.substring(0, 4)
+  }
+  return '9999'
+}
+
+const getRealYear = (item) => {
+  if (item.paid_date) {
+    return item.paid_date.substring(0, 4)
+  }
+  if (item.emitted) {
+    return item.emitted.substring(0, 4)
+  }
+}
+
 const calculateEstimatedTotals = async (
   data,
   phases,
   dailyDedications,
-  festives
+  festives,
+  real // or estimated
 ) => {
   var total_estimated_hours = 0;
   var total_incomes = 0;
@@ -226,7 +307,10 @@ const calculateEstimatedTotals = async (
   let total_real_incomes = 0;
   let total_real_expenses = 0;
 
+  const years = {}
+
   const totalsByDay = [];
+  const rowsByYear = [];
 
   if (phases && phases.length) {
     for (var i = 0; i < phases.length; i++) {
@@ -236,12 +320,20 @@ const calculateEstimatedTotals = async (
           const subphase = phase.subphases[j];
           var subphase_estimated_hours = 0;
 
+          // console.log('subphase', subphase)
+
           subphase.total_amount =
             (subphase.quantity ? subphase.quantity : 0) *
             (subphase.amount ? subphase.amount : 0);
           total_incomes +=
             (subphase.quantity ? subphase.quantity : 0) *
             (subphase.amount ? subphase.amount : 0);
+
+          const ey = getEstimateYear(subphase)
+          if (!real) {
+            rowsByYear.push({ year: ey, total_incomes: subphase.total_amount })
+          }
+          
 
           if (subphase.estimated_hours) {
             for (var k = 0; k < subphase.estimated_hours.length; k++) {
@@ -295,6 +387,11 @@ const calculateEstimatedTotals = async (
                       total_estimated_hours_price += q * costByHour;
 
                       totalsByDay.push({ day, q, costByHour });
+
+                      if (!real) {
+                        rowsByYear.push({ year: day.format("YYYY"), total_estimated_hours: q })
+                        rowsByYear.push({ year: day.format("YYYY"), total_estimated_hours_price: q * costByHour })
+                      }
                     }
                   }
                 } else if (
@@ -340,6 +437,11 @@ const calculateEstimatedTotals = async (
                       total_estimated_hours_price += q * costByHour;
 
                       totalsByDay.push({ day, q, costByHour });
+
+                      if (!real) {
+                        rowsByYear.push({ year: day.format("YYYY"), total_estimated_hours: q })
+                        rowsByYear.push({ year: day.format("YYYY"), total_estimated_hours_price: q * costByHour })
+                      }
                     }
                   }
                 } else {
@@ -359,6 +461,8 @@ const calculateEstimatedTotals = async (
                     (hours.quantity ? hours.quantity : 0) * mdiff * costByHour;
                   total_estimated_hours_price +=
                     (hours.quantity ? hours.quantity : 0) * mdiff * costByHour;
+
+                  
 
                   mdiff = Math.round(
                     moment
@@ -381,6 +485,11 @@ const calculateEstimatedTotals = async (
                       q: hours.quantity / mdiff,
                       costByHour,
                     });
+
+                    if (!real) {
+                      rowsByYear.push({ year: day.format("YYYY"), total_estimated_hours: hours.quantity / mdiff })
+                      rowsByYear.push({ year: day.format("YYYY"), total_estimated_hours_price: hours.quantity / mdiff * costByHour })
+                    }
                   }
                 }
               }
@@ -391,27 +500,58 @@ const calculateEstimatedTotals = async (
             total_real_incomes +=
               (subphase.quantity ? subphase.quantity : 0) *
               (subphase.amount ? subphase.amount : 0);
+            if (real) {
+              const realYear = getRealYear(subphase.income ? subphase.income : ( subphase.expense ? subphase.expense : subphase.invoice))
+              rowsByYear.push({ year: realYear, total_real_incomes: (subphase.quantity ? subphase.quantity : 0) * (subphase.amount ? subphase.amount : 0)})
+            }
           }
         }
       }
       if (phase.expenses && phase.expenses.length) {
         for (var j = 0; j < phase.expenses.length; j++) {
           const expense = phase.expenses[j];
+
           expense.total_amount =
             (expense.quantity ? expense.quantity : 0) *
             (expense.amount ? expense.amount : 0);
           total_expenses +=
             (expense.quantity ? expense.quantity : 0) *
             (expense.amount ? expense.amount : 0);
+
+          if (!real) {
+            const ey = getEstimateYear(expense)
+            rowsByYear.push({ year: ey, total_expenses: expense.total_amount })
+          }
+          
           if (expense.paid) {
             total_real_expenses +=
               (expense.quantity ? expense.quantity : 0) *
               (expense.amount ? expense.amount : 0);
+
+            if (real) {
+              const realYear = getRealYear(expense.invoice ? expense.invoice : expense.expense)
+              rowsByYear.push({ year: realYear, total_real_expenses: (expense.quantity ? expense.quantity : 0) * (expense.amount ? expense.amount : 0)})
+            }
           }
         }
       }
     }
   }
+
+
+  const totalsByYear = _(rowsByYear)
+      .groupBy("year")
+      .map((rows, year) => {
+        return {
+          year: year,
+          total_expenses: _.sumBy(rows, 'total_expenses'),
+          total_incomes: _.sumBy(rows, 'total_incomes'),
+          total_estimated_hours: _.sumBy(rows, 'total_estimated_hours'),
+          total_estimated_hours_price: _.sumBy(rows, 'total_estimated_hours_price'),
+          total_real_incomes: _.sumBy(rows, 'total_real_incomes'),
+          total_real_expenses: _.sumBy(rows, 'total_real_expenses'),
+        };
+      });
 
   return {
     data,
@@ -422,6 +562,7 @@ const calculateEstimatedTotals = async (
     total_real_incomes,
     total_real_expenses,
     totalsByDay,
+    totalsByYear
   };
 };
 
@@ -613,7 +754,7 @@ module.exports = {
     const festives = results[3];
 
     var end = +new Date()
-    console.log('end -start', new Date() - start)
+    // console.log('end -start', new Date() - start)
 
     projects = projects.filter((p) => p.published_at !== null);
     if (ctx.query && ctx.query._where && ctx.query._where.project_state_eq) {
@@ -624,7 +765,7 @@ module.exports = {
       );
     }
 
-    console.log('projects', projects[0].activities ? projects[0].activities[0] : 0)
+    // console.log('projects', projects[0].activities ? projects[0].activities[0] : 0)
 
     const activities = []
     projects.forEach(p => {
