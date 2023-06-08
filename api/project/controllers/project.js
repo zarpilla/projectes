@@ -274,11 +274,11 @@ const addToYear = (years, year, property, value) => {
 }
 
 const getEstimateYear = (item) => {
-  if (item && item.date) {
-    return item.date.substring(0, 4)
-  }
   if (item && item.date_estimate_document) {
     return item.date_estimate_document.substring(0, 4)
+  }
+  if (item && item.date) {
+    return item.date.substring(0, 4)
   }
   return '9999'
 }
