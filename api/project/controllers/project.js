@@ -724,7 +724,7 @@ module.exports = {
 
     return projects
       .map((entity) => sanitizeEntity(entity, { model: strapi.models.project }))
-      .filter((p) => p.published_at !== "");
+      .filter((p) => p.published_at !== "" && p.published_at !== null);
   },
 
   async findWithEconomicDetail(ctx) {
