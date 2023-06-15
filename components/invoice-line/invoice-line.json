@@ -29,6 +29,9 @@
     },
     "comments": {
       "type": "text"
+    },
+    "product": {
+      "model": "product"
     }
   }
 }

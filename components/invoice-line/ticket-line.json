@@ -30,6 +30,9 @@
     },
     "date": {
       "type": "date"
+    },
+    "product": {
+      "model": "product"
     }
   }
 }

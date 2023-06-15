@@ -72,6 +72,7 @@ async function importSeedData() {
         "kanban-view": ["create", "find", "findone", "update", "delete"],
         "justifications": ["create", "find", "findone", "update", "delete"],
         "workday-log": ["create", "find", "findone", "update", "delete"],
+        "product": ["find", "findone"],
         
     });
 
