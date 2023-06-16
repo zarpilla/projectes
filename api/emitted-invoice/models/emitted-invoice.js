@@ -69,10 +69,17 @@ let calculateTotals = async (data) => {
   if (!data.code) {
     const serial = await strapi.query("serie").findOne({ id: data.serial });
     if (!data.number) {
-      const quotes = await strapi
-        .query("emitted-invoice")
-        .find({ serial: data.serial, _limit: -1 });
-      data.number = quotes.length + 1;
+      var emitted_invoice_number = 1
+      if (serial.emitted_invoice_number) {
+        emitted_invoice_number = serial.emitted_invoice_number + 1
+      } else {
+        const quotes = await strapi
+          .query("emitted-invoice")
+          .find({ serial: data.serial, _limit: -1 });
+          emitted_invoice_number = quotes.length + 1
+      }
+      await strapi.query("serie").update({ id: data.serial }, { emitted_invoice_number: emitted_invoice_number });      
+      data.number = emitted_invoice_number;
     }
     const zeroPad = (num, places) => String(num).padStart(places, "0");
     const places = serial.leadingZeros || 1;

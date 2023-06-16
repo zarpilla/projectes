@@ -16,6 +16,10 @@
     },
     "leadingZeros": {
       "type": "integer"
+    },
+    "emitted_invoice_number": {
+      "type": "integer",
+      "default": 0
     }
   }
 }
