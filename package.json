@@ -11,8 +11,9 @@
     "strapi": "strapi"
   },
   "dependencies": {
+    "crypto": "^1.0.1",
     "knex": "0.21.18",
-    "lodash": "^4.17.21",    
+    "lodash": "^4.17.21",
     "moment": "^2.29.3",
     "mysql": "^2.18.1",
     "node-ical": "^0.15.1",
