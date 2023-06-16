@@ -56,8 +56,8 @@ module.exports = {
                 .toFile(logo)
         }
 
-        const width = 100
-        const ratio = me.logo.width / width
+        const logoWidth = 150
+        const ratio = me.logo.width / logoWidth
 
         const invoiceHeader = [{
             label: "Número",
@@ -246,7 +246,7 @@ module.exports = {
                 header: {
                     image: {
                         path: logo,
-                        width: width, //250,
+                        width: logoWidth,
                         height: me.logo.height / ratio
                     }
                 }
