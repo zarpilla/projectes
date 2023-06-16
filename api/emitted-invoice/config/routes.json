@@ -26,6 +26,14 @@
     },
     {
       "method": "GET",
+      "path": "/emitted-invoices/pdf/:doc/:id",
+      "handler": "emitted-invoice.pdf",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "GET",
       "path": "/emitted-invoices/:id",
       "handler": "emitted-invoice.findOne",
       "config": {
