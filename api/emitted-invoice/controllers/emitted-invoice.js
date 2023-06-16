@@ -234,9 +234,15 @@ module.exports = {
                 color: "primary"
             })
         }
-        if (me.invoice_footer) {
+        if (me.invoice_footer && doc === 'emitted-invoice') {
             legal.push({
                 value: me.invoice_footer,
+                color: "secondary"
+            })
+        }
+        else if (me.quote_footer && doc === 'quote') {
+            legal.push({
+                value: me.quote_footer,
                 color: "secondary"
             })
         }
