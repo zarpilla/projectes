@@ -59,7 +59,7 @@ async function importSeedData() {
         "payroll": ["create", "find", "findone", "update", "delete", "createAll"],
         "project": ["create", "find", "findone", "update", "delete", "findwithbasicinfo", "findwithphases", "payexpense", "payincome", "findwitheconomicdetail", "findChildren", "doCalculateProjectInfo", "getProjectIsDirty"],
         "quote": ["create", "find", "findone", "update", "delete"],
-        "contact": ["create", "find", "findone", "update", "delete"],
+        "contact": ["create", "find", "findone", "update", "delete", "basic"],
         "festive-type": ["find"],
         "festive": ["create", "find", "findone", "update", "delete"],
         "daily-dedication": ["create", "find", "findone", "update", "delete"],        
