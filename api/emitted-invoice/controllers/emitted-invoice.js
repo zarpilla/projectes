@@ -266,7 +266,7 @@ module.exports = {
                     currency: 'EUR',
 
                     customer: [{
-                        label: doc !== 'emitted-invoice' ? "PROVEÏDOR" : "CLIENT",
+                        label: doc !== 'emitted-invoice' && doc !== 'quote' ? "PROVEÏDOR" : "CLIENT",
                         value: [
                             invoice.contact.name,
                             invoice.contact.nif,
@@ -277,7 +277,7 @@ module.exports = {
                     ],
 
                     seller: [{
-                        label: doc !== 'emitted-invoice' ? "CLIENT" : "PROVEÏDOR",
+                        label: doc !== 'emitted-invoice' && doc !== 'quote' ? "CLIENT" : "PROVEÏDOR",
                         value: [
                             me.name,
                             me.nif,
