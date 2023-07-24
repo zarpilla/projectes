@@ -1,0 +1,19 @@
+{
+  "collectionName": "components_periodification_periodifications",
+  "info": {
+    "name": "periodification",
+    "icon": "book-medical"
+  },
+  "options": {},
+  "attributes": {
+    "year": {
+      "type": "string"
+    },
+    "incomes": {
+      "type": "decimal"
+    },
+    "expenses": {
+      "type": "decimal"
+    }
+  }
+}

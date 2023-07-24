@@ -1,6 +1,7 @@
 "use strict";
 const { sanitizeEntity } = require("strapi-utils");
 const _ = require("lodash");
+const sumBy = require ("lodash/sumBy");
 const moment = require("moment");
 
 /**
@@ -110,6 +111,7 @@ const doProjectInfoCalculations = async (
       .map((rows, year) => {
         return {
           year: year,
+          // total_incomes: 0.0,
           total_real_hours: _.sumBy(rows, 'hours'),
           total_real_hours_price: _.sumBy(rows, (a) => a.hours * a.cost_by_hour)
         };
@@ -118,37 +120,32 @@ const doProjectInfoCalculations = async (
   var allByYear3 = JSON.parse(JSON.stringify(activitiesByYear))  
 
   let allByYearArray = _.concat(allByYear1, allByYear2, allByYear3)
+
+
+  console.log('allByYearArray', _.values(allByYearArray))
   
   const allByYear = 
-    JSON.parse(JSON.stringify(
-    _(allByYearArray)
+      _(_.values(allByYearArray))
       .groupBy("year")
-      .map((rows, year) => {
+      .map((rows, year) => {        
         return {
           year: year,
-          total_incomes: _.sumBy(rows, 'total_incomes') | 0,
-          total_expenses: _.sumBy(rows, 'total_expenses') | 0,
-          total_real_incomes: _.sumBy(rows, 'total_real_incomes') | 0,
-          total_real_expenses: _.sumBy(rows, 'total_real_expenses') | 0,
-          total_estimated_hours: _.sumBy(rows, 'total_estimated_hours') | 0,
-          total_estimated_hours_price: _.sumBy(rows, 'total_estimated_hours_price') | 0,
-          total_real_hours: _.sumBy(rows, 'total_real_hours') | 0,
-          total_real_hours_price: _.sumBy(rows, 'total_real_hours_price') | 0,
-          total_real_incomes_expenses: (_.sumBy(rows, 'total_real_incomes') | 0)  - (_.sumBy(rows, 'total_real_expenses') | 0) - (_.sumBy(rows, 'total_real_hours_price') | 0),
-          incomes_expenses: (_.sumBy(rows, 'total_incomes') | 0) - (_.sumBy(rows, 'total_expenses') | 0) - (_.sumBy(rows, 'total_estimated_hours_price') | 0)
-          // data.total_real_expenses -
-          // data.total_real_hours_price
-          /*
-          data.balance =
-    data.total_incomes - data.total_expenses - data.total_expenses_hours;
-  data.estimated_balance =
-    data.total_incomes - data.total_expenses - data.total_estimated_expenses;
-  data.incomes_expenses =
-    data.total_incomes - data.total_expenses - data.total_estimated_hours_price;
-    */
+          total_incomes: sumBy(rows, r => r.total_incomes !== undefined ? parseFloat(r.total_incomes) : 0.0),
+          total_expenses: sumBy(rows, r => r.total_expenses !== undefined ? parseFloat(r.total_expenses) : 0.0),
+          total_real_incomes: sumBy(rows, r => r.total_real_incomes !== undefined ? parseFloat(r.total_real_incomes) : 0.0),
+          total_real_expenses: sumBy(rows, r => r.total_real_expenses !== undefined ? parseFloat(r.total_real_expenses) : 0.0),
+          total_estimated_hours: sumBy(rows, r => r.total_estimated_hours !== undefined ? parseFloat(r.total_estimated_hours) : 0.0),
+          total_estimated_hours_price: sumBy(rows, r => r.total_estimated_hours_price !== undefined ? parseFloat(r.total_estimated_hours_price) : 0.0),
+          total_real_hours: sumBy(rows, r => r.total_real_hours !== undefined ? parseFloat(r.total_real_hours) : 0.0),
+          total_real_hours_price: sumBy(rows, r => r.total_real_hours_price !== undefined ? parseFloat(r.total_real_hours_price) : 0.0),
+          total_real_incomes_expenses: (_.sumBy(rows, r => r.total_real_incomes !== undefined ? parseFloat(r.total_real_incomes) : 0.0))  - (_.sumBy(rows, r => r.total_real_expenses !== undefined ? parseFloat(r.total_real_expenses) : 0.0)) - (_.sumBy(rows, r => r.total_real_hours_price !== undefined ? parseFloat(r.total_real_hours_price) : 0.0)),
+          incomes_expenses: (_.sumBy(rows, r => r.total_incomes !== undefined ? parseFloat(r.total_incomes) : 0.0) | 0.0) - (_.sumBy(rows, r => r.total_expenses !== undefined ? parseFloat(r.total_expenses) : 0.0) | 0.0) - (_.sumBy(rows, r => r.total_estimated_hours_price !== undefined ? parseFloat(r.total_estimated_hours_price) : 0.0) | 0.0)
+          
         };
       })
-    ));
+    ;
+
+
 
   data.allByYear = allByYear
 

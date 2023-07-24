@@ -241,6 +241,11 @@
     "dirty": {
       "type": "boolean",
       "default": false
+    },
+    "periodification": {
+      "type": "component",
+      "repeatable": true,
+      "component": "periodification.periodification"
     }
   }
 }
