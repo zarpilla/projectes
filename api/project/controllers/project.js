@@ -121,9 +121,6 @@ const doProjectInfoCalculations = async (
 
   let allByYearArray = _.concat(allByYear1, allByYear2, allByYear3)
 
-
-  console.log('allByYearArray', _.values(allByYearArray))
-  
   const allByYear = 
       _(_.values(allByYearArray))
       .groupBy("year")
