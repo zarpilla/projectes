@@ -142,9 +142,15 @@ const doProjectInfoCalculations = async (
       })
     ;
 
+  const allByYearPeriodificated = allByYear.map(y => { return { ...y, 
+    total_real_incomes: y.total_real_incomes + (data.periodification.find(p => p.year === y.year) ? data.periodification.find(p => p.year === y.year).real_incomes : 0), 
+    total_real_expenses: y.total_real_expenses + (data.periodification.find(p => p.year === y.year) ? data.periodification.find(p => p.year === y.year).real_expenses : 0),
+    total_incomes: y.total_real_incomes + (data.periodification.find(p => p.year === y.year) ? data.periodification.find(p => p.year === y.year).incomes : 0), 
+    total_expenses: y.total_real_expenses + (data.periodification.find(p => p.year === y.year) ? data.periodification.find(p => p.year === y.year).expenses : 0) 
+  }})
 
 
-  data.allByYear = allByYear
+  data.allByYear = allByYearPeriodificated
 
   data.total_real_incomes_expenses =
     data.total_real_incomes -
@@ -741,15 +747,15 @@ module.exports = {
 
     
 
-    promises.push(strapi.query("activity").find({ _limit: 0 }));
+    // promises.push(strapi.query("activity").find({ _limit: 0 }));
     promises.push(strapi.query("daily-dedication").find({ _limit: -1 }));
     promises.push(strapi.query("festive").find({ _limit: -1 }));
 
     const results = await Promise.all(promises);
     let projects = results[0];
     //const activities = results[1];
-    const dailyDedications = results[2];
-    const festives = results[3];
+    const dailyDedications = results[1];
+    const festives = results[2];
 
     var end = +new Date()
     // console.log('end -start', new Date() - start)
@@ -914,6 +920,36 @@ module.exports = {
           }
         });
       });
+
+      if (p.periodification && p.periodification.length) {
+
+        p.periodification.forEach(pp => {
+
+          response.push({
+            ...projectInfo,
+            type: "income",            
+            income_esti: pp.incomes,
+            income_real: pp.real_incomes,
+            date: `${pp.year}-12-31`,
+            year: pp.year,
+            month: "12",
+            row_type: "Periodificació"
+          });
+
+
+          response.push({
+            ...projectInfo,
+            type: "expense",            
+            expense_esti: pp.expenses,
+            expense_real: pp.real_expenses,
+            date: `${pp.year}-12-31`,
+            year: pp.year,
+            month: "12",
+            row_type: "Periodificació"
+          });
+
+        })
+      }
 
       const projectActivities = groupedActivities.filter(
         (a) => a.projectId === projectInfo.id
