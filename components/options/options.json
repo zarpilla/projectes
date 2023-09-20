@@ -27,6 +27,9 @@
     "showTasksInGantt": {
       "type": "boolean",
       "default": true
+    },
+    "show_forecast": {
+      "type": "boolean"
     }
   }
 }
