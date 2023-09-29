@@ -121,8 +121,10 @@ const doProjectInfoCalculations = async (
 
   let allByYearArray = _.concat(allByYear1, allByYear2, allByYear3)
 
+  var allByYearArrayJSON = JSON.parse(JSON.stringify(allByYearArray))  
+
   const allByYear = 
-      _(_.values(allByYearArray))
+      _(_.values(allByYearArrayJSON))
       .groupBy("year")
       .map((rows, year) => {        
         return {
@@ -142,15 +144,14 @@ const doProjectInfoCalculations = async (
       })
     ;
 
-  const allByYearPeriodificated = allByYear.map(y => { return { ...y, 
-    total_real_incomes: y.total_real_incomes + (data.periodification.find(p => p.year === y.year) ? data.periodification.find(p => p.year === y.year).real_incomes : 0), 
-    total_real_expenses: y.total_real_expenses + (data.periodification.find(p => p.year === y.year) ? data.periodification.find(p => p.year === y.year).real_expenses : 0),
-    total_incomes: y.total_real_incomes + (data.periodification.find(p => p.year === y.year) ? data.periodification.find(p => p.year === y.year).incomes : 0), 
-    total_expenses: y.total_real_expenses + (data.periodification.find(p => p.year === y.year) ? data.periodification.find(p => p.year === y.year).expenses : 0) 
+  const allByYearPeriodificated = JSON.parse(JSON.stringify(allByYear)).map(y => { return { ...y, 
+    total_real_incomes: y.total_real_incomes + (data.periodification && data.periodification.find(p => p.year === y.year) ? data.periodification.find(p => p.year === y.year).real_incomes : 0), 
+    total_real_expenses: y.total_real_expenses + (data.periodification && data.periodification.find(p => p.year === y.year) ? data.periodification.find(p => p.year === y.year).real_expenses : 0),
+    total_incomes: ( y.total_incomes ?? 0 ) + (data.periodification && data.periodification.find(p => p.year === y.year) ? data.periodification.find(p => p.year === y.year).incomes : 0), 
+    total_expenses: ( y.total_expenses ?? 0 ) + (data.periodification && data.periodification.find(p => p.year === y.year) ? data.periodification.find(p => p.year === y.year).expenses : 0) 
   }})
 
-
-  data.allByYear = allByYearPeriodificated
+  data.allByYear = JSON.parse(JSON.stringify(allByYearPeriodificated))
 
   data.total_real_incomes_expenses =
     data.total_real_incomes -
@@ -580,7 +581,7 @@ module.exports = {
     // await strapi.query("daily-dedication").delete({ _limit: -1 });
     // await strapi.query("contacts").delete({ _limit: -1 });
     // await strapi.query("emitted-invoice").delete({ _limit: -1 });
-    // await strapi.query("festive").delete({ _limit: -1 });
+    // await strapi.query("festive").delete({ _limit: -1, users_permissions_user_ne: null});
     // await strapi.query("kanban-view").delete({ _limit: -1 });
     // await strapi.query("payroll").delete({ _limit: -1 });
     // await strapi.query("quote").delete({ _limit: -1 });
@@ -592,7 +593,9 @@ module.exports = {
     // await strapi.query("task").delete({ _limit: -1 });
     // await strapi.query("time-counter").delete({ _limit: -1 });
     // await strapi.query("treasury").delete({ _limit: -1 });
-    // await strapi.query("year").delete({ _limit: -1 });
+    // //// await strapi.query("year").delete({ _limit: -1 });
+
+    // const data = await strapi.db.connection.raw(`SELECT * from table`);
     
 
     // comment activity beforeDelete
@@ -1200,6 +1203,8 @@ module.exports = {
     );
     var end = new Date() - start
     console.log("doCalculateProjectInfo 4", end);
+
+    console.log('result', JSON.parse(JSON.stringify(result.allByYear)))
 
     return result;
   },
