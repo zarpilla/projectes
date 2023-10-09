@@ -123,8 +123,6 @@ const doProjectInfoCalculations = async (
 
   var allByYearArrayJSON = JSON.parse(JSON.stringify(allByYearArray))  
 
-  console.log('allByYearArrayJSON', allByYearArrayJSON)
-
   const allByYear = 
       _(_.values(allByYearArrayJSON.filter(a => a !== null)))
       .groupBy("year")
