@@ -62,6 +62,9 @@ const doProjectInfoCalculations = async (
 
     var allByYear1 = JSON.parse(JSON.stringify(infoPhases.totalsByYear))
 
+
+    console.log('allByYear1', allByYear1)
+
     data = infoPhases.data;
     data.total_expenses = infoPhases.total_expenses;
     data.total_incomes = infoPhases.total_incomes;
@@ -122,6 +125,8 @@ const doProjectInfoCalculations = async (
   let allByYearArray = _.concat(allByYear1, allByYear2, allByYear3)
 
   var allByYearArrayJSON = JSON.parse(JSON.stringify(allByYearArray))  
+
+  console.log('allByYearArrayJSON', allByYearArrayJSON)
 
   const allByYear = 
       _(_.values(allByYearArrayJSON.filter(a => a !== null)))
@@ -284,12 +289,12 @@ const getEstimateYear = (item) => {
   return '9999'
 }
 
-const getRealYear = (item) => {
-  if (item && item.paid_date) {
-    return item.paid_date.substring(0, 4)
-  }
+const getRealYear = (item) => {  
   if (item && item.emitted) {
     return item.emitted.substring(0, 4)
+  }
+  if (item && item.paid_date) {
+    return item.paid_date.substring(0, 4)
   }
   if (item && item.date) {
     return item.date.substring(0, 4)
@@ -507,6 +512,8 @@ const calculateEstimatedTotals = async (
               (subphase.amount ? subphase.amount : 0);
             if (real) {
               const realYear = getRealYear(subphase.income ? subphase.income : ( subphase.expense ? subphase.expense : subphase.invoice))
+
+              console.log('realYear', realYear, subphase.income)
               rowsByYear.push({ year: realYear, total_real_incomes: (subphase.quantity ? subphase.quantity : 0) * (subphase.amount ? subphase.amount : 0)})
             }
           }
