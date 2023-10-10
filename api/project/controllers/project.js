@@ -63,7 +63,7 @@ const doProjectInfoCalculations = async (
     var allByYear1 = JSON.parse(JSON.stringify(infoPhases.totalsByYear))
 
 
-    console.log('allByYear1', allByYear1)
+    // console.log('allByYear1', allByYear1)
 
     data = infoPhases.data;
     data.total_expenses = infoPhases.total_expenses;
@@ -126,7 +126,7 @@ const doProjectInfoCalculations = async (
 
   var allByYearArrayJSON = JSON.parse(JSON.stringify(allByYearArray))  
 
-  console.log('allByYearArrayJSON', allByYearArrayJSON)
+  // console.log('allByYearArrayJSON', allByYearArrayJSON)
 
   const allByYear = 
       _(_.values(allByYearArrayJSON.filter(a => a !== null)))
