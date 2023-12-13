@@ -812,12 +812,15 @@ module.exports = {
         };
       });
 
+    const groupedActivitiesObj = JSON.parse(JSON.stringify(groupedActivities))
     // console.log('activities', activities.length)
     // console.log('grouped', grouped)
 
     // const activities = await strapi.query("activity").find({ _limit: -1 });
 
-    projects.forEach(async (p) => {
+    
+    for (var i=0; i < projects.length; i++) {
+      const p = projects[i]
       const projectInfo = {
         id: p.id,
         project_name: p.name,
@@ -831,8 +834,11 @@ module.exports = {
         mother: p.mother && p.mother.id ? p.mother.name : p.name,
       };
 
-      p.phases.forEach((ph) => {
-        ph.subphases.forEach((sph) => {
+      for (var j=0; j < p.phases.length; j++) {
+        const ph = p.phases[j]
+        for (var k=0; k < ph.subphases.length; k++) {
+          const sph = ph.subphases[k]
+
           if (sph.quantity && sph.amount) {
             const document = sph.income || sph.invoice;
             const date =
@@ -855,8 +861,11 @@ module.exports = {
               document,
             });
           }
-        });
-        ph.expenses.forEach((sph) => {
+        }
+
+        for (var k=0; k < ph.expenses.length; k++) {
+          const sph = ph.expenses[k]
+
           if (sph.quantity && sph.amount) {
             const document = sph.expense || sph.invoice;
             const date =
@@ -879,15 +888,13 @@ module.exports = {
               document,
             });
           }
-        });
-      });
+        }
+      }
 
-      p.original_phases.forEach((ph) => {
-        ph.subphases.forEach((sph) => {
-          // if (sph && sph.estimated_hours && sph.estimated_hours.length) {
-          //   console.log('sph', sph.estimated_hours)
-          // }
-
+      for (var j=0; j < p.original_phases.length; j++) {
+        const ph = p.original_phases[j]
+        for (var k=0; k < ph.subphases.length; k++) {
+          const sph = ph.subphases[k]
           if (sph.quantity && sph.amount) {
             const document = sph.income || sph.invoice;
             const date = sph.date_estimate_document || sph.date;
@@ -907,8 +914,9 @@ module.exports = {
               document,
             });
           }
-        });
-        ph.expenses.forEach((sph) => {
+        }
+        for (var k=0; k < ph.expenses.length; k++) {
+          const sph = ph.expenses[k]
           if (sph.quantity && sph.amount) {
             const document = sph.expense || sph.invoice;
             const date = sph.date_estimate_document || sph.date;
@@ -928,12 +936,13 @@ module.exports = {
               document,
             });
           }
-        });
-      });
+        }
+      }
 
       if (p.periodification && p.periodification.length) {
 
-        p.periodification.forEach(pp => {
+        for (var j=0; j < p.periodification.length; j++) {
+          const pp = p.periodification[j]
 
           response.push({
             ...projectInfo,
@@ -941,7 +950,7 @@ module.exports = {
             income_esti: pp.incomes,
             income_real: pp.real_incomes,
             date: `${pp.year}-12-31`,
-            year: pp.year,
+            year: pp.year.toString(),
             month: "12",
             row_type: "Periodificació"
           });
@@ -953,31 +962,32 @@ module.exports = {
             expense_esti: pp.expenses,
             expense_real: pp.real_expenses,
             date: `${pp.year}-12-31`,
-            year: pp.year,
+            year: pp.year.toString(),
             month: "12",
             row_type: "Periodificació"
           });
+        }
 
-        })
       }
 
-      const projectActivities = groupedActivities.filter(
+      const projectActivities = groupedActivitiesObj.filter(
         (a) => a.projectId === projectInfo.id
       );
 
-      projectActivities.forEach((pa) => {
+      for (var j=0; j < projectActivities.length; j++) {
+        const pa = projectActivities[j]
         response.push({
           ...projectInfo,
           type: "real_hours",
           date: "",
           total_estimated_hours_price: 0,
           total_real_hours_price: -1 * (pa.cost || 0),
-          year: pa.year,
+          year: pa.year.toString(),
           month: pa.month,
           row_type: "",
-          document: "0",
+          // document: "0",
         });
-      });
+      }
 
       const { totalsByDay } = await calculateEstimatedTotals(
         {},
@@ -1005,34 +1015,40 @@ module.exports = {
           };
         });
 
-      groupedTotalsByDay.forEach((g) => {
+      const groupedTotalsByDayObj = JSON.parse(JSON.stringify(groupedTotalsByDay))
+      for (var j=0; j < groupedTotalsByDayObj.length; j++) {
+        const g = groupedTotalsByDayObj[j]
+
         response.push({
           ...projectInfo,
           type: "estimated_hours",
           date: "",
           total_estimated_hours_price: -1 * (g.cost || 0),
           total_real_hours_price: 0,
-          year: g.year,
+          year: g.year.toString(),
           month: g.month,
           row_type: "",
-          document: "0",
-        });
-      });
-    });
+          // document: "0",
+        })
+      }
+
+    }
 
     if (year) {
       response = response.filter((r) => r.year === year);
     }
+
+    if (ctx.query && ctx.query._where && ctx.query._where.year_eq) {
+      response = response.filter((r) => r.year.toString() === ctx.query._where.year_eq.toString());
+    }
+
     if (paid != null) {
       response = response.filter((r) => r.paid === (paid === "true"));
     }
-    // if (document === 'null') {
-    //   response = response.filter(r => r.document === null)
-    // }
-
+    
     // Removing some info
     // const newArray = projects.map(({ phases, activities, emitted_invoices, received_invoices, tickets, diets, emitted_grants, received_grants, quotes, original_phases, incomes, expenses, strategies, estimated_hours, intercooperations, clients, received_expenses, received_incomes, ...item }) => item)
-    return response; // projects.map(entity => sanitizeEntity(entity, { model: strapi.models.project }));
+    return response
   },
 
   async findChildren(ctx) {
