@@ -1,0 +1,52 @@
+{
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/user-festives",
+      "handler": "user-festive.find",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/user-festives/count",
+      "handler": "user-festive.count",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/user-festives/:id",
+      "handler": "user-festive.findOne",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/user-festives",
+      "handler": "user-festive.create",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "PUT",
+      "path": "/user-festives/:id",
+      "handler": "user-festive.update",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "DELETE",
+      "path": "/user-festives/:id",
+      "handler": "user-festive.delete",
+      "config": {
+        "policies": []
+      }
+    }
+  ]
+}

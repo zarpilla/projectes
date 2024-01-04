@@ -1,0 +1,28 @@
+{
+  "kind": "collectionType",
+  "collectionName": "user_festives",
+  "info": {
+    "name": "User Festive",
+    "description": ""
+  },
+  "options": {
+    "increments": true,
+    "timestamps": true,
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "festive_type": {
+      "model": "festive-type"
+    },
+    "year": {
+      "model": "year"
+    },
+    "users_permissions_user": {
+      "plugin": "users-permissions",
+      "model": "user"
+    },
+    "max": {
+      "type": "integer"
+    }
+  }
+}
