@@ -778,6 +778,13 @@ module.exports = {
           p.project_state.id == ctx.query._where.project_state_eq
       );
     }
+    else if (ctx.query && ctx.query._where && ctx.query._where.project_state_in) {      
+      projects = projects.filter(
+        (p) =>
+          p.project_state &&
+          ctx.query._where.project_state_in.split(',').includes(p.project_state.id.toString())
+      );
+    }
 
     // console.log('projects', projects[0].activities ? projects[0].activities[0] : 0)
 
