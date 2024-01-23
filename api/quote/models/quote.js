@@ -21,13 +21,11 @@ module.exports = {
         },
         async afterCreate(result) {
             // data = await calculateTotals(data)
-            // data = await setPDFPath(0, data)            
-            console.log('result', result)
+            // data = await setPDFPath(0, data)
             await setPDFAfterCreation(result.id)
 
         },
         async beforeUpdate(params, data) {
-            console.log('params', params)
             data = await calculateTotals(data)
         }
       },

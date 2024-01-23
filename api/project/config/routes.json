@@ -26,6 +26,14 @@
     },
     {
       "method": "GET",
+      "path": "/projects/name",
+      "handler": "project.findNames",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "GET",
       "path": "/projects/reset",
       "handler": "project.reset",
       "config": {

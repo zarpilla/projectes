@@ -77,7 +77,6 @@ module.exports = {
         await strapi
           .query("activity")
           .update({ id: activity.id }, activityToUpdate);
-        console.log("{ id: activity.id }", { id: activity.id });
       }
       await projectController.setDirty(to);
       await projectController.setDirty(from);

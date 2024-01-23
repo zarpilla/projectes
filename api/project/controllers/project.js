@@ -513,7 +513,6 @@ const calculateEstimatedTotals = async (
             if (real) {
               const realYear = getRealYear(subphase.income ? subphase.income : ( subphase.expense ? subphase.expense : subphase.invoice))
 
-              console.log('realYear', realYear, subphase.income)
               rowsByYear.push({ year: realYear, total_real_incomes: (subphase.quantity ? subphase.quantity : 0) * (subphase.amount ? subphase.amount : 0)})
             }
           }
@@ -664,9 +663,10 @@ module.exports = {
     // only published
     ctx.query.published_at_null = false;
     if (ctx.query._q) {
-      projects = await strapi.query("project").search(ctx.query);
+
+      projects = await strapi.query("project").search(ctx.query, []);
     } else {
-      projects = await strapi.query("project").find(ctx.query);
+      projects = await strapi.query("project").find(ctx.query, ['leader', 'project_scope', 'project_state', 'clients']);
     }
 
     // Removing some info
@@ -706,6 +706,33 @@ module.exports = {
                 return { id: c.id, name: c.name };
               })
             : null,
+        };
+      });
+
+    return newArray.map((entity) =>
+      sanitizeEntity(entity, { model: strapi.models.project })
+    );
+  },
+
+
+  async findNames(ctx) {
+    // Calling the default core action
+    let projects;
+
+    // only published
+    ctx.query.published_at_null = false;
+    if (ctx.query._q) {
+      projects = await strapi.query("project").search(ctx.query);
+    } else {
+      projects = await strapi.query("project").find(ctx.query, []);
+    }
+
+    // Removing some info
+    const newArray = projects      
+      .map((p) => {
+        return {
+          id: p.id,
+          name: p.name
         };
       });
 
@@ -1207,23 +1234,19 @@ module.exports = {
 
   doCalculateProjectInfo: async (ctx) => {
 
-    console.log("doCalculateProjectInfo 0", end);
     const { id } = ctx.params;
     var start = new Date()
     const data = await strapi.query("project").findOne({ id });
     var end = new Date() - start
-    console.log("doCalculateProjectInfo 1", end);
     const dailyDedications = await strapi
       .query("daily-dedication")
       .find({ _limit: -1 });
       
     var end = new Date() - start
-    console.log("doCalculateProjectInfo 2", end);
 
     const festives = await strapi.query("festive").find({ _limit: -1 });
     
     var end = new Date() - start
-    console.log("doCalculateProjectInfo 3", end);
 
     const result = await doProjectInfoCalculations(
       data,
@@ -1232,9 +1255,6 @@ module.exports = {
       festives
     );
     var end = new Date() - start
-    console.log("doCalculateProjectInfo 4", end);
-
-    console.log('result', JSON.parse(JSON.stringify(result.allByYear)))
 
     return result;
   },
