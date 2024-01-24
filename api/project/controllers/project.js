@@ -666,7 +666,7 @@ module.exports = {
 
       projects = await strapi.query("project").search(ctx.query, []);
     } else {
-      projects = await strapi.query("project").find(ctx.query, ['leader', 'project_scope', 'project_state', 'clients']);
+      projects = await strapi.query("project").find(ctx.query, ['leader', 'project_scope', 'project_state', 'clients', 'activity_types', 'global_activity_types']);
     }
 
     // Removing some info
