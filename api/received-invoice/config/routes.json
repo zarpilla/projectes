@@ -10,6 +10,14 @@
     },
     {
       "method": "GET",
+      "path": "/received-invoices/basic",
+      "handler": "received-invoice.findBasic",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "GET",
       "path": "/received-invoices/count",
       "handler": "received-invoice.count",
       "config": {

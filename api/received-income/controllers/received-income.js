@@ -5,4 +5,10 @@
  * to customize this controller
  */
 
-module.exports = {};
+module.exports = {
+    async findBasic(ctx) {
+        return await strapi
+          .query("received-income")
+          .find(ctx.query, ["contact", "projects"]);
+      },
+};

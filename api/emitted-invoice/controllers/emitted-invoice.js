@@ -32,6 +32,12 @@ const formatCurrency = (val) => {
 
 module.exports = {
 
+    async findBasic(ctx) {
+        return await strapi
+          .query("emitted-invoice")
+          .find(ctx.query, ["contact", "projects"]);
+      },
+
     pdf: async ctx => {
         const { id, doc } = ctx.params;
 

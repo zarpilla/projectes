@@ -10,6 +10,14 @@
     },
     {
       "method": "GET",
+      "path": "/received-expenses/basic",
+      "handler": "received-expense.findBasic",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "GET",
       "path": "/received-expenses/count",
       "handler": "received-expense.count",
       "config": {

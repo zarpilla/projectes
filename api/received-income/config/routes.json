@@ -10,6 +10,14 @@
     },
     {
       "method": "GET",
+      "path": "/received-incomes/basic",
+      "handler": "received-income.findBasic",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "GET",
       "path": "/received-incomes/count",
       "handler": "received-income.count",
       "config": {
