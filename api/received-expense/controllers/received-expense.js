@@ -9,6 +9,6 @@ module.exports = {
   async findBasic(ctx) {
     return await strapi
       .query("received-expense")
-      .find(ctx.query, ["contact", "projects"]);
+      .find(ctx.query, ["contact", "projects", "document_type"]);
   },
 };

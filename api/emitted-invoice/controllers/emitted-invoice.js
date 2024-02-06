@@ -35,7 +35,7 @@ module.exports = {
     async findBasic(ctx) {
         return await strapi
           .query("emitted-invoice")
-          .find(ctx.query, ["contact", "projects"]);
+          .find(ctx.query, ["contact", "projects", "document_type"]);
       },
 
     pdf: async ctx => {
