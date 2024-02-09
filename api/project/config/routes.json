@@ -26,6 +26,14 @@
     },
     {
       "method": "GET",
+      "path": "/projects/estimated-totals",
+      "handler": "project.findEstimatedTotalsByDay",
+      "config": {
+        "policies": []
+      }
+    },    
+    {
+      "method": "GET",
       "path": "/projects/name",
       "handler": "project.findNames",
       "config": {

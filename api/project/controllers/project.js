@@ -396,7 +396,7 @@ const calculateEstimatedTotals = async (
                       hours.total_amount += q * costByHour;
                       total_estimated_hours_price += q * costByHour;
 
-                      totalsByDay.push({ day, q, costByHour });
+                      totalsByDay.push({ day, q, costByHour, userId: hours.users_permissions_user.id, project: data.id, project_name: data.name });
 
                       if (!real) {
                         rowsByYear.push({ year: day.format("YYYY"), total_estimated_hours: q })
@@ -446,7 +446,7 @@ const calculateEstimatedTotals = async (
                       hours.total_amount += q * costByHour;
                       total_estimated_hours_price += q * costByHour;
 
-                      totalsByDay.push({ day, q, costByHour });
+                      totalsByDay.push({ day, q, costByHour, userId: hours.users_permissions_user.id, project: data.id, project_name: data.name });
 
                       if (!real) {
                         rowsByYear.push({ year: day.format("YYYY"), total_estimated_hours: q })
@@ -494,6 +494,9 @@ const calculateEstimatedTotals = async (
                       day: day,
                       q: hours.quantity / mdiff,
                       costByHour,
+                      userId: hours.users_permissions_user.id,
+                      project: data.id,
+                      project_name: data.name
                     });
 
                     if (!real) {
@@ -1024,7 +1027,7 @@ module.exports = {
       }
 
       const { totalsByDay } = await calculateEstimatedTotals(
-        {},
+        { id: projectInfo.id, name: projectInfo.project_name },
         p.original_phases,
         dailyDedications,
         festives
@@ -1083,6 +1086,45 @@ module.exports = {
     // Removing some info
     // const newArray = projects.map(({ phases, activities, emitted_invoices, received_invoices, tickets, diets, emitted_grants, received_grants, quotes, original_phases, incomes, expenses, strategies, estimated_hours, intercooperations, clients, received_expenses, received_incomes, ...item }) => item)
     return response
+  },
+
+
+  async findEstimatedTotalsByDay(ctx) {
+
+    ctx.query.published_at_null = false;
+    const { year, ...query } = ctx.query;
+
+    const promises = [];
+    if (query._q) {
+      promises.push(strapi.query("project").search(query));
+    } else {
+      promises.push(strapi.query("project").find(query));
+    }
+
+    promises.push(strapi.query("daily-dedication").find({ _limit: -1 }));
+    promises.push(strapi.query("festive").find({ _limit: -1 }));
+
+    const results = await Promise.all(promises);
+
+    let projects = results[0];
+    const dailyDedications = results[1];
+    const festives = results[2];
+
+    const totals = []
+    for await (const p of projects) {    
+      const { totalsByDay } = await calculateEstimatedTotals(
+        { id: p.id, name: p.name },
+        p.original_phases,
+        dailyDedications,
+        festives
+      );
+      totals.push(...totalsByDay.map(t => ({ ...t, day: t.day.format('YYYY-MM-DD') })))
+    }
+    // for await (const event of eventsAdded) {
+    if (year) {
+      return totals.filter((r) => r.day.substring(0, 4) === year);  
+    }
+    return totals
   },
 
   async findChildren(ctx) {
