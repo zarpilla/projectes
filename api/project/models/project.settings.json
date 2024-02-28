@@ -246,6 +246,12 @@
       "type": "component",
       "repeatable": true,
       "component": "periodification.periodification"
+    },
+    "grantable_cofinancing_pct": {
+      "type": "decimal"
+    },
+    "grantable_estructural_pct": {
+      "type": "decimal"
     }
   }
 }
