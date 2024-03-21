@@ -1,0 +1,32 @@
+{
+  "kind": "collectionType",
+  "collectionName": "project_documents",
+  "info": {
+    "name": "Project Documents"
+  },
+  "options": {
+    "increments": true,
+    "timestamps": true,
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "project": {
+      "model": "project"
+    },
+    "received_invoice": {
+      "model": "received-invoice"
+    },
+    "received_expense": {
+      "model": "received-expense"
+    },
+    "phaseId": {
+      "type": "integer"
+    },
+    "subphaseId": {
+      "type": "integer"
+    },
+    "expenseId": {
+      "type": "integer"
+    }
+  }
+}

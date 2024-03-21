@@ -13,13 +13,15 @@ const moment = require("moment")
 const crypto = require('crypto')
 
 const getEntityInfo = async (entity) => {
-    const documents = await strapi.query(entity).find({ vat_paid_date_null: true, total_vat_gt: 0, _limit: -1 });
+    const documents = await strapi.query(entity).find({ vat_paid_date_null: true, _limit: -1 });
     return { documents: documents, total_vat: _.sumBy(documents, 'total_vat') }
 }
 
 const payEntity = async (documents, entity, vat_paid_date) => {
     for (let i = 0; i < documents.length; i++) {
-        await strapi.query(entity).update({ id: documents[i].id }, { vat_paid_date: vat_paid_date, _internal: true });
+        const table = entity === 'received-expense' ? 'received_expenses' : entity === 'received-income' ? 'received_incomes' : entity === 'received-invoice' ? 'received_invoices' : 'emitted_invoices'
+        // await strapi.query(entity).update({ id: documents[i].id }, { vat_paid_date: vat_paid_date, _internal: true });
+        await strapi.connections.default.raw(`UPDATE ${table} SET vat_paid_date = '${vat_paid_date.toISOString().substring(0, 19).replace('T', ' ')}' WHERE id = ${documents[i].id}`);
     }
     return documents
 }
@@ -322,6 +324,10 @@ module.exports = {
         const rInvoiceInfo = await getEntityInfo('received-invoice')
         const expenseInfo = await getEntityInfo('received-expense')
         const me = await strapi.query('me').findOne()
+        console.log('eInvoiceInfo', eInvoiceInfo)
+        console.log('incomeInfo', incomeInfo)
+        console.log('rInvoiceInfo', rInvoiceInfo)
+        console.log('expenseInfo', expenseInfo)
         if (me.options.deductible_vat_pct) {
             const total_vat = (rInvoiceInfo.total_vat + expenseInfo.total_vat - eInvoiceInfo.total_vat - incomeInfo.total_vat) * me.options.deductible_vat_pct / 100.0
             const vat_paid_date = new Date()

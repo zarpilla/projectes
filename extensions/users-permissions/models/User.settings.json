@@ -86,6 +86,9 @@
     "excel_decimal": {
       "type": "string",
       "maxLength": 1
+    },
+    "fullname": {
+      "type": "string"
     }
   }
 }

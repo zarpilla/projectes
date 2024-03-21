@@ -683,6 +683,7 @@ module.exports = {
         subtotal,
       });
     }
-    return { treasury: treasuryDataX, projects };
+    // console.log("vat", vat);
+    return { treasury: treasuryDataX, projects, vat };
   },
 };
