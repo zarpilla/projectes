@@ -61,6 +61,18 @@
       "type": "component",
       "repeatable": false,
       "component": "options.quotes"
+    },
+    "ical": {
+      "type": "string"
+    },
+    "invoice_email": {
+      "type": "string"
+    },
+    "invoice_subject": {
+      "type": "string"
+    },
+    "invoice_template": {
+      "type": "text"
     }
   }
 }

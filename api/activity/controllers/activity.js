@@ -46,16 +46,27 @@ module.exports = {
     const user = await strapi
       .query("user", "users-permissions")
       .findOne({ id });
+
+    const events = [];
+
     if (user && user.ical && user.ical.startsWith("http")) {
       const resp = await ical.async.fromURL(user.ical);
-      const events = [];
+
       for (let k in resp) {
         if (resp[k].type === "VEVENT") events.push(resp[k]);
       }
-      ctx.send({ ical: events });
-      return;
     }
-    ctx.send({ ical: [] });
+
+    const me = await strapi.query("me").findOne();
+
+    if (me && me.ical && me.ical.startsWith("http")) {
+      const resp = await ical.async.fromURL(me.ical);
+      for (let k in resp) {
+        if (resp[k].type === "VEVENT") events.push(resp[k]);
+      }
+    }
+
+    ctx.send({ ical: events });
   },
 
   move: async (ctx) => {

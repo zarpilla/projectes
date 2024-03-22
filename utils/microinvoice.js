@@ -481,7 +481,7 @@ module.exports = class Microinvoice {
       this.setText(total.label, {
         colorCode  : "primary",
         fontWeight : "bold",
-        marginTop  : 12,
+        marginTop  : 6,
         maxWidth   : this.options.style.table.quantity.maxWidth,
         skipDown   : true
       });
@@ -535,7 +535,7 @@ module.exports = class Microinvoice {
         fontWeight : legal.weight,
         colorCode  : legal.color || "primary",
         align      : "left",
-        marginTop  : 10
+        marginTop  : 0
       });
     });
   }

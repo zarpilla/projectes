@@ -33,6 +33,14 @@
       }
     },
     {
+      "method": "POST",
+      "path": "/emitted-invoices/send-email/:id",
+      "handler": "emitted-invoice.sendInvoiceByEmail",
+      "config": {
+        "policies": []
+      }
+    },
+    {
       "method": "GET",
       "path": "/emitted-invoices/pdf/:doc/:id",
       "handler": "emitted-invoice.pdf",
