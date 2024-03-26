@@ -1,0 +1,17 @@
+{
+  "collectionName": "components_permissions_application_permissions",
+  "info": {
+    "name": "Application Permission",
+    "icon": "bacon"
+  },
+  "options": {},
+  "attributes": {
+    "permission": {
+      "type": "enumeration",
+      "enum": [
+        "projects",
+        "orders"
+      ]
+    }
+  }
+}

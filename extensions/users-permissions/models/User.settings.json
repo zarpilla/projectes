@@ -89,6 +89,11 @@
     },
     "fullname": {
       "type": "string"
+    },
+    "permissions": {
+      "type": "component",
+      "repeatable": true,
+      "component": "permissions.application-permission"
     }
   }
 }

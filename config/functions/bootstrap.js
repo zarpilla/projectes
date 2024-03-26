@@ -74,6 +74,8 @@ async function importSeedData() {
         "workday-log": ["create", "find", "findone", "update", "delete"],
         "product": ["find", "findone"],
         "user-festive": ["find"],
+        "orders": ["create", "find", "findone", "update", "delete"],
+        "pickups": ["find"],
         
     });
 
@@ -82,10 +84,19 @@ async function importSeedData() {
       "upload": ["upload"],      
     })
 
-    // await setPermissions("public", "application", {
-    //   "project": ["updatephases"],
-    //   "task": ["email"],
-    // });
+    // set user permissions
+    const users = await strapi
+      .query("user", "users-permissions")
+      .find({ _limit: -1 });
+
+    for await (const user of users) {
+      if (user.permissions.length === 0 && user.blocked === false) {
+        await strapi
+          .query("user", "users-permissions")
+          .update({ id: user.id }, { permissions: [{ permission: 'projects' }] });
+      }        
+    }
+
 }
 
 module.exports = async () => {

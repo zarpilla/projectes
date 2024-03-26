@@ -83,6 +83,10 @@
     "users_permissions_user": {
       "plugin": "users-permissions",
       "model": "user"
+    },
+    "owner": {
+      "plugin": "users-permissions",
+      "model": "user"
     }
   }
 }

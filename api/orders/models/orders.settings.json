@@ -1,0 +1,52 @@
+{
+  "kind": "collectionType",
+  "collectionName": "orders",
+  "info": {
+    "name": "Orders",
+    "description": ""
+  },
+  "options": {
+    "increments": true,
+    "timestamps": true,
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "owner": {
+      "plugin": "users-permissions",
+      "model": "user"
+    },
+    "project": {
+      "model": "project"
+    },
+    "product": {
+      "model": "product"
+    },
+    "route_date": {
+      "type": "date"
+    },
+    "contact": {
+      "model": "contacts"
+    },
+    "units": {
+      "type": "integer"
+    },
+    "kilograms": {
+      "type": "decimal"
+    },
+    "comments": {
+      "type": "text"
+    },
+    "pickup": {
+      "model": "pickups"
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": [
+        "pending",
+        "processed",
+        "delivered",
+        "invoiced"
+      ]
+    }
+  }
+}
