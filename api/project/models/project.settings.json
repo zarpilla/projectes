@@ -252,6 +252,12 @@
     },
     "grantable_estructural_pct": {
       "type": "decimal"
+    },
+    "justification_date": {
+      "type": "date"
+    },
+    "grantable_cofinancing": {
+      "type": "decimal"
     }
   }
 }
