@@ -666,8 +666,7 @@ module.exports = {
     // only published
     ctx.query.published_at_null = false;
     if (ctx.query._q) {
-
-      projects = await strapi.query("project").search(ctx.query, []);
+      projects = await strapi.query("project").search(ctx.query, ['leader', 'project_scope', 'project_state', 'clients', 'activity_types', 'global_activity_types']);
     } else {
       projects = await strapi.query("project").find(ctx.query, ['leader', 'project_scope', 'project_state', 'clients', 'activity_types', 'global_activity_types']);
     }
