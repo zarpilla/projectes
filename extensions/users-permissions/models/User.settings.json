@@ -94,6 +94,9 @@
       "type": "component",
       "repeatable": true,
       "component": "permissions.application-permission"
+    },
+    "identity_number": {
+      "type": "string"
     }
   }
 }
