@@ -1,0 +1,52 @@
+{
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/orders-imports",
+      "handler": "orders-imports.find",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/orders-imports/count",
+      "handler": "orders-imports.count",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/orders-imports/:id",
+      "handler": "orders-imports.findOne",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/orders-imports",
+      "handler": "orders-imports.create",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "PUT",
+      "path": "/orders-imports/:id",
+      "handler": "orders-imports.update",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "DELETE",
+      "path": "/orders-imports/:id",
+      "handler": "orders-imports.delete",
+      "config": {
+        "policies": []
+      }
+    }
+  ]
+}

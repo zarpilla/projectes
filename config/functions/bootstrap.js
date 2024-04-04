@@ -75,6 +75,7 @@ async function importSeedData() {
         "product": ["find", "findone"],
         "user-festive": ["find"],
         "orders": ["create", "find", "findone", "update", "delete"],
+        "orders-imports": ["create", "find", "findone", "update"],
         "pickups": ["find"],
         
     });
