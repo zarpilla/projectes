@@ -19,7 +19,12 @@ const getEntityInfo = async (entity) => {
   return { documents: documents, total_vat: _.sumBy(documents, "total_vat") };
 };
 
-const payEntity = async (documents, entity, vat_paid_date) => {
+const payEntity = async (
+  documents,
+  entity,
+  vat_paid_date,
+  deductible_vat_pct
+) => {
   for (let i = 0; i < documents.length; i++) {
     const table =
       entity === "received-expense"
@@ -29,13 +34,17 @@ const payEntity = async (documents, entity, vat_paid_date) => {
         : entity === "received-invoice"
         ? "received_invoices"
         : "emitted_invoices";
-    // await strapi.query(entity).update({ id: documents[i].id }, { vat_paid_date: vat_paid_date, _internal: true });
-    await strapi.connections.default.raw(
-      `UPDATE ${table} SET vat_paid_date = '${vat_paid_date
-        .toISOString()
-        .substring(0, 19)
-        .replace("T", " ")}' WHERE id = ${documents[i].id}`
-    );
+    const sql = `UPDATE ${table} SET vat_paid_date = '${vat_paid_date
+      .toISOString()
+      .substring(0, 19)
+      .replace(
+        "T",
+        " "
+      )}', deductible_vat_pct = ${deductible_vat_pct}  WHERE id = ${
+      documents[i].id
+    }`;
+
+    await strapi.connections.default.raw(sql);
   }
   return documents;
 };
@@ -396,11 +405,16 @@ module.exports = {
           subject: me.invoice_subject.replace("{invoice_code}", invoice.code),
           text: me.invoice_template
             .replace("{invoice_code}", invoice.code)
-            .replace("{contact_name}", invoice.contact.contact_person || invoice.contact.name),
+            .replace(
+              "{contact_name}",
+              invoice.contact.contact_person || invoice.contact.name
+            ),
           attachments: [
             {
               filename: `Factura-${invoice.code}.pdf`,
-              content: fs.readFileSync(`./public${invoice.pdf}`).toString('base64')
+              content: fs
+                .readFileSync(`./public${invoice.pdf}`)
+                .toString("base64"),
               // path: `./public${invoice.pdf}`,
             },
           ],
@@ -422,7 +436,10 @@ module.exports = {
           return;
         }
         if (!invoice.contact.email) {
-          ctx.send({ done: false, msg: "Could not sent email. No Contact email" }, 500);
+          ctx.send(
+            { done: false, msg: "Could not sent email. No Contact email" },
+            500
+          );
           return;
         }
         if (!invoice.pdf) {
@@ -444,7 +461,7 @@ module.exports = {
     const rInvoiceInfo = await getEntityInfo("received-invoice");
     const expenseInfo = await getEntityInfo("received-expense");
     const me = await strapi.query("me").findOne();
-    
+
     if (me.options.deductible_vat_pct) {
       const total_vat =
         ((rInvoiceInfo.total_vat +
@@ -464,18 +481,26 @@ module.exports = {
         await payEntity(
           eInvoiceInfo.documents,
           "emitted-invoice",
-          vat_paid_date
+          vat_paid_date,
+          me.options.deductible_vat_pct
         );
-        await payEntity(incomeInfo.documents, "received-income", vat_paid_date);
+        await payEntity(
+          incomeInfo.documents,
+          "received-income",
+          vat_paid_date,
+          me.options.deductible_vat_pct
+        );
         await payEntity(
           rInvoiceInfo.documents,
           "received-invoice",
-          vat_paid_date
+          vat_paid_date,
+          me.options.deductible_vat_pct
         );
         await payEntity(
           expenseInfo.documents,
           "received-expense",
-          vat_paid_date
+          vat_paid_date,
+          me.options.deductible_vat_pct
         );
       }
     }

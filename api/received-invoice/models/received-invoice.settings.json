@@ -101,6 +101,9 @@
     },
     "vat_paid_date": {
       "type": "datetime"
+    },
+    "deductible_vat_pct": {
+      "type": "decimal"
     }
   }
 }
