@@ -464,12 +464,11 @@ module.exports = {
 
     if (me.options.deductible_vat_pct) {
       const total_vat =
-        ((rInvoiceInfo.total_vat +
+        -1*((rInvoiceInfo.total_vat +
           expenseInfo.total_vat -
-          eInvoiceInfo.total_vat -
-          incomeInfo.total_vat) *
-          me.options.deductible_vat_pct) /
-        100.0;
+          (eInvoiceInfo.total_vat * me.options.deductible_vat_pct / 100.0) -
+          ( incomeInfo.total_vat * me.options.deductible_vat_pct / 100.0) )
+        );
       const vat_paid_date = new Date();
       if (total_vat !== 0) {
         await strapi.query("treasury").create({

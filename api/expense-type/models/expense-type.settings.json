@@ -13,6 +13,9 @@
   "attributes": {
     "name": {
       "type": "string"
+    },
+    "vat_pct": {
+      "type": "decimal"
     }
   }
 }

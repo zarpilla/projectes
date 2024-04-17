@@ -51,9 +51,12 @@ module.exports = {
     const projects = 
     await strapi.query("project").find(where)
 
+    // vat
+    const vat_expected = { paid: 0, received: 0 };
+
     projects.forEach((p) => {
       p.expenses.forEach((e) => {
-        if (!e.paid) {
+        if (!e.paid) {          
           const expense = {
             project_name: p.name,
             project_id: p.id,
@@ -143,7 +146,6 @@ module.exports = {
 
       p.phases.forEach((ph) => {
         ph.expenses.forEach((e, i) => {
-          // console.log('expenses', e)
           if (!e.paid) {
             const expense = {
               expenseId: e.id,
@@ -158,6 +160,10 @@ module.exports = {
               contact: e.provider && e.provider.name ? e.provider.name : "-",
             };
             treasury.push(expense);
+
+            if (e.expense_type && e.expense_type.vat_pct) {
+              vat_expected.paid += e.total_amount * e.expense_type.vat_pct / 100;
+            }
           }
           if (e.invoice && e.invoice.id) {
             projectExpenses.push({
@@ -210,6 +216,9 @@ module.exports = {
               contact: i.client && i.client.name ? i.client.name : "-",
             };
             treasury.push(income);
+            if (i.income_type && i.income_type.vat_pct) {
+              vat_expected.received += i.total_amount * i.income_type.vat_pct / 100;
+            }
           }
           if (i.invoice && i.invoice.id) {
             projectIncomes.push({
@@ -283,7 +292,7 @@ module.exports = {
 
     // vat
     const vat = { paid: 0, received: 0 };
-    const vats = [];
+    
     // emitted
     emitted.forEach((i) => {
       const date = i.paid_date
@@ -665,6 +674,42 @@ module.exports = {
       }
     });
 
+    const me = await strapi.query("me").findOne();
+    
+    if (-1*(vat.received - (vat.paid * me.options.deductible_vat_pct / 100)) !== 0) {
+      treasury.push({
+        project_name: "",
+          project_id: 0,
+          type: "IVA pendent de saldar",
+          concept: `IVA pendent de saldar`,
+          total_amount: -1*(vat.received - (vat.paid * me.options.deductible_vat_pct / 100)),
+          date: moment().endOf("year"),
+          date_error: false,
+          paid: false,
+          contact:
+            "",
+          to: null,
+      })
+    }
+
+
+    if (-1*(vat_expected.received - (vat_expected.paid * me.options.deductible_vat_pct / 100)) !== 0) {
+      treasury.push({
+        project_name: "",
+          project_id: 0,
+          type: "IVA previst pendent de saldar",
+          concept: `IVA previst pendent de saldar`,
+          total_amount: -1*(vat_expected.received - (vat_expected.paid * me.options.deductible_vat_pct / 100)),
+          date: moment().endOf("year"),
+          date_error: false,
+          paid: false,
+          contact:
+            "",
+          to: null,
+      })
+    }
+
+
     // sort and show
     const treasury2 = treasury.map((t) => {
       return { ...t, datef: t.date.format("YYYYMMDD") };
@@ -683,7 +728,10 @@ module.exports = {
         subtotal,
       });
     }
+
+    
+
     // console.log("vat", vat);
-    return { treasury: treasuryDataX, projects, vat };
+    return { treasury: treasuryDataX, projects, vat, vat_expected };
   },
 };

@@ -258,6 +258,12 @@
     },
     "grantable_cofinancing": {
       "type": "decimal"
+    },
+    "total_expenses_vat": {
+      "type": "decimal"
+    },
+    "total_real_expenses_vat": {
+      "type": "decimal"
     }
   }
 }

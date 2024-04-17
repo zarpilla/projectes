@@ -11,15 +11,22 @@ const moment = require("moment");
 
 const doProjectInfoCalculations = async (
   data,
-  id,
-  dailyDedications,
-  festives
+  id
 ) => {
 
-  // console.log('doProjectInfoCalculations')
   if (!id || !data) {
     return;
   }
+
+  const dailyDedications = await strapi
+      .query("daily-dedication")
+      .find({ _limit: -1 });
+  const festives = await strapi.query("festive").find({ _limit: -1 });
+
+  const me = await strapi.query("me").findOne();
+  const deductible_vat_pct = me.options && me.options.deductible_vat_pct ? me.options.deductible_vat_pct : 100.0;
+  const deductible_ratio =  ((100.0 - deductible_vat_pct) / 100.0);
+
 
   data.total_incomes = 0;
   data.total_expenses = 0;
@@ -27,6 +34,8 @@ const doProjectInfoCalculations = async (
   data.total_estimated_hours = 0;
   data.estimated_balance = 0;
   data.total_estimated_expenses = 0;
+  data.total_expenses_vat = 0;
+  data.total_real_expenses_vat = 0;
 
   if (data.expenses && data.expenses.length) {
     let total_expenses = 0;
@@ -36,6 +45,7 @@ const doProjectInfoCalculations = async (
       i.tax_amount = (i.total_amount * (i.tax_pct ? i.tax_pct : 0)) / 100.0;
       i.total_amount = i.total_amount + i.tax_amount;
       total_expenses += i.total_amount;
+      data.total_expenses_vat += i.tax_amount * deductible_ratio;
     });
     data.total_expenses = total_expenses;
   }
@@ -73,6 +83,11 @@ const doProjectInfoCalculations = async (
     // not assigned invoices
     data.total_real_incomes = infoPhases.total_real_incomes;
     data.total_real_expenses = infoPhases.total_real_expenses;
+    console.log('deductible_ratio', deductible_ratio)
+    console.log('infoPhases.total_expenses_vat', infoPhases.total_expenses_vat)
+    console.log('infoPhases.total_expenses_vat', infoPhases.total_real_expenses_vat)
+    data.total_expenses_vat = infoPhases.total_expenses_vat * deductible_ratio;
+    data.total_real_expenses_vat = infoPhases.total_real_expenses_vat * deductible_ratio;
 
     if (data.original_phases && data.original_phases.length) {
       const infoOriginalPhases = await calculateEstimatedTotals(
@@ -91,6 +106,12 @@ const doProjectInfoCalculations = async (
       data.total_estimated_hours = infoOriginalPhases.total_estimated_hours;
       data.total_estimated_hours_price =
         infoOriginalPhases.total_estimated_hours_price;
+
+      data.total_expenses_vat = infoOriginalPhases.total_expenses_vat * deductible_ratio;
+      data.total_real_expenses_vat = infoOriginalPhases.total_real_expenses_vat * deductible_ratio;
+
+    console.log('infoOriginalPhases.total_expenses_vat', infoPhases.total_expenses_vat)
+    console.log('infoOriginalPhases.total_expenses_vat', infoPhases.total_real_expenses_vat)
     }
   } else {
     data.total_expenses = 0;
@@ -223,33 +244,12 @@ const doProjectInfoCalculations = async (
 
 const updateProjectInfo = async (id, updateEstimated) => {
 
-  // console.log("updateProjectInfo 0");
-  // var start = new Date()
-
   const data = await strapi.query("project").findOne({ id });
-
-  // var end = new Date() - start
-  // console.log("updateProjectInfo 1", end);
-
-  const dailyDedications = await strapi
-    .query("daily-dedication")
-    .find({ _limit: -1 });
-  const festives = await strapi.query("festive").find({ _limit: -1 });
-
-  // var end = new Date() - start
-  // console.log("updateProjectInfo 2", end);
 
   const info = await doProjectInfoCalculations(
     data,
     id,
-    dailyDedications,
-    festives
   );
-
-  // var end = new Date() - start
-  // console.log("updateProjectInfo 3", end);
-
-  // console.log("updateProjectInfo info", info);
 
   if (!updateEstimated) {
     delete info.incomes
@@ -313,9 +313,11 @@ const calculateEstimatedTotals = async (
   var total_incomes = 0;
   var total_estimated_hours_price = 0;
   let total_expenses = 0;
+  let total_expenses_vat = 0;
 
   let total_real_incomes = 0;
   let total_real_expenses = 0;
+  let total_real_expenses_vat = 0;
 
   const years = {}
 
@@ -532,15 +534,26 @@ const calculateEstimatedTotals = async (
             (expense.quantity ? expense.quantity : 0) *
             (expense.amount ? expense.amount : 0);
 
+          expense.total_expenses_vat = (expense.total_amount * (expense.expense_type && expense.expense_type.vat_pct ? expense.expense_type.vat_pct : 21)) / 100.0;
+            
+          total_expenses_vat += expense.total_expenses_vat;
+            
+
           if (!real) {
             const ey = getEstimateYear(expense)
-            rowsByYear.push({ year: ey, total_expenses: expense.total_amount })
+            rowsByYear.push({ year: ey, total_expenses: expense.total_amount, total_expenses_vat: expense.total_expenses_vat })
           }
           
           if (expense.paid) {
             total_real_expenses +=
               (expense.quantity ? expense.quantity : 0) *
               (expense.amount ? expense.amount : 0);
+
+              total_real_expenses_vat +=
+              (expense.quantity ? expense.quantity : 0) *
+              (expense.amount ? expense.amount : 0) *
+              (expense.expense_type && expense.expense_type.vat_pct ? expense.expense_type.vat_pct : 21) / 100.0;
+
 
             if (real) {
               const realYear = getRealYear(expense.invoice ? expense.invoice : expense.expense)
@@ -575,6 +588,8 @@ const calculateEstimatedTotals = async (
     total_estimated_hours_price,
     total_real_incomes,
     total_real_expenses,
+    total_expenses_vat,
+    total_real_expenses_vat,
     totalsByDay,
     totalsByYear
   };
@@ -617,16 +632,9 @@ module.exports = {
   async updateDirtyProject(id) {
     const project = await strapi.query("project").findOne({ id: id });
 
-    const dailyDedications = await strapi
-      .query("daily-dedication")
-      .find({ _limit: -1 });
-    const festives = await strapi.query("festive").find({ _limit: -1 });
-
     const data = await doProjectInfoCalculations(
       project,
       id,
-      dailyDedications,
-      festives
     );
 
     // data._internal = true;
@@ -1279,21 +1287,10 @@ module.exports = {
     var start = new Date()
     const data = await strapi.query("project").findOne({ id });
     var end = new Date() - start
-    const dailyDedications = await strapi
-      .query("daily-dedication")
-      .find({ _limit: -1 });
-      
-    var end = new Date() - start
-
-    const festives = await strapi.query("festive").find({ _limit: -1 });
     
-    var end = new Date() - start
-
     const result = await doProjectInfoCalculations(
       data,
-      id,
-      dailyDedications,
-      festives
+      id
     );
     var end = new Date() - start
 
