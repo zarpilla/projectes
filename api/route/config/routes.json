@@ -2,56 +2,48 @@
   "routes": [
     {
       "method": "GET",
-      "path": "/orders",
-      "handler": "orders.find",
+      "path": "/routes",
+      "handler": "route.find",
       "config": {
         "policies": []
       }
     },
     {
       "method": "GET",
-      "path": "/orders/count",
-      "handler": "orders.count",
+      "path": "/routes/count",
+      "handler": "route.count",
       "config": {
         "policies": []
       }
     },
     {
       "method": "GET",
-      "path": "/orders/:id",
-      "handler": "orders.findOne",
+      "path": "/routes/:id",
+      "handler": "route.findOne",
       "config": {
         "policies": []
       }
     },
     {
       "method": "POST",
-      "path": "/orders",
-      "handler": "orders.create",
-      "config": {
-        "policies": []
-      }
-    },
-    {
-      "method": "POST",
-      "path": "/orders/csv",
-      "handler": "orders.createCSV",
+      "path": "/routes",
+      "handler": "route.create",
       "config": {
         "policies": []
       }
     },
     {
       "method": "PUT",
-      "path": "/orders/:id",
-      "handler": "orders.update",
+      "path": "/routes/:id",
+      "handler": "route.update",
       "config": {
         "policies": []
       }
     },
     {
       "method": "DELETE",
-      "path": "/orders/:id",
-      "handler": "orders.delete",
+      "path": "/routes/:id",
+      "handler": "route.delete",
       "config": {
         "policies": []
       }

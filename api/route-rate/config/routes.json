@@ -2,56 +2,48 @@
   "routes": [
     {
       "method": "GET",
-      "path": "/orders",
-      "handler": "orders.find",
+      "path": "/route-rates",
+      "handler": "route-rate.find",
       "config": {
         "policies": []
       }
     },
     {
       "method": "GET",
-      "path": "/orders/count",
-      "handler": "orders.count",
+      "path": "/route-rates/count",
+      "handler": "route-rate.count",
       "config": {
         "policies": []
       }
     },
     {
       "method": "GET",
-      "path": "/orders/:id",
-      "handler": "orders.findOne",
+      "path": "/route-rates/:id",
+      "handler": "route-rate.findOne",
       "config": {
         "policies": []
       }
     },
     {
       "method": "POST",
-      "path": "/orders",
-      "handler": "orders.create",
-      "config": {
-        "policies": []
-      }
-    },
-    {
-      "method": "POST",
-      "path": "/orders/csv",
-      "handler": "orders.createCSV",
+      "path": "/route-rates",
+      "handler": "route-rate.create",
       "config": {
         "policies": []
       }
     },
     {
       "method": "PUT",
-      "path": "/orders/:id",
-      "handler": "orders.update",
+      "path": "/route-rates/:id",
+      "handler": "route-rate.update",
       "config": {
         "policies": []
       }
     },
     {
       "method": "DELETE",
-      "path": "/orders/:id",
-      "handler": "orders.delete",
+      "path": "/route-rates/:id",
+      "handler": "route-rate.delete",
       "config": {
         "policies": []
       }

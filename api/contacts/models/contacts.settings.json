@@ -87,6 +87,18 @@
     "owner": {
       "plugin": "users-permissions",
       "model": "user"
+    },
+    "time_slot_1_ini": {
+      "type": "integer"
+    },
+    "time_slot_1_end": {
+      "type": "integer"
+    },
+    "time_slot_2_ini": {
+      "type": "integer"
+    },
+    "time_slot_2_end": {
+      "type": "integer"
     }
   }
 }

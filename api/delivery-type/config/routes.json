@@ -2,56 +2,48 @@
   "routes": [
     {
       "method": "GET",
-      "path": "/orders",
-      "handler": "orders.find",
+      "path": "/delivery-types",
+      "handler": "delivery-type.find",
       "config": {
         "policies": []
       }
     },
     {
       "method": "GET",
-      "path": "/orders/count",
-      "handler": "orders.count",
+      "path": "/delivery-types/count",
+      "handler": "delivery-type.count",
       "config": {
         "policies": []
       }
     },
     {
       "method": "GET",
-      "path": "/orders/:id",
-      "handler": "orders.findOne",
+      "path": "/delivery-types/:id",
+      "handler": "delivery-type.findOne",
       "config": {
         "policies": []
       }
     },
     {
       "method": "POST",
-      "path": "/orders",
-      "handler": "orders.create",
-      "config": {
-        "policies": []
-      }
-    },
-    {
-      "method": "POST",
-      "path": "/orders/csv",
-      "handler": "orders.createCSV",
+      "path": "/delivery-types",
+      "handler": "delivery-type.create",
       "config": {
         "policies": []
       }
     },
     {
       "method": "PUT",
-      "path": "/orders/:id",
-      "handler": "orders.update",
+      "path": "/delivery-types/:id",
+      "handler": "delivery-type.update",
       "config": {
         "policies": []
       }
     },
     {
       "method": "DELETE",
-      "path": "/orders/:id",
-      "handler": "orders.delete",
+      "path": "/delivery-types/:id",
+      "handler": "delivery-type.delete",
       "config": {
         "policies": []
       }

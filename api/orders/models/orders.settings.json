@@ -15,9 +15,6 @@
       "plugin": "users-permissions",
       "model": "user"
     },
-    "project": {
-      "model": "project"
-    },
     "product": {
       "model": "product"
     },
@@ -45,8 +42,57 @@
         "pending",
         "processed",
         "delivered",
-        "invoiced"
+        "invoiced",
+        "cancelled"
       ]
+    },
+    "route": {
+      "model": "route"
+    },
+    "refrigerated": {
+      "type": "boolean"
+    },
+    "fragile": {
+      "type": "boolean"
+    },
+    "delivery_type": {
+      "model": "delivery-type"
+    },
+    "contact_address": {
+      "type": "string"
+    },
+    "contact_postcode": {
+      "type": "string"
+    },
+    "contact_city": {
+      "type": "string"
+    },
+    "contact_phone": {
+      "type": "string"
+    },
+    "contact_time_slot_1_ini": {
+      "type": "integer"
+    },
+    "contact_time_slot_1_end": {
+      "type": "integer"
+    },
+    "contact_time_slot_2_ini": {
+      "type": "integer"
+    },
+    "contact_time_slot_2_end": {
+      "type": "integer"
+    },
+    "route_rate": {
+      "model": "route-rate"
+    },
+    "price": {
+      "type": "decimal"
+    },
+    "contact_name": {
+      "type": "string"
+    },
+    "contact_nif": {
+      "type": "string"
     }
   }
 }

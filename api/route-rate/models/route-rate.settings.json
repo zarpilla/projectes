@@ -1,0 +1,35 @@
+{
+  "kind": "collectionType",
+  "collectionName": "route_rates",
+  "info": {
+    "name": "RouteRate"
+  },
+  "options": {
+    "increments": true,
+    "timestamps": true,
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "name": {
+      "type": "string"
+    },
+    "route": {
+      "model": "route"
+    },
+    "delivery_type": {
+      "model": "delivery-type"
+    },
+    "pickup": {
+      "model": "pickups"
+    },
+    "less15": {
+      "type": "decimal"
+    },
+    "less30": {
+      "type": "decimal"
+    },
+    "additional30": {
+      "type": "decimal"
+    }
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "kind": "collectionType",
+  "collectionName": "delivery_types",
+  "info": {
+    "name": "DeliveryType",
+    "description": ""
+  },
+  "options": {
+    "increments": true,
+    "timestamps": true,
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "name": {
+      "type": "string"
+    },
+    "refrigerated": {
+      "type": "boolean"
+    }
+  }
+}
