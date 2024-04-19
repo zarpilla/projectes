@@ -93,6 +93,9 @@
     },
     "contact_nif": {
       "type": "string"
+    },
+    "delivery_date": {
+      "type": "date"
     }
   }
 }
