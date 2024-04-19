@@ -395,8 +395,20 @@ module.exports = {
     try {
       const invoice = await strapi.query("emitted-invoice").findOne({ id });
 
-      if (invoice && invoice.contact && invoice.contact.email && invoice.pdf) {
+      if (invoice && invoice.contact && invoice.contact.contact_email && invoice.pdf) {
         const me = await strapi.query("me").findOne();
+
+        const attachments = [
+          {
+            filename: `Factura-${invoice.code}.pdf`,
+            content: fs
+              .readFileSync(`./public${invoice.pdf}`)
+              .toString("base64"),
+            encoding: 'base64'
+          }
+        ]
+
+        // process.env.EMAIL_PROVIDER === 'sendgrid' ? attachments[0].content = fs.readFileSync(`./public${invoice.pdf}`).toString("base64") : attachments[0].path = `${process.env.URL}${invoice.pdf}`
 
         const email = {
           to: invoice.contact.contact_email,
@@ -409,15 +421,7 @@ module.exports = {
               "{contact_name}",
               invoice.contact.contact_person || invoice.contact.name
             ),
-          attachments: [
-            {
-              filename: `Factura-${invoice.code}.pdf`,
-              content: fs
-                .readFileSync(`./public${invoice.pdf}`)
-                .toString("base64"),
-              // path: `./public${invoice.pdf}`,
-            },
-          ],
+          attachments: attachments,
         };
 
         await strapi.plugins["email"].services.email.send(email);
@@ -435,7 +439,7 @@ module.exports = {
           );
           return;
         }
-        if (!invoice.contact.email) {
+        if (!invoice.contact.contact_email) {
           ctx.send(
             { done: false, msg: "Could not sent email. No Contact email" },
             500
