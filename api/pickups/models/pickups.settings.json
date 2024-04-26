@@ -2,7 +2,8 @@
   "kind": "collectionType",
   "collectionName": "pickups",
   "info": {
-    "name": "Pickups"
+    "name": "Pickups",
+    "description": ""
   },
   "options": {
     "increments": true,
@@ -12,6 +13,9 @@
   "attributes": {
     "name": {
       "type": "string"
+    },
+    "pickup": {
+      "type": "boolean"
     }
   }
 }

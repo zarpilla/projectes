@@ -96,6 +96,9 @@
     },
     "delivery_date": {
       "type": "date"
+    },
+    "provider_order_number": {
+      "type": "string"
     }
   }
 }

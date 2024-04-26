@@ -19,9 +19,25 @@ module.exports = {
         if (order.contact && order.contact.id) {
             order.contact = order.contact.id;
         } else {
+
+            if (order.contact) {
+                if (!order.contact.time_slot_1_ini){
+                    order.contact.time_slot_1_ini = null
+                }
+                if (!order.contact.time_slot_1_end){
+                    order.contact.time_slot_1_end = null
+                }
+                if (!order.contact.time_slot_2_ini){
+                    order.contact.time_slot_2_ini = null
+                }
+                if (!order.contact.time_slot_2_end){
+                    order.contact.time_slot_2_end = null
+                }
+            }
+            
+
             if (order.contact && !order.contact.contact_nif) {                
                 order.contact.owner = order.owner
-                console.log('order.contact 0', order.contact)
                 const contact = await strapi.services.contacts.create(order.contact);
                 order.contact = contact.id
             } else {
@@ -38,8 +54,20 @@ module.exports = {
                 }
             }
         }
-        const createdOrder = await strapi.services.orders.create(order);
 
+        if (!order.contact_time_slot_1_ini){
+            order.contact_time_slot_1_ini = null
+        }
+        if (!order.contact_time_slot_1_end){
+            order.contact_time_slot_1_end = null
+        }
+        if (!order.contact_time_slot_2_ini){
+            order.contact_time_slot_2_ini = null
+        }
+        if (!order.contact_time_slot_2_end){
+            order.contact_time_slot_2_end = null
+        }
+        const createdOrder = await strapi.services.orders.create(order);
 
         return createdOrder
     }
