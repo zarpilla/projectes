@@ -19,12 +19,22 @@ const getEntityInfo = async (entity) => {
   return { documents: documents, total_vat: _.sumBy(documents, "total_vat") };
 };
 
+
+const getYearsInfo = async () => {
+  const years = await strapi
+    .query('year')
+    .find({ _limit: -1 });
+  return years;
+};
+
 const payEntity = async (
   documents,
   entity,
   vat_paid_date,
-  deductible_vat_pct
+  deductible_vat_pct,
+  years
 ) => {
+  let total_vat = 0;
   for (let i = 0; i < documents.length; i++) {
     const table =
       entity === "received-expense"
@@ -34,19 +44,27 @@ const payEntity = async (
         : entity === "received-invoice"
         ? "received_invoices"
         : "emitted_invoices";
+
+    const emittedYear = documents[i].emitted.substring(0, 4);
+    
+    const isDeductible = entity === "received-income" || entity === "emitted-invoice" ? false : true;
+    const deductible_vat_pct_year = isDeductible ? years.find(y => y.year.toString() === emittedYear.toString())?.deductible_vat_pct || deductible_vat_pct : 100;
+    
     const sql = `UPDATE ${table} SET vat_paid_date = '${vat_paid_date
       .toISOString()
       .substring(0, 19)
       .replace(
         "T",
         " "
-      )}', deductible_vat_pct = ${deductible_vat_pct}  WHERE id = ${
+      )}', deductible_vat_pct = ${deductible_vat_pct_year}  WHERE id = ${
       documents[i].id
     }`;
 
+    total_vat += documents[i].total_vat * deductible_vat_pct_year / 100.0;
+
     await strapi.connections.default.raw(sql);
   }
-  return documents;
+  return total_vat;
 };
 
 const formatCurrency = (val) => {
@@ -466,45 +484,59 @@ module.exports = {
     const expenseInfo = await getEntityInfo("received-expense");
     const me = await strapi.query("me").findOne();
 
+    const years = await getYearsInfo();
+
     if (me.options.deductible_vat_pct) {
-      const total_vat =
-        -1*((rInvoiceInfo.total_vat +
-          expenseInfo.total_vat -
-          (eInvoiceInfo.total_vat * me.options.deductible_vat_pct / 100.0) -
-          ( incomeInfo.total_vat * me.options.deductible_vat_pct / 100.0) )
-        );
+
       const vat_paid_date = new Date();
+      let total_vat = 0;
+
+      total_vat += await payEntity(
+        eInvoiceInfo.documents,
+        "emitted-invoice",
+        vat_paid_date,
+        100,
+        years
+      );
+      // console.log('total_vat', total_vat)
+      total_vat += await payEntity(
+        incomeInfo.documents,
+        "received-income",
+        vat_paid_date,
+        me.options.deductible_vat_pct,
+        years
+      );
+      total_vat -= await payEntity(
+        rInvoiceInfo.documents,
+        "received-invoice",
+        vat_paid_date,
+        me.options.deductible_vat_pct,
+        years
+      );
+      total_vat -= await payEntity(
+        expenseInfo.documents,
+        "received-expense",
+        vat_paid_date,
+        me.options.deductible_vat_pct,
+        years
+      );
+
+
+
+      // const total_vat =
+      //   -1*((rInvoiceInfo.total_vat +
+      //     expenseInfo.total_vat -
+      //     (eInvoiceInfo.total_vat * me.options.deductible_vat_pct / 100.0) -
+      //     ( incomeInfo.total_vat * me.options.deductible_vat_pct / 100.0) )
+      //   );
+      
       if (total_vat !== 0) {
         await strapi.query("treasury").create({
           comment: "IVA Saldat",
-          total: total_vat,
+          total: -1 * total_vat,
           date: vat_paid_date,
         });
-
-        await payEntity(
-          eInvoiceInfo.documents,
-          "emitted-invoice",
-          vat_paid_date,
-          me.options.deductible_vat_pct
-        );
-        await payEntity(
-          incomeInfo.documents,
-          "received-income",
-          vat_paid_date,
-          me.options.deductible_vat_pct
-        );
-        await payEntity(
-          rInvoiceInfo.documents,
-          "received-invoice",
-          vat_paid_date,
-          me.options.deductible_vat_pct
-        );
-        await payEntity(
-          expenseInfo.documents,
-          "received-expense",
-          vat_paid_date,
-          me.options.deductible_vat_pct
-        );
+        
       }
     }
     return {

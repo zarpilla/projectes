@@ -48,7 +48,7 @@ module.exports = {
                 } else {
                     order.contact.owner = order.owner
 
-                    console.log('order.contact 1', order.contact)
+                    // console.log('order.contact 1', order.contact)
                     const contact = await strapi.services.contacts.create(order.contact);
                     order.contact = contact.id                
                 }

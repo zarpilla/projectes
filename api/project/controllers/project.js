@@ -3,6 +3,7 @@ const { sanitizeEntity } = require("strapi-utils");
 const _ = require("lodash");
 const sumBy = require ("lodash/sumBy");
 const moment = require("moment");
+const { getDailyDedications, getFestives } = require("../services/project");
 
 /**
  * Read the documentation (https://strapi.io/documentation/v3.x/concepts/controllers.html#core-controllers)
@@ -18,15 +19,14 @@ const doProjectInfoCalculations = async (
     return;
   }
 
-  const dailyDedications = await strapi
-      .query("daily-dedication")
-      .find({ _limit: -1 });
-  const festives = await strapi.query("festive").find({ _limit: -1 });
+  const dailyDedications = await getDailyDedications()
+  const festives = await getFestives();
 
   const me = await strapi.query("me").findOne();
   const deductible_vat_pct = me.options && me.options.deductible_vat_pct ? me.options.deductible_vat_pct : 100.0;
   const deductible_ratio =  ((100.0 - deductible_vat_pct) / 100.0);
 
+  // console.log('deductible_ratio', deductible_ratio)
 
   data.total_incomes = 0;
   data.total_expenses = 0;
@@ -82,12 +82,12 @@ const doProjectInfoCalculations = async (
     data.total_estimated_hours_price = infoPhases.total_estimated_hours_price;
     // not assigned invoices
     data.total_real_incomes = infoPhases.total_real_incomes;
-    data.total_real_expenses = infoPhases.total_real_expenses;
-    console.log('deductible_ratio', deductible_ratio)
-    console.log('infoPhases.total_expenses_vat', infoPhases.total_expenses_vat)
-    console.log('infoPhases.total_expenses_vat', infoPhases.total_real_expenses_vat)
+    data.total_real_expenses = infoPhases.total_real_expenses;    
     data.total_expenses_vat = infoPhases.total_expenses_vat * deductible_ratio;
+
     data.total_real_expenses_vat = infoPhases.total_real_expenses_vat * deductible_ratio;
+
+    // data.total_expenses = data.total_expenses + data.total_expenses_vat
 
     if (data.original_phases && data.original_phases.length) {
       const infoOriginalPhases = await calculateEstimatedTotals(
@@ -108,10 +108,7 @@ const doProjectInfoCalculations = async (
         infoOriginalPhases.total_estimated_hours_price;
 
       data.total_expenses_vat = infoOriginalPhases.total_expenses_vat * deductible_ratio;
-      data.total_real_expenses_vat = infoOriginalPhases.total_real_expenses_vat * deductible_ratio;
 
-    console.log('infoOriginalPhases.total_expenses_vat', infoPhases.total_expenses_vat)
-    console.log('infoOriginalPhases.total_expenses_vat', infoPhases.total_real_expenses_vat)
     }
   } else {
     data.total_expenses = 0;
@@ -147,8 +144,6 @@ const doProjectInfoCalculations = async (
 
   var allByYearArrayJSON = JSON.parse(JSON.stringify(allByYearArray))  
 
-  // console.log('allByYearArrayJSON', allByYearArrayJSON)
-
   const allByYear = 
       _(_.values(allByYearArrayJSON.filter(a => a !== null)))
       .groupBy("year")
@@ -157,8 +152,10 @@ const doProjectInfoCalculations = async (
           year: year,
           total_incomes: sumBy(rows, r => r.total_incomes !== undefined ? parseFloat(r.total_incomes) : 0.0),
           total_expenses: sumBy(rows, r => r.total_expenses !== undefined ? parseFloat(r.total_expenses) : 0.0),
+          total_expenses_vat: sumBy(rows, r => r.total_expenses_vat !== undefined ? parseFloat(r.total_expenses_vat) : 0.0),
           total_real_incomes: sumBy(rows, r => r.total_real_incomes !== undefined ? parseFloat(r.total_real_incomes) : 0.0),
           total_real_expenses: sumBy(rows, r => r.total_real_expenses !== undefined ? parseFloat(r.total_real_expenses) : 0.0),
+          total_real_expenses_vat: sumBy(rows, r => r.total_real_expenses_vat !== undefined ? parseFloat(r.total_real_expenses_vat) : 0.0),
           total_estimated_hours: sumBy(rows, r => r.total_estimated_hours !== undefined ? parseFloat(r.total_estimated_hours) : 0.0),
           total_estimated_hours_price: sumBy(rows, r => r.total_estimated_hours_price !== undefined ? parseFloat(r.total_estimated_hours_price) : 0.0),
           total_real_hours: sumBy(rows, r => r.total_real_hours !== undefined ? parseFloat(r.total_real_hours) : 0.0),
@@ -189,14 +186,15 @@ const doProjectInfoCalculations = async (
       data.total_expenses +
       (data.structural_expenses_pct / 100) * data.total_incomes;
     data.incomes_expenses =
-      data.total_incomes - data.total_expenses - data.total_estimated_expenses;
+      data.total_incomes - data.total_expenses - data.total_estimated_expenses - data.total_expenses_vat;
     data.total_real_expenses =
       data.total_real_expenses +
       (data.structural_expenses_pct / 100) * data.total_real_incomes;
     data.total_real_incomes_expenses =
       data.total_real_incomes -
       data.total_real_expenses -
-      data.total_real_hours_price;
+      data.total_real_hours_price -
+      data.total_real_expenses_vat;
   }
 
   if (data.structural_expenses === true) {
@@ -227,14 +225,14 @@ const doProjectInfoCalculations = async (
   data.total_real_incomes_expenses =
     data.total_real_incomes -
     data.total_real_expenses -
-    data.total_real_hours_price;
+    data.total_real_hours_price - data.total_real_expenses_vat;
 
   data.balance =
     data.total_incomes - data.total_expenses - data.total_expenses_hours;
   data.estimated_balance =
     data.total_incomes - data.total_expenses - data.total_estimated_expenses;
   data.incomes_expenses =
-    data.total_incomes - data.total_expenses - data.total_estimated_hours_price;
+    data.total_incomes - data.total_expenses - data.total_estimated_hours_price - data.total_expenses_vat;
 
   if (!data.leader || !data.leader.id) {
     delete data.leader;
@@ -395,7 +393,7 @@ const calculateEstimatedTotals = async (
                       );
                       const costByHour =
                         dd && dd.costByHour ? dd.costByHour : 0;
-                      hours.total_amount += q * costByHour;
+                      hours.total_amount += q * costByHour;                      
                       total_estimated_hours_price += q * costByHour;
 
                       totalsByDay.push({ day, q, costByHour, userId: hours.users_permissions_user.id, project: data.id, project_name: data.name });
@@ -544,16 +542,22 @@ const calculateEstimatedTotals = async (
             rowsByYear.push({ year: ey, total_expenses: expense.total_amount, total_expenses_vat: expense.total_expenses_vat })
           }
           
+          
           if (expense.paid) {
+
+            console.log('expense', expense)
+
             total_real_expenses +=
               (expense.quantity ? expense.quantity : 0) *
               (expense.amount ? expense.amount : 0);
 
-              total_real_expenses_vat +=
+            total_real_expenses_vat +=
               (expense.quantity ? expense.quantity : 0) *
               (expense.amount ? expense.amount : 0) *
               (expense.expense_type && expense.expense_type.vat_pct ? expense.expense_type.vat_pct : 21) / 100.0;
 
+
+            console.log('total_real_expenses_vat', total_real_expenses_vat)
 
             if (real) {
               const realYear = getRealYear(expense.invoice ? expense.invoice : expense.expense)
@@ -572,11 +576,13 @@ const calculateEstimatedTotals = async (
         return {
           year: year,
           total_expenses: _.sumBy(rows, 'total_expenses'),
+          total_expenses_vat: _.sumBy(rows, 'total_expenses_vat'),
           total_incomes: _.sumBy(rows, 'total_incomes'),
           total_estimated_hours: _.sumBy(rows, 'total_estimated_hours'),
           total_estimated_hours_price: _.sumBy(rows, 'total_estimated_hours_price'),
           total_real_incomes: _.sumBy(rows, 'total_real_incomes'),
           total_real_expenses: _.sumBy(rows, 'total_real_expenses'),
+          total_real_expenses_vat: _.sumBy(rows, 'total_real_expenses_vat')
         };
       });
 
@@ -1281,6 +1287,18 @@ module.exports = {
     return { id, income, found };
   },
 
+  async findOne(ctx) {
+    
+    const { id } = ctx.params;    
+    const data = await strapi.query("project").findOne({ id });
+    
+    const result = await doProjectInfoCalculations(
+      data,
+      id
+    );
+
+    return result;
+  },
   doCalculateProjectInfo: async (ctx) => {
 
     const { id } = ctx.params;

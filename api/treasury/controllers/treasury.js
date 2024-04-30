@@ -9,6 +9,11 @@ const zeroPad = (num, places) => String(num).padStart(places, "0");
  * to customize this controller
  */
 
+const getDeductiblePct = (years, emitted) => {
+  const year = years.find((y) => y.year.toString() === moment(emitted, "YYYY-MM-DD").format('YYYY').toString())  
+  return year ? year.deductible_vat_pct / 100.0: 1.0;
+}
+
 module.exports = {
   async forecast(ctx) {
 
@@ -51,11 +56,15 @@ module.exports = {
     const projects = 
     await strapi.query("project").find(where)
 
-    // vat
-    const vat_expected = { paid: 0, received: 0 };
+    const years = 
+    await strapi.query("year").find({ _limit: -1 })
 
-    projects.forEach((p) => {
-      p.expenses.forEach((e) => {
+    // vat
+    const vat = { paid: 0, received: 0, deductible_vat_pct: 0, deductible_vat_pct_sum: 0, deductible_vat_pct_n: 0, deductible_vat: 0 };
+    const vat_expected = { paid: 0, received: 0 };    
+
+    for (let p of projects) {
+      for (let e of p.expenses) {
         if (!e.paid) {          
           const expense = {
             project_name: p.name,
@@ -105,8 +114,8 @@ module.exports = {
             code: e.expense.code,
           });
         }
-      });
-      p.incomes.forEach((i) => {
+      }
+      for (let i of p.incomes) {      
         if (!i.paid) {
           const income = {
             project_name: p.name,
@@ -142,10 +151,10 @@ module.exports = {
             code: i.income.code,
           });
         }
-      });
+      }
 
-      p.phases.forEach((ph) => {
-        ph.expenses.forEach((e, i) => {
+      for (let ph of p.phases) {
+        for (let e of ph.expenses || []) {
           if (!e.paid) {
             const expense = {
               expenseId: e.id,
@@ -161,7 +170,8 @@ module.exports = {
             };
             treasury.push(expense);
 
-            if (e.expense_type && e.expense_type.vat_pct) {
+            const date_est = e.date_estimate_document || e.date
+            if (date_est && moment(date_est, 'YYYY-MM-DD').year() <= moment().year() && e.expense_type && e.expense_type.vat_pct) {
               vat_expected.paid += e.total_amount * e.expense_type.vat_pct / 100;
             }
           }
@@ -200,8 +210,9 @@ module.exports = {
               code: e.expense.code,
             });
           }
-        });
-        ph.subphases.forEach((i) => {
+        }
+        
+        for (let i of ph.subphases || []) {
           if (!i.paid) {
             const income = {
               incomeId: i.id,
@@ -215,8 +226,11 @@ module.exports = {
               paid: false,
               contact: i.client && i.client.name ? i.client.name : "-",
             };
-            treasury.push(income);
-            if (i.income_type && i.income_type.vat_pct) {
+            treasury.push(income);            
+            
+            const date_est = i.date_estimate_document || i.date
+
+            if (date_est && moment(date_est, 'YYYY-MM-DD').year() <= moment().year() && i.income_type && i.income_type.vat_pct) {
               vat_expected.received += i.total_amount * i.income_type.vat_pct / 100;
             }
           }
@@ -241,9 +255,9 @@ module.exports = {
               code: i.income.code,
             });
           }
-        });
-      });
-    });
+        }
+      }
+    }
 
     treasuries.forEach((e) => {
       const expense = {
@@ -290,11 +304,10 @@ module.exports = {
 
     treasury.push(startOfYear);
 
-    // vat
-    const vat = { paid: 0, received: 0 };
+    
     
     // emitted
-    emitted.forEach((i) => {
+    for (let i of emitted) {
       const date = i.paid_date
         ? moment(i.paid_date, "YYYY-MM-DD")
         : i.paybefore
@@ -331,10 +344,11 @@ module.exports = {
       if (i.total_vat) {
         if (!i.vat_paid_date) {
           vat.received += i.total_vat;
+          vat.deductible_vat += -1 * i.total_vat;
         }
       }
-    });
-    receivedIncomes.forEach((i) => {
+    }
+    for (let i of receivedIncomes) {
       const date = i.paid_date
         ? moment(i.paid_date, "YYYY-MM-DD")
         : i.paybefore
@@ -372,11 +386,12 @@ module.exports = {
       if (i.total_vat) {
         if (!i.vat_paid_date) {
           vat.received += i.total_vat;
+          vat.deductible_vat += -1 * i.total_vat;
         }
       }
-    });
+    }
     // received
-    received.forEach((e) => {
+    for (let e of received) {
       const date = e.paid_date
         ? moment(e.paid_date, "YYYY-MM-DD")
         : e.paybefore
@@ -446,10 +461,13 @@ module.exports = {
       if (e.total_vat) {
         if (!e.vat_paid_date) {
           vat.paid += e.total_vat;
+          vat.deductible_vat += getDeductiblePct(years, e.emitted) * e.total_vat;          
+          vat.deductible_vat_pct_sum += getDeductiblePct(years, e.emitted)
+          vat.deductible_vat_pct_n++
         }
       }
-    });
-    receivedExpenses.forEach((e) => {
+    }
+    for (let e of receivedExpenses) {
       const date = e.paid_date
         ? moment(e.paid_date, "YYYY-MM-DD")
         : e.paybefore
@@ -518,10 +536,13 @@ module.exports = {
         // treasury.push(vat);
         if (!e.vat_paid_date) {
           vat.received += e.total_vat;
+          vat.deductible_vat += getDeductiblePct(years, e.emitted) * e.total_vat;
+          vat.deductible_vat_pct_sum += getDeductiblePct(years, e.emitted)
+          vat.deductible_vat_pct_n++
         }
       }
-    });
-    diets.forEach((e) => {
+    }
+    for (let e of diets) {
       const date = e.paid_date
         ? moment(e.paid_date, "YYYY-MM-DD")
         : e.paybefore
@@ -551,8 +572,8 @@ module.exports = {
         contact: e.contact && e.contact.name ? e.contact.name : "-",
       };
       treasury.push(expense);
-    });
-    tickets.forEach((e) => {
+    }
+    for (let e of tickets) {
       const date = e.paid_date
         ? moment(e.paid_date, "YYYY-MM-DD")
         : e.paybefore
@@ -582,9 +603,9 @@ module.exports = {
         contact: e.provider && e.provider.name ? e.provider.name : "-",
       };
       treasury.push(expense);
-    });
+    }
 
-    payrolls.forEach((e) => {
+    for (let e of payrolls) {
       const date = e.paid_date
         ? moment(e.paid_date, "YYYY-MM-DD")
         : moment.max([
@@ -672,26 +693,25 @@ module.exports = {
         };
         treasury.push(expense3);
       }
-    });
+    }
 
     const me = await strapi.query("me").findOne();
     
-    if (-1*(vat.received - (vat.paid * me.options.deductible_vat_pct / 100)) !== 0) {
-      treasury.push({
-        project_name: "",
-          project_id: 0,
-          type: "IVA pendent de saldar",
-          concept: `IVA pendent de saldar`,
-          total_amount: -1*(vat.received - (vat.paid * me.options.deductible_vat_pct / 100)),
-          date: moment().endOf("year"),
-          date_error: false,
-          paid: false,
-          contact:
-            "",
-          to: null,
-      })
-    }
-
+    // if (-1*(vat.received - (vat.paid * me.options.deductible_vat_pct / 100)) !== 0) {
+    //   treasury.push({
+    //     project_name: "",
+    //       project_id: 0,
+    //       type: "IVA pendent de saldar",
+    //       concept: `IVA pendent de saldar`,
+    //       total_amount: -1*(vat.received - (vat.paid * me.options.deductible_vat_pct / 100)),
+    //       date: moment().endOf("year"),
+    //       date_error: false,
+    //       paid: false,
+    //       contact:
+    //         "",
+    //       to: null,
+    //   })
+    // }
 
     if (-1*(vat_expected.received - (vat_expected.paid * me.options.deductible_vat_pct / 100)) !== 0) {
       treasury.push({
@@ -729,9 +749,9 @@ module.exports = {
       });
     }
 
-    
-
-    // console.log("vat", vat);
+    // console.log("vat_expected", vat_expected);
+    vat.deductible_vat_pct = vat.deductible_vat_pct_sum / vat.deductible_vat_pct_n * 100
+    vat.deductible_vat_pct = parseFloat(vat.deductible_vat_pct.toFixed(2))
     return { treasury: treasuryDataX, projects, vat, vat_expected };
   },
 };
