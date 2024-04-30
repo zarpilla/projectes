@@ -264,6 +264,9 @@
     },
     "total_real_expenses_vat": {
       "type": "decimal"
+    },
+    "grantable_structural_expenses": {
+      "type": "decimal"
     }
   }
 }

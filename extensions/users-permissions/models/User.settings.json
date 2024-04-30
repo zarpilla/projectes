@@ -97,6 +97,9 @@
     },
     "identity_number": {
       "type": "string"
+    },
+    "naf": {
+      "type": "string"
     }
   }
 }

@@ -73,6 +73,9 @@
     },
     "invoice_template": {
       "type": "text"
+    },
+    "ccc": {
+      "type": "string"
     }
   }
 }
