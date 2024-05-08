@@ -99,6 +99,12 @@
     },
     "provider_order_number": {
       "type": "string"
+    },
+    "contact_legal_form": {
+      "model": "legal-form"
+    },
+    "estimated_delivery_date": {
+      "type": "date"
     }
   }
 }

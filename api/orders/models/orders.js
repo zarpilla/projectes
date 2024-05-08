@@ -40,6 +40,9 @@ module.exports = {
             }
         },        
         async beforeUpdate(params, data) {
+            if (data.status === 'delivered' && !data.delivery_date) {
+                data.delivery_date = new Date()
+            }
             if (data.delivery_type && data.delivery_type.id) {
                 const deliveryTypes = await strapi.services['delivery-type'].find();
                 const deliveryType = deliveryTypes.find(d => d.id === data.delivery_type.id)
