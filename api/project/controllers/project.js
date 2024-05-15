@@ -26,7 +26,7 @@ const doProjectInfoCalculations = async (
   const deductible_vat_pct = me.options && me.options.deductible_vat_pct ? me.options.deductible_vat_pct : 100.0;
   const deductible_ratio =  ((100.0 - deductible_vat_pct) / 100.0);
 
-  // console.log('deductible_ratio', deductible_ratio)
+  console.log('deductible_ratio', deductible_ratio)
 
   data.total_incomes = 0;
   data.total_expenses = 0;
@@ -84,8 +84,10 @@ const doProjectInfoCalculations = async (
     data.total_real_incomes = infoPhases.total_real_incomes;
     data.total_real_expenses = infoPhases.total_real_expenses;    
     data.total_expenses_vat = infoPhases.total_expenses_vat * deductible_ratio;
-
     data.total_real_expenses_vat = infoPhases.total_real_expenses_vat * deductible_ratio;
+
+    console.log('data.total_expenses_vat', infoPhases.total_expenses_vat)
+    console.log('data.total_real_expenses_vat', infoPhases.total_real_expenses_vat)
 
     // data.total_expenses = data.total_expenses + data.total_expenses_vat
 
@@ -152,10 +154,10 @@ const doProjectInfoCalculations = async (
           year: year,
           total_incomes: sumBy(rows, r => r.total_incomes !== undefined ? parseFloat(r.total_incomes) : 0.0),
           total_expenses: sumBy(rows, r => r.total_expenses !== undefined ? parseFloat(r.total_expenses) : 0.0),
-          total_expenses_vat: sumBy(rows, r => r.total_expenses_vat !== undefined ? parseFloat(r.total_expenses_vat) : 0.0),
+          total_expenses_vat: sumBy(rows, r => r.total_expenses_vat !== undefined ? deductible_ratio * parseFloat(r.total_expenses_vat) : 0.0),
           total_real_incomes: sumBy(rows, r => r.total_real_incomes !== undefined ? parseFloat(r.total_real_incomes) : 0.0),
           total_real_expenses: sumBy(rows, r => r.total_real_expenses !== undefined ? parseFloat(r.total_real_expenses) : 0.0),
-          total_real_expenses_vat: sumBy(rows, r => r.total_real_expenses_vat !== undefined ? parseFloat(r.total_real_expenses_vat) : 0.0),
+          total_real_expenses_vat: sumBy(rows, r => r.total_real_expenses_vat !== undefined ? deductible_ratio * parseFloat(r.total_real_expenses_vat) : 0.0),
           total_estimated_hours: sumBy(rows, r => r.total_estimated_hours !== undefined ? parseFloat(r.total_estimated_hours) : 0.0),
           total_estimated_hours_price: sumBy(rows, r => r.total_estimated_hours_price !== undefined ? parseFloat(r.total_estimated_hours_price) : 0.0),
           total_real_hours: sumBy(rows, r => r.total_real_hours !== undefined ? parseFloat(r.total_real_hours) : 0.0),
@@ -545,23 +547,26 @@ const calculateEstimatedTotals = async (
           
           if (expense.paid) {
 
-            console.log('expense', expense)
+            // console.log('expense', expense)
 
             total_real_expenses +=
               (expense.quantity ? expense.quantity : 0) *
               (expense.amount ? expense.amount : 0);
 
-            total_real_expenses_vat +=
-              (expense.quantity ? expense.quantity : 0) *
-              (expense.amount ? expense.amount : 0) *
-              (expense.expense_type && expense.expense_type.vat_pct ? expense.expense_type.vat_pct : 21) / 100.0;
+            // total_real_expenses_vat +=
+            //   (expense.quantity ? expense.quantity : 0) *
+            //   (expense.amount ? expense.amount : 0) *
+            //   (expense.expense_type && expense.expense_type.vat_pct ? expense.expense_type.vat_pct : 21) / 100.0;
 
 
-            console.log('total_real_expenses_vat', total_real_expenses_vat)
+            // console.log('total_real_expenses_vat', total_real_expenses_vat)
 
             if (real) {
               const realYear = getRealYear(expense.invoice ? expense.invoice : expense.expense)
-              rowsByYear.push({ year: realYear, total_real_expenses: (expense.quantity ? expense.quantity : 0) * (expense.amount ? expense.amount : 0)})
+              rowsByYear.push({ year: realYear, total_real_expenses: (expense.quantity ? expense.quantity : 0) * (expense.amount ? expense.amount : 0),
+                total_real_expenses_vat: expense.invoice ? expense.invoice.total_vat : expense.total_expenses_vat
+              })
+              total_real_expenses_vat += expense.invoice ? expense.invoice.total_vat : expense.total_expenses_vat
             }
           }
         }
