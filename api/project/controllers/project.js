@@ -25,9 +25,7 @@ const doProjectInfoCalculations = async (
   const me = await strapi.query("me").findOne();
   const deductible_vat_pct = me.options && me.options.deductible_vat_pct ? me.options.deductible_vat_pct : 100.0;
   const deductible_ratio =  ((100.0 - deductible_vat_pct) / 100.0);
-
-  console.log('deductible_ratio', deductible_ratio)
-
+  
   data.total_incomes = 0;
   data.total_expenses = 0;
   data.total_expenses_hours = 0;
@@ -85,9 +83,6 @@ const doProjectInfoCalculations = async (
     data.total_real_expenses = infoPhases.total_real_expenses;    
     data.total_expenses_vat = infoPhases.total_expenses_vat * deductible_ratio;
     data.total_real_expenses_vat = infoPhases.total_real_expenses_vat * deductible_ratio;
-
-    console.log('data.total_expenses_vat', infoPhases.total_expenses_vat)
-    console.log('data.total_real_expenses_vat', infoPhases.total_real_expenses_vat)
 
     // data.total_expenses = data.total_expenses + data.total_expenses_vat
 
