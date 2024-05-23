@@ -41,6 +41,14 @@
       }
     },
     {
+      "method": "POST",
+      "path": "/orders/invoice",
+      "handler": "orders.invoice",
+      "config": {
+        "policies": []
+      }
+    },
+    {
       "method": "PUT",
       "path": "/orders/:id",
       "handler": "orders.update",

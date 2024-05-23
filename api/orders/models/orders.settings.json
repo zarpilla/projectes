@@ -43,7 +43,8 @@
         "processed",
         "delivered",
         "invoiced",
-        "cancelled"
+        "cancelled",
+        "distributing"
       ]
     },
     "route": {
@@ -105,6 +106,9 @@
     },
     "estimated_delivery_date": {
       "type": "date"
+    },
+    "emitted_invoice": {
+      "model": "emitted-invoice"
     }
   }
 }

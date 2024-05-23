@@ -1472,7 +1472,7 @@ module.exports = {
   async findOne(ctx) {
     const { id } = ctx.params;
     const data = await strapi.query("project").findOne({ id });
-
+    
     const result = await doProjectInfoCalculations(data, id);
 
     return result;
