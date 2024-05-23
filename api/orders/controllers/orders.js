@@ -149,9 +149,41 @@ module.exports = {
           .query("orders")
           .update({ id: o.id }, { invoice: invoice.id, status: "invoiced" });
       }
-    }
+      for (const p of uniqueProjects) {
+        // const total = contactOrders.filter((o) => o.route.project === p).reduce((acc, o) => {
+        //   return acc + o.price;
+        // }, 0);
 
-    // const contacts = await strapi.query("contacts").find({ owner_in: uniqueOwners })
+        const project = await strapi.query("project").findOne({ id: p });
+
+        if (!project.phases || project.phases.length === 0) {
+          ctx.send(
+            {
+              done: false,
+              message: "ERROR. No hi ha fases per al projecte " + project.name,
+            },
+            500
+          );
+        }
+
+        const phase = project.phases[project.phases.length - 1];
+
+        for (const o of contactOrders.filter((o) => o.route.project === p )){
+          phase.incomes.push({
+            concept: `Comanda #${o.id.toString().padStart(4, "0")}# - ${contact.name}`,
+            quantity: 1,
+            amount: o.price,
+            total_amount: o.price,
+            date: new Date(),
+            income_type: 1,
+            invoice: invoice.id,
+          })
+        }
+
+        await strapi.query("project").update({ id: p }, { phases: project.phases });
+
+      }
+    }
 
     ctx.send({
       orders: orders,
