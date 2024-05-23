@@ -221,31 +221,13 @@ module.exports = {
 
     const invoice = await strapi.query("orders").findOne({ id });
 
-    console.log('invoice', invoice)
-
     const me = await strapi.query("me").findOne();
     const config = await strapi.query("config").findOne();
 
-    console.log('config', config.front_url)
-
     const qrCodeImage = await QRCode.toDataURL(`${config.front_url}order/${id}`);
 
-    const logoUrl = `./public${me.logo.url}`;
-
-    console.log('logoUrl', logoUrl, qrCodeImage)
-
     var logo = qrCodeImage;
-
-    // if (logoUrl.endsWith(".svg")) {
-    // logo = `./public/uploads/orders/qr-${id}.jpg`;
-      
-    // }
-
-    // await sharp(qrCodeImage).png().toFile(logo);
-
     const logoWidth = 100;
-    const ratio = 1;
-
     const invoiceHeader = [
       {
         label: "Número",
@@ -447,7 +429,7 @@ module.exports = {
     if (invoice.contact_time_slot_2_ini && invoice.contact_time_slot_2_end) {
       more += "\n" + "De " + invoice.contact_time_slot_2_ini + "h a " + invoice.contact_time_slot_2_end + "h";
     }
-    invoice.comments = more + "\n\n" + invoice.comments;
+    invoice.comments = more + "\n\n" + (invoice.comments ? invoice.comments : '');
     if (invoice.comments) {      
       legal.push({
         value: invoice.comments,
@@ -531,20 +513,10 @@ module.exports = {
     }
     const hash = crypto
       .createHash("md5")
-      .update(`${myInvoice.options.data.invoice.name}-${invoice.code}-${id}`)
+      .update(`${myInvoice.options.data.invoice.name}-${invoice.createdAt}-${id}`)
       .digest("hex");
-    const docName = `./public/uploads/orders/${
-      myInvoice.options.data.invoice.name
-    }-${invoice.contact.name}-${invoice.code}-H${hash.substring(16)}.pdf`;
+    const docName = `./public/uploads/orders/${id}-H${hash.substring(16)}.pdf`;
     await myInvoice.generate(docName);
-
-    // strapi
-    //   .query(doc)
-    //   .update(
-    //     { id: invoice.id },
-    //     { pdf: docName.substring("./public".length), _internal: true }
-    //   );
-
     return { url: docName.substring("./public".length) };
   },
 
