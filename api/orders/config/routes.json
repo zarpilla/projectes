@@ -49,6 +49,14 @@
       }
     },
     {
+      "method": "GET",
+      "path": "/orders/pdf/:id",
+      "handler": "orders.pdf",
+      "config": {
+        "policies": []
+      }
+    },
+    {
       "method": "PUT",
       "path": "/orders/:id",
       "handler": "orders.update",

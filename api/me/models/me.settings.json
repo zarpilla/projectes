@@ -76,6 +76,9 @@
     },
     "ccc": {
       "type": "string"
+    },
+    "order_footer": {
+      "type": "text"
     }
   }
 }

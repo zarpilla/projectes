@@ -126,7 +126,7 @@ async function importSeedData() {
     "workday-log": ["create", "find", "findone", "update", "delete"],
     product: ["find", "findone"],
     "user-festive": ["find"],
-    orders: ["create", "find", "findone", "update", "delete", "createcsv", "invoice"],
+    orders: ["create", "find", "findone", "update", "delete", "createcsv", "invoice", "pdf"],
     "orders-imports": ["create", "find", "findone", "update"],
     "delivery-type": ["find"],
     pickups: ["find"],
