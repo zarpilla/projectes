@@ -126,7 +126,7 @@ async function importSeedData() {
     "workday-log": ["create", "find", "findone", "update", "delete"],
     product: ["find", "findone"],
     "user-festive": ["find"],
-    orders: ["create", "find", "findone", "update", "delete", "createcsv"],
+    orders: ["create", "find", "findone", "update", "delete", "createcsv", "invoice"],
     "orders-imports": ["create", "find", "findone", "update"],
     "delivery-type": ["find"],
     pickups: ["find"],
@@ -214,6 +214,17 @@ async function importSeedData() {
       }
     }
   }
+
+  const sql1 = `UPDATE components_project_phase_original_project_phases_components SET field = 'incomes' WHERE field = 'subphases';`;
+  await strapi.connections.default.raw(sql1);
+
+  console.log('sql1', sql1);
+
+  const sql2 = `UPDATE components_project_phase_project_phases_components SET field = 'incomes' WHERE field = 'subphases';`;
+  await strapi.connections.default.raw(sql2);
+
+  console.log('sql1', sql2);
+
 }
 
 module.exports = async () => {

@@ -212,7 +212,7 @@ module.exports = {
           }
         }
         
-        for (let i of ph.subphases || []) {
+        for (let i of ph.incomes || []) {
           if (!i.paid) {
             const income = {
               incomeId: i.id,

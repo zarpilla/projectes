@@ -10,7 +10,7 @@
     "name": {
       "type": "string"
     },
-    "subphases": {
+    "incomes": {
       "type": "component",
       "repeatable": true,
       "component": "budget-line.simple-income"
