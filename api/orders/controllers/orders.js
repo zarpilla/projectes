@@ -116,8 +116,7 @@ module.exports = {
       const contacts = await strapi
         .query("contacts")
         .find({ users_permissions_user: owner });
-      if (contacts.length === 0) {
-        ctx.badRequest("name is missing", { foo: "bar" });
+      if (contacts.length === 0) {        
         ctx.send(
           {
             done: false,
@@ -226,8 +225,30 @@ module.exports = {
 
     const qrCodeImage = await QRCode.toDataURL(`${config.front_url}order/${id}`);
 
-    var logo = qrCodeImage;
+    var qr = qrCodeImage;
+
+    const qrWidth = 100;
+
     const logoWidth = 100;
+    const ratio = me.logo.width / logoWidth;
+
+    console.log('invoice', invoice)
+
+    const contacts = await strapi
+        .query("contacts")
+        .find({ users_permissions_user: invoice.owner.id });
+      if (contacts.length === 0) {        
+        ctx.send(
+          {
+            done: false,
+            message: "ERROR. No hi ha provider per a l'usuari " + invoice.owner.id,
+          },
+          500
+        );
+        return;
+      }
+    const provider = contacts[0];
+
     const invoiceHeader = [
       {
         label: "Número",
@@ -237,7 +258,21 @@ module.exports = {
         label: "Data",
         value: moment(invoice.route_date, "YYYY-MM-DD").format("DD-MM-YYYY"),
       },
+      {
+        label: "Proveïdora",
+        value: `${provider.id.toString().padStart(4, '0')} - ${provider.name}`,
+      },
     ];
+
+    const logoUrl = `./public${me.logo.url}`;
+
+    var logo = logoUrl;
+
+    if (logoUrl.endsWith(".svg")) {
+      logo = "./public/uploads/invoice-logo.jpg";
+      await sharp(logoUrl).png().toFile(logo);
+    }
+
 
     // if (invoice.paybefore) {
     //   invoiceHeader.push({
@@ -327,7 +362,7 @@ module.exports = {
       const part = [];
 
       if (line.quantity && line.price) {
-        var concept = `Entrega ${invoice.owner.fullname} - ${invoice.route.name} ${invoice.pickup.name} ${invoice.refrigerated ? "Refrigerada" : ""} - ${invoice.units} ${invoice.units > 1 ? 'caixes' : 'caixa'} - ${invoice.kilograms} kg)`;
+        var concept = `${invoice.route.name.trim()}${invoice.estimated_delivery_date ? ' - ' + invoice.estimated_delivery_date : '' } - ${invoice.pickup.name} ${invoice.refrigerated ? "Refrigerada" : ""} - ${invoice.units} ${invoice.units > 1 ? 'caixes' : 'caixa'} - ${invoice.kilograms} kg`;
         // if (line.comments) {
         //   concept += "\n\n" + line.comments;
         // }
@@ -419,105 +454,132 @@ module.exports = {
     });
 
     const legal = [];
-    let more = invoice.contact.phone ? `Telèfon: ${invoice.contact.phone}` : ''    
+    let more = 'PROVEÏDORA\n'
+    more += `${provider.name}\n${provider.address}\n${provider.postcode} ${provider.city}${provider.phone ? '\nTel:' + provider.phone : ''}`
+    more += "\n\n" + "ENTREGA:\n";
+    more += invoice.contact_legal_form ? invoice.contact_legal_form.name + " - " : '';
     if (invoice.fragile) {
-      more += "\n" + "Fràgil";
+      more += "Fràgil" + " - ";
     }      
     if (invoice.contact_time_slot_1_ini && invoice.contact_time_slot_1_end) {
-      more += "\n" + "De " + invoice.contact_time_slot_1_ini + "h a " + invoice.contact_time_slot_1_end + "h";
+      more += "De " + invoice.contact_time_slot_1_ini + "h a " + invoice.contact_time_slot_1_end + "h" + " - ";
     }
     if (invoice.contact_time_slot_2_ini && invoice.contact_time_slot_2_end) {
-      more += "\n" + "De " + invoice.contact_time_slot_2_ini + "h a " + invoice.contact_time_slot_2_end + "h";
+      more += "De " + invoice.contact_time_slot_2_ini + "h a " + invoice.contact_time_slot_2_end + "h";
     }
-    invoice.comments = more + "\n\n" + (invoice.comments ? invoice.comments : '');
+    invoice.comments = more + "\n" + (invoice.comments ? invoice.comments : '');
     if (invoice.comments) {      
       legal.push({
         value: invoice.comments,
         color: "secondary",
       });
     }
-    if (invoice?.payment_method?.invoice_text && doc === "emitted-invoice") {
-      legal.push({
-        value: invoice?.payment_method?.invoice_text,
-        weight: "bold",
-        color: "primary",
-      });
-    }
+    // if (invoice?.payment_method?.invoice_text && doc === "emitted-invoice") {
+    //   legal.push({
+    //     value: invoice?.payment_method?.invoice_text,
+    //     weight: "bold",
+    //     color: "primary",
+    //   });
+    // }
     if (me.order_footer) {
       legal.push({
         value: me.order_footer,
         color: "secondary",
+      });      
+    }
+
+    const urls = [];
+
+    // for invoice.units
+    for (let i = 0; i < invoice.units; i++) {
+
+      const boxes = [...legal]
+
+      boxes.push({
+        value: `${i+1}/${invoice.units}`,
+        weight: "bold",
+        color: "primary",
       });
-    }
 
-    let myInvoice = new MicroInvoice({
-      style: {
-        header: {
-          image: {
-            path: logo,
-            width: logoWidth,
-            height: logoWidth,
+      let myInvoice = new MicroInvoice({
+        style: {
+          header: {
+            image: {
+              path: logo,
+              width: logoWidth,
+              height: me.logo.height / ratio,
+            },
+            qr: {
+              path: qr,
+              width: qrWidth,
+              height: qrWidth,
+            },
           },
         },
-      },
-      data: {
-        invoice: {
-          name: "Comanda",
-
-          header: invoiceHeader,
-
-          currency: "EUR",
-
-          customer: [
-            {
-              label:
-                "ENTREGA",
-              value: [
-                invoice.contact.name,
-                invoice.contact.nif,
-                invoice.contact.address,
-                invoice.contact.postcode + " " + invoice.contact.city,
-              ],
+        data: {
+          invoice: {
+            name: "Comanda",
+  
+            header: invoiceHeader,
+  
+            currency: "EUR",
+  
+            customer: [
+              {
+                label:
+                  "ENTREGA",
+                value: [
+                  invoice.contact.name,
+                  invoice.contact.nif,
+                  invoice.contact.address,
+                  invoice.contact.postcode + " " + invoice.contact.city,
+                  `Tel: ${invoice.contact.phone}`
+                ],
+              },
+            ],
+  
+            seller: [
+              {
+                label:
+                  "EMISSOR",
+                value: [
+                  me.name,
+                  me.nif,
+                  me.address,
+                  me.postcode + " " + me.city,
+                  me.email,
+                ],
+              },
+            ],
+  
+            legal: boxes,
+  
+            details: {
+              header: detailsHeader,
+  
+              parts: parts,
+  
+              total: total,
             },
-          ],
-
-          seller: [
-            {
-              label:
-                "EMISSOR",
-              value: [
-                me.name,
-                me.nif,
-                me.address,
-                me.postcode + " " + me.city,
-                me.email,
-              ],
-            },
-          ],
-
-          legal: legal,
-
-          details: {
-            header: detailsHeader,
-
-            parts: parts,
-
-            total: total,
           },
         },
-      },
-    });
+      });
+  
+      if (!fs.existsSync("./public/uploads/orders")) {
+        fs.mkdirSync("./public/uploads/orders");
+      }
+      const hash = crypto
+        .createHash("md5")
+        .update(`${myInvoice.options.data.invoice.name}-${invoice.createdAt}-${id}`)
+        .digest("hex");
+      const docName = `./public/uploads/orders/${id}-H${hash.substring(16)}-${i}.pdf`;
+      await myInvoice.generate(docName);
 
-    if (!fs.existsSync("./public/uploads/orders")) {
-      fs.mkdirSync("./public/uploads/orders");
+      urls.push(docName.substring("./public".length));
     }
-    const hash = crypto
-      .createHash("md5")
-      .update(`${myInvoice.options.data.invoice.name}-${invoice.createdAt}-${id}`)
-      .digest("hex");
-    const docName = `./public/uploads/orders/${id}-H${hash.substring(16)}.pdf`;
-    await myInvoice.generate(docName);
-    return { url: docName.substring("./public".length) };
+
+    
+    return { urls };
   },
 
 };

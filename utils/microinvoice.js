@@ -53,6 +53,9 @@ module.exports = class Microinvoice {
           backgroundColor : "#F8F8FA",
           height          : 150,
           image           : null,
+          qr              : {
+            left: 460
+          },
           textPosition    : 330
         },
         table : {
@@ -111,7 +114,8 @@ module.exports = class Microinvoice {
 
     this.storage = {
       header : {
-        image : null
+        image : null,
+        qr    : null
       },
       cursor : {
         x : 0,
@@ -248,6 +252,18 @@ module.exports = class Microinvoice {
         this.options.style.document.marginTop, {
           width  : this.options.style.header.image.width,
           height : this.options.style.header.image.height
+        }
+      );
+    }
+
+    if (this.options.style.header.qr &&
+      this.options.style.header.qr.path) {
+      this.document.image(
+        this.options.style.header.qr.path,
+        this.options.style.header.qr.left,
+        this.options.style.document.marginTop, {
+          width  : this.options.style.header.qr.width,
+          height : this.options.style.header.qr.height
         }
       );
     }
