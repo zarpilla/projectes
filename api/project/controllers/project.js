@@ -1052,6 +1052,7 @@ module.exports = {
           p.project_type && p.project_type.id ? p.project_type.name : "",
         project_leader: p.leader && p.leader.id ? p.leader.username : "",
         mother: p.mother && p.mother.id ? p.mother.name : p.name,
+        structural_expenses: p.structural_expenses,
       };
 
       for (var j = 0; j < p.phases.length; j++) {
@@ -1081,6 +1082,7 @@ module.exports = {
               document,
             });
           }
+          
         }
 
         for (var k = 0; k < ph.expenses.length; k++) {
@@ -1241,6 +1243,7 @@ module.exports = {
             year: parseInt(id.split(".")[0]),
             month: parseInt(id.split(".")[1]) + 1,
             cost: _.sumBy(rows, (r) => r.q * r.costByHour),
+            q: _.sumBy(rows, (r) => r.q),
           };
         });
 
@@ -1255,6 +1258,7 @@ module.exports = {
           type: "estimated_hours",
           date: "",
           total_estimated_hours_price: -1 * (g.cost || 0),
+          total_estimated_hours: g.q || 0,
           total_real_hours_price: 0,
           year: g.year.toString(),
           month: g.month,
