@@ -1023,6 +1023,7 @@ module.exports = {
           year: parseInt(id.split(".")[1]),
           month: parseInt(id.split(".")[2]) + 1,
           cost: _.sumBy(rows, (r) => r.hours * r.cost_by_hour),
+          hours: _.sumBy(rows, "hours"),
         };
       });
 
@@ -1213,6 +1214,7 @@ module.exports = {
           date: "",
           total_estimated_hours_price: 0,
           total_real_hours_price: -1 * (pa.cost || 0),
+          total_real_hours: pa.hours || 0,
           year: pa.year.toString(),
           month: pa.month,
           row_type: "",
