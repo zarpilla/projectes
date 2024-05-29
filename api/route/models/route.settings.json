@@ -2,7 +2,8 @@
   "kind": "collectionType",
   "collectionName": "routes",
   "info": {
-    "name": "Route"
+    "name": "Route",
+    "description": ""
   },
   "options": {
     "increments": true,
@@ -15,6 +16,27 @@
     },
     "project": {
       "model": "project"
+    },
+    "monday": {
+      "type": "boolean"
+    },
+    "tuesday": {
+      "type": "boolean"
+    },
+    "wednesday": {
+      "type": "boolean"
+    },
+    "thursday": {
+      "type": "boolean"
+    },
+    "friday": {
+      "type": "boolean"
+    },
+    "saturday": {
+      "type": "boolean"
+    },
+    "sunday": {
+      "type": "boolean"
     }
   }
 }
