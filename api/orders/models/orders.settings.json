@@ -72,16 +72,16 @@
       "type": "string"
     },
     "contact_time_slot_1_ini": {
-      "type": "integer"
+      "type": "decimal"
     },
     "contact_time_slot_1_end": {
-      "type": "integer"
+      "type": "decimal"
     },
     "contact_time_slot_2_ini": {
-      "type": "integer"
+      "type": "decimal"
     },
     "contact_time_slot_2_end": {
-      "type": "integer"
+      "type": "decimal"
     },
     "route_rate": {
       "model": "route-rate"
