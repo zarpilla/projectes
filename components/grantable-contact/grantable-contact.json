@@ -1,0 +1,16 @@
+{
+  "collectionName": "components_grantable_contact_grantable_contacts",
+  "info": {
+    "name": "grantable_contact",
+    "icon": "address-card"
+  },
+  "options": {},
+  "attributes": {
+    "contact": {
+      "model": "contacts"
+    },
+    "amount": {
+      "type": "decimal"
+    }
+  }
+}

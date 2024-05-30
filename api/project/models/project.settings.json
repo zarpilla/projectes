@@ -267,6 +267,17 @@
     },
     "grantable_structural_expenses": {
       "type": "decimal"
+    },
+    "grantable_reference": {
+      "type": "string"
+    },
+    "grantable_leader": {
+      "model": "contacts"
+    },
+    "grantable_contacts": {
+      "type": "component",
+      "repeatable": true,
+      "component": "grantable-contact.grantable-contact"
     }
   }
 }

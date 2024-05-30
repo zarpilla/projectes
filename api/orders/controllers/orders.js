@@ -232,7 +232,7 @@ module.exports = {
     const logoWidth = 100;
     const ratio = me.logo.width / logoWidth;
 
-    console.log('invoice', invoice)
+    // console.log('invoice', invoice)
 
     const contacts = await strapi
         .query("contacts")
