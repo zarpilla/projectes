@@ -1,5 +1,5 @@
 "use strict";
-var MicroInvoice = require("../../../utils/microinvoice");
+var MicroInvoiceOrder = require("../../../utils/microinvoice-order");
 var fs = require("fs");
 const sharp = require("sharp");
 const moment = require("moment");
@@ -251,17 +251,13 @@ module.exports = {
 
     const invoiceHeader = [
       {
-        label: "Número",
+        label: "NÚMERO",
         value: invoice.id.toString().padStart(4, "0"),
       },
       {
-        label: "Data",
+        label: "DATA",
         value: moment(invoice.route_date, "YYYY-MM-DD").format("DD-MM-YYYY"),
-      },
-      {
-        label: "Proveïdora",
-        value: `${provider.id.toString().padStart(4, '0')} - ${provider.name}`,
-      },
+      },      
     ];
 
     const logoUrl = `./public${me.logo.url}`;
@@ -347,7 +343,7 @@ module.exports = {
       });
     }
     detailsHeader.push({
-      value: "Subtotal",
+      value: "TOTAL",
       width: 0.1 * columnsRatio,
     });
 
@@ -428,35 +424,33 @@ module.exports = {
     //}
 
     const total = [];
-    total.push({
-      label: "Base imposable",
-      value: invoice.price,
-      price: true,
-    });
-    if (showVat) {
-      total.push({
-        label: "IVA",
-        value: invoice.price * 0.21,
-        price: true,
-      });
-    }
-    if (showIrpf) {
-      total.push({
-        label: "IRPF",
-        value: -1 * 0,
-        price: true,
-      });
-    }
-    total.push({
-      label: "TOTAL",
-      value: invoice.price * 1.21,
-      price: true,
-    });
+    // total.push({
+    //   label: "Base imposable",
+    //   value: invoice.price,
+    //   price: true,
+    // });
+    // if (showVat) {
+    //   total.push({
+    //     label: "IVA",
+    //     value: invoice.price * 0.21,
+    //     price: true,
+    //   });
+    // }
+    // if (showIrpf) {
+    //   total.push({
+    //     label: "IRPF",
+    //     value: -1 * 0,
+    //     price: true,
+    //   });
+    // }
+    // total.push({
+    //   label: "TOTAL",
+    //   value: invoice.price * 1.21,
+    //   price: true,
+    // });
 
     const legal = [];
-    let more = 'PROVEÏDORA\n'
-    more += `${provider.name}\n${provider.address}\n${provider.postcode} ${provider.city}${provider.phone ? '\nTel:' + provider.phone : ''}`
-    more += "\n\n" + "ENTREGA:\n";
+    let more = 'NOTES ENTREGA:\n'    
     more += invoice.contact_legal_form ? invoice.contact_legal_form.name + " - " : '';
     if (invoice.fragile) {
       more += "Fràgil" + " - ";
@@ -481,27 +475,26 @@ module.exports = {
     //     color: "primary",
     //   });
     // }
-    if (me.order_footer) {
-      legal.push({
-        value: me.order_footer,
-        color: "secondary",
-      });      
-    }
+    // if (me.order_footer) {
+    //   legal.push({
+    //     value: me.order_footer,
+    //     color: "secondary",
+    //   });      
+    // }
 
     const urls = [];
 
     // for invoice.units
-    for (let i = 0; i < invoice.units; i++) {
+    // for (let i = 0; i < invoice.units; i++) {
 
-      const boxes = [...legal]
+      const invoiceHeaderBoxes = [...invoiceHeader]
 
-      boxes.push({
-        value: `${i+1}/${invoice.units}`,
-        weight: "bold",
-        color: "primary",
-      });
+      // invoiceHeaderBoxes.push({
+      //   label: "CAIXA",
+      //   value: `${i+1}/${invoice.units}`
+      // });
 
-      let myInvoice = new MicroInvoice({
+      let myInvoice = new MicroInvoiceOrder({
         style: {
           header: {
             image: {
@@ -517,10 +510,11 @@ module.exports = {
           },
         },
         data: {
+          pages: invoice.units,
           invoice: {
-            name: "Comanda",
+            name: "COMANDA",
   
-            header: invoiceHeader,
+            header: invoiceHeaderBoxes,
   
             currency: "EUR",
   
@@ -533,7 +527,7 @@ module.exports = {
                   invoice.contact.nif,
                   invoice.contact.address,
                   invoice.contact.postcode + " " + invoice.contact.city,
-                  `Tel: ${invoice.contact.phone}`
+                  `Tel: ${invoice.contact.phone}`,                  
                 ],
               },
             ],
@@ -541,7 +535,7 @@ module.exports = {
             seller: [
               {
                 label:
-                  "EMISSOR",
+                  "EMISSORA",
                 value: [
                   me.name,
                   me.nif,
@@ -551,8 +545,22 @@ module.exports = {
                 ],
               },
             ],
+
+            provider: [
+              {
+                label:
+                  "PROVEÏDORA",
+                value: [
+                  provider.name,
+                  provider.nif,
+                  provider.address,
+                  provider.postcode + " " + provider.city,
+                  provider.phone,
+                ],
+              },
+            ],
   
-            legal: boxes,
+            legal: legal,
   
             details: {
               header: detailsHeader,
@@ -572,11 +580,11 @@ module.exports = {
         .createHash("md5")
         .update(`${myInvoice.options.data.invoice.name}-${invoice.createdAt}-${id}`)
         .digest("hex");
-      const docName = `./public/uploads/orders/${id}-H${hash.substring(16)}-${i}.pdf`;
+      const docName = `./public/uploads/orders/${id}-H${hash.substring(16)}.pdf`;
       await myInvoice.generate(docName);
 
       urls.push(docName.substring("./public".length));
-    }
+    //}
 
     
     return { urls };
