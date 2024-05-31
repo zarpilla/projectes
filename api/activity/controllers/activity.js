@@ -62,7 +62,15 @@ module.exports = {
     if (me && me.ical && me.ical.startsWith("http")) {
       const resp = await ical.async.fromURL(me.ical);
       for (let k in resp) {
-        if (resp[k].type === "VEVENT") events.push(resp[k]);
+        if (resp[k].type === "VEVENT") {
+          if (resp[k].attendee && resp[k].attendee) {
+            for (var key in resp[k].attendee) {
+              if (resp[k].attendee[key].params && resp[k].attendee[key].params.CN === user.email) {
+                events.push(resp[k]);
+              }
+            }
+          }
+        }
       }
     }
 
