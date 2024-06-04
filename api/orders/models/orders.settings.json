@@ -109,6 +109,9 @@
     },
     "emitted_invoice": {
       "model": "emitted-invoice"
+    },
+    "contact_trade_name": {
+      "type": "string"
     }
   }
 }

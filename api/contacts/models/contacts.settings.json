@@ -99,6 +99,9 @@
     },
     "time_slot_2_end": {
       "type": "decimal"
+    },
+    "trade_name": {
+      "type": "string"
     }
   }
 }
