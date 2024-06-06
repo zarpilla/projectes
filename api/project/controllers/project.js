@@ -1054,6 +1054,7 @@ module.exports = {
         project_leader: p.leader && p.leader.id ? p.leader.username : "",
         mother: p.mother && p.mother.id ? p.mother.name : p.name,
         structural_expenses: p.structural_expenses,
+        grantable: p.grantable ? 1 : 0,
       };
 
       for (var j = 0; j < p.phases.length; j++) {
