@@ -221,6 +221,15 @@ async function importSeedData() {
   // const sql2 = `UPDATE components_project_phase_project_phases_components SET field = 'incomes' WHERE field = 'subphases';`;
   // await strapi.connections.default.raw(sql2);
 
+  const projectStates = await strapi.query("project-state").find({ _limit: -1 });
+  for await (const projectState of projectStates) {
+    if (projectState.id === 1 && projectState.can_assign_activities === null) {
+      await strapi
+        .query("project-state")
+        .update({ id: projectState.id }, { can_assign_activities: true });
+    }
+  }
+
 }
 
 module.exports = async () => {

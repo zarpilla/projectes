@@ -14,6 +14,9 @@
     "name": {
       "type": "string",
       "required": true
+    },
+    "can_assign_activities": {
+      "type": "boolean"
     }
   }
 }
