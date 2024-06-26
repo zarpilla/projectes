@@ -15,6 +15,7 @@
       "type": "string"
     },
     "project": {
+      "private": true,
       "model": "project"
     },
     "monday": {
@@ -37,6 +38,9 @@
     },
     "sunday": {
       "type": "boolean"
+    },
+    "short_name": {
+      "type": "string"
     }
   }
 }

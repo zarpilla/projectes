@@ -126,12 +126,23 @@ async function importSeedData() {
     "workday-log": ["create", "find", "findone", "update", "delete"],
     product: ["find", "findone"],
     "user-festive": ["find"],
-    orders: ["create", "find", "findone", "update", "delete", "createcsv", "invoice", "pdf"],
+    orders: [
+      "create",
+      "find",
+      "findone",
+      "update",
+      "delete",
+      "createcsv",
+      "invoice",
+      "pdf",
+    ],
     "orders-imports": ["create", "find", "findone", "update"],
     "delivery-type": ["find"],
     pickups: ["find"],
     route: ["find"],
     "route-rate": ["find"],
+    city: ["find", "findone", "create"],
+    "city-route": ["find", "findone", "create", "delete"],
   });
 
   await setPermissions("authenticated", "upload", {
@@ -221,7 +232,9 @@ async function importSeedData() {
   // const sql2 = `UPDATE components_project_phase_project_phases_components SET field = 'incomes' WHERE field = 'subphases';`;
   // await strapi.connections.default.raw(sql2);
 
-  const projectStates = await strapi.query("project-state").find({ _limit: -1 });
+  const projectStates = await strapi
+    .query("project-state")
+    .find({ _limit: -1 });
   for await (const projectState of projectStates) {
     if (projectState.id === 1 && projectState.can_assign_activities === null) {
       await strapi
@@ -229,7 +242,6 @@ async function importSeedData() {
         .update({ id: projectState.id }, { can_assign_activities: true });
     }
   }
-
 }
 
 module.exports = async () => {

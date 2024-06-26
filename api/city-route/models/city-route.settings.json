@@ -1,0 +1,20 @@
+{
+  "kind": "collectionType",
+  "collectionName": "city_routes",
+  "info": {
+    "name": "CityRoute"
+  },
+  "options": {
+    "increments": true,
+    "timestamps": true,
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "city": {
+      "model": "city"
+    },
+    "route": {
+      "model": "route"
+    }
+  }
+}

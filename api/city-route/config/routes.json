@@ -1,0 +1,52 @@
+{
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/city-routes",
+      "handler": "city-route.find",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/city-routes/count",
+      "handler": "city-route.count",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/city-routes/:id",
+      "handler": "city-route.findOne",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/city-routes",
+      "handler": "city-route.create",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "PUT",
+      "path": "/city-routes/:id",
+      "handler": "city-route.update",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "DELETE",
+      "path": "/city-routes/:id",
+      "handler": "city-route.delete",
+      "config": {
+        "policies": []
+      }
+    }
+  ]
+}
