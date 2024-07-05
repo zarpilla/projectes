@@ -488,11 +488,16 @@ module.exports = class MicroinvoiceOrder {
 
     this.setText("\n");
 
-    this.generateTableRow("header", this.options.data.invoice.details.header);
+    // if (this.options.data.invoice.details.header) {
+    //   this.generateTableRow("header", this.options.data.invoice.details.header);
 
-    (this.options.data.invoice.details.parts || []).forEach(part => {
-      this.generateTableRow("row", part);
-    });
+    //   (this.options.data.invoice.details.parts || []).forEach(part => {
+    //     this.generateTableRow("row", part);
+    //   });
+    // } else {
+    //   this.storage.cursor.y = this.document.y;
+    // }
+    
 
     this.storage.cursor.y += -25;
 

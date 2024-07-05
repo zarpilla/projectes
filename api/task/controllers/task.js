@@ -40,7 +40,7 @@ let sendEmail = async (data, config) => {
     await strapi.plugins["email"].services.email.send({
       to: data.email,
       from: emailFrom,
-      subject: "[STRAPI COOP] Resum de tasques",
+      subject: "[ESSSTRAPIS] Resum de tasques",
       html: text,
     });
   }

@@ -143,6 +143,7 @@ async function importSeedData() {
     "route-rate": ["find"],
     city: ["find", "findone", "create"],
     "city-route": ["find", "findone", "create", "delete"],
+    "form-submission": ["create"],
   });
 
   await setPermissions("authenticated", "upload", {

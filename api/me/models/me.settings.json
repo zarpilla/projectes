@@ -79,6 +79,15 @@
     },
     "order_footer": {
       "type": "text"
+    },
+    "contact_form_text": {
+      "type": "richtext"
+    },
+    "contact_form_thankyou": {
+      "type": "richtext"
+    },
+    "contact_form_email": {
+      "type": "email"
     }
   }
 }
