@@ -20,7 +20,7 @@ module.exports = {
             const subject = `[ESSSTRAPIS] Contacte a través del formulari`
             const userData = await strapi.query('user', 'users-permissions').findOne(data.user)            
             const html = `
-            <b>Contacte a través del formulari</b>
+            <b>Contacte a través del formulari</b><br><br>
             PROVEÏDORA: ${userData.fullname || userData.username} (${userData.id})<br>
             CORREU: ${data.email} <br> 
             NOM: ${data.name} <br>             
