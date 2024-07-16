@@ -15,7 +15,10 @@ module.exports = {
                 throw new Error('contact_form_email not set')
             }
 
-            const to = [me.contact_form_email, data.email]
+            const to = [data.email]
+            me.contact_form_email.split(',').forEach(email => {
+                to.push(email)
+            })
             const from = strapi.config.get("plugins.email.settings.defaultFrom", "");
             const subject = `[ESSSTRAPIS] Contacte a través del formulari`
             const userData = await strapi.query('user', 'users-permissions').findOne(data.user)            
