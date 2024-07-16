@@ -87,7 +87,7 @@
       "type": "richtext"
     },
     "contact_form_email": {
-      "type": "email"
+      "type": "string"
     }
   }
 }
