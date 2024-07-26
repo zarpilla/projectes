@@ -1,0 +1,20 @@
+{
+  "kind": "collectionType",
+  "collectionName": "route_festives",
+  "info": {
+    "name": "RouteFestive"
+  },
+  "options": {
+    "increments": true,
+    "timestamps": true,
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "route": {
+      "model": "route"
+    },
+    "date": {
+      "type": "date"
+    }
+  }
+}

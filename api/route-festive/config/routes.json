@@ -1,0 +1,52 @@
+{
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/route-festives",
+      "handler": "route-festive.find",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/route-festives/count",
+      "handler": "route-festive.count",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/route-festives/:id",
+      "handler": "route-festive.findOne",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/route-festives",
+      "handler": "route-festive.create",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "PUT",
+      "path": "/route-festives/:id",
+      "handler": "route-festive.update",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "DELETE",
+      "path": "/route-festives/:id",
+      "handler": "route-festive.delete",
+      "config": {
+        "policies": []
+      }
+    }
+  ]
+}
