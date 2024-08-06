@@ -465,12 +465,16 @@ module.exports = {
       weight: "bold",
     });
     let more = "";
+
+    more = invoice.contact_notes ? invoice.contact_notes + "\n" : "";
+
     more += invoice.contact_legal_form
       ? invoice.contact_legal_form.name + " - "
       : "";
     if (invoice.fragile) {
       more += "Fràgil" + " - ";
     }
+    
     if (invoice.contact_time_slot_1_ini && invoice.contact_time_slot_1_end) {
       more +=
         "De " +

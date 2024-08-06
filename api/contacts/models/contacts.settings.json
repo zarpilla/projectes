@@ -102,6 +102,9 @@
     },
     "trade_name": {
       "type": "string"
+    },
+    "notes": {
+      "type": "text"
     }
   }
 }

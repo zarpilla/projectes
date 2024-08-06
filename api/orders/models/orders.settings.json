@@ -112,6 +112,9 @@
     },
     "contact_trade_name": {
       "type": "string"
+    },
+    "contact_notes": {
+      "type": "text"
     }
   }
 }
