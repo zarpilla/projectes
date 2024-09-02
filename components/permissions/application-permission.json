@@ -12,7 +12,8 @@
       "enum": [
         "projects",
         "orders",
-        "orders_admin"
+        "orders_admin",
+        "hours"
       ]
     }
   }

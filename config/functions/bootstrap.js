@@ -152,17 +152,29 @@ async function importSeedData() {
   });
 
   // set user permissions
-  // const users = await strapi
-  //   .query("user", "users-permissions")
-  //   .find({ _limit: -1 });
+  const users = await strapi
+    .query("user", "users-permissions")
+    .find({ _limit: -1 });
 
-  // for await (const user of users) {
-  //   if (user.permissions.length === 0 && user.blocked === false) {
-  //     await strapi
-  //       .query("user", "users-permissions")
-  //       .update({ id: user.id }, { permissions: [{ permission: 'projects' }] });
-  //   }
-  // }
+  for await (const user of users) {
+    // if (user.permissions.length === 0 && user.blocked === false) {
+    //   await strapi
+    //     .query("user", "users-permissions")
+    //     .update({ id: user.id }, { permissions: [{ permission: 'projects' }] });
+    // }
+    if (user.permissions.length > 0 && user.blocked === false) {
+      const permissionHasProjects = user.permissions.filter(p => p.permission === 'projects').length > 0;
+      const permissionHasHours = user.permissions.filter(p => p.permission === 'hours').length > 0;
+
+      if (permissionHasProjects && !permissionHasHours) {        
+        const permissions = [...user.permissions]
+        permissions.push({ permission: 'hours' });
+        await strapi
+          .query("user", "users-permissions")
+          .update({ id: user.id }, { permissions: permissions });
+      }
+    }
+  }
 
   const expenseTypes = await strapi.query("expense-type").find({ _limit: -1 });
 
