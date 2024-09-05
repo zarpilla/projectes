@@ -111,6 +111,9 @@
     },
     "followup_date": {
       "type": "date"
+    },
+    "multiowner": {
+      "type": "boolean"
     }
   }
 }
