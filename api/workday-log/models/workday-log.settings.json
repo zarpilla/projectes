@@ -23,6 +23,9 @@
     },
     "hour_out": {
       "type": "time"
+    },
+    "activity": {
+      "model": "activity"
     }
   }
 }

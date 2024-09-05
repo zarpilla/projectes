@@ -105,6 +105,12 @@
     },
     "notes": {
       "type": "text"
+    },
+    "partner_amount": {
+      "type": "decimal"
+    },
+    "followup_date": {
+      "type": "date"
     }
   }
 }

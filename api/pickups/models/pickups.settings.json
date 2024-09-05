@@ -16,6 +16,13 @@
     },
     "pickup": {
       "type": "boolean"
+    },
+    "allowed_users": {
+      "plugin": "users-permissions",
+      "collection": "user"
+    },
+    "message": {
+      "type": "text"
     }
   }
 }
