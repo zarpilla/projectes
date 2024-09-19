@@ -18,6 +18,11 @@ module.exports = {
   async forecast(ctx) {
 
     let where = { _limit: -1 };
+
+    if (ctx.query && ctx.query.project_states && ctx.query.project_states !== undefined) {
+      where = { _limit: -1, project_state_in: ctx.query.project_states.split(",").map((x) => parseInt(x)) };
+    }
+
     if (ctx.query && ctx.query.filter && ctx.query.filter === "approved") {
       where = { _limit: -1, project_state_in: [1, 2] };
     } else if (ctx.query && ctx.query.filter && ctx.query.filter === "requested") {
@@ -310,6 +315,8 @@ module.exports = {
     for (let i of emitted) {
       const date = i.paid_date
         ? moment(i.paid_date, "YYYY-MM-DD")
+        : i.estimated_payment
+        ? moment(i.estimated_payment, "YYYY-MM-DD")
         : i.paybefore
         ? moment(i.paybefore, "YYYY-MM-DD")
         : moment(i.emitted, "YYYY-MM-DD");
@@ -332,7 +339,7 @@ module.exports = {
         concept: i.code,
         total_amount: i.total ? i.total : 0,
         date: date,
-        date_error: (i.paid_date || i.paybefore || i.emitted) === null,
+        date_error: (i.paid_date || i.estimated_payment || i.paybefore || i.emitted) === null,
         real: true,
         pdf: i.pdf,
         paid: i.paid,
@@ -351,6 +358,8 @@ module.exports = {
     for (let i of receivedIncomes) {
       const date = i.paid_date
         ? moment(i.paid_date, "YYYY-MM-DD")
+        : i.estimated_payment
+        ? moment(i.estimated_payment, "YYYY-MM-DD")
         : i.paybefore
         ? moment(i.paybefore, "YYYY-MM-DD")
         : moment(i.emitted, "YYYY-MM-DD");
@@ -375,7 +384,7 @@ module.exports = {
         concept: i.code,
         total_amount: i.total ? i.total : 0,
         date: date,
-        date_error: (i.paid_date || i.paybefore || i.emitted) === null,
+        date_error: (i.paid_date || i.estimated_payment || i.paybefore || i.emitted) === null,
         real: true,
         pdf: i.pdf,
         paid: i.paid,
