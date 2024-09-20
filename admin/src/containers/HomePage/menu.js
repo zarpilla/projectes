@@ -31,9 +31,16 @@ const Menu = () => {
               id: "app.components.HomePage.button.blog3",
               onClick: (e) => {
                 e.preventDefault();
-                history.push(
-                  `/plugins/content-manager/collectionType/application::${i.open}.${i.open}`
-                );
+                if (i.open === "users-permissions.user") {
+                  history.push(
+                    `/plugins/content-manager/collectionType/plugins::users-permissions.user?page=1&pageSize=10&_sort=username:ASC`
+                  );
+                } else {
+                  history.push(
+                    `/plugins/content-manager/collectionType/application::${i.open}.${i.open}`
+                  );
+                }
+                
               },
               type: "blog",
             }
