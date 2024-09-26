@@ -78,7 +78,7 @@ const doProjectInfoCalculations = async (data, id) => {
     // not assigned invoices
     data.total_real_incomes = infoPhases.total_real_incomes;
     data.total_real_expenses = infoPhases.total_real_expenses;
-    data.total_expenses_vat = infoPhases.total_expenses_vat * deductible_ratio;
+    data.total_expenses_vat = (isNaN(infoPhases.total_expenses_vat) ? 0 : infoPhases.total_expenses_vat) * deductible_ratio;    
     data.total_real_expenses_vat =
       infoPhases.total_real_expenses_vat * deductible_ratio;
 
@@ -704,12 +704,12 @@ const calculateEstimatedTotals = async (
                   (expense.quantity ? expense.quantity : 0) *
                   (expense.amount ? expense.amount : 0),
                 total_real_expenses_vat: expense.invoice
-                  ? expense.invoice.total_vat
-                  : expense.total_expenses_vat,
+                  ? (expense.invoice.total_vat || 0)
+                  : (expense.total_expenses_vat || 0),
               });
               total_real_expenses_vat += expense.invoice
-                ? expense.invoice.total_vat
-                : expense.total_expenses_vat;
+                ? (expense.invoice.total_vat || 0)
+                : (expense.total_expenses_vat || 0);
             }
           }
         }
@@ -732,7 +732,7 @@ const calculateEstimatedTotals = async (
         ),
         total_real_incomes: _.sumBy(rows, "total_real_incomes"),
         total_real_expenses: _.sumBy(rows, "total_real_expenses"),
-        total_real_expenses_vat: _.sumBy(rows, "total_real_expenses_vat"),
+        total_real_expenses_vat: _.sumBy(rows, (r) => r.total_real_expenses_vat || 0),
       };
     });
 
