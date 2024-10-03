@@ -23,6 +23,42 @@ const formatCurrency = (val) => {
 };
 
 module.exports = {
+  infoAll: async (ctx) => {    
+    const { year, ...query } = ctx.query;
+    const orders = await strapi.query("orders").find(query);
+    const ordersInfo = orders.map((o) => {
+      const date = o.delivery_date || o.route_date;
+      return {
+        id: o.id,
+        count: 1,
+        owner: o.owner?.fullname || o.owner?.username,
+        route_date: o.route_date,
+        contact_id : o.contact?.id,
+        contact: o.contact?.name,
+        city: o.contact_city,
+        units: o.units,
+        kilograms: o.kilograms,
+        created_at: o.created_at,
+        route: o.route?.short_name || o.route?.name,
+        refrigerated: o.refrigerated,
+        fragile: o.fragile,
+        route_rate: o.route_rate?.name,
+        price: o.price,
+        pickup: o.pickup?.name,
+        delivery_type: o.delivery_type?.name,        
+        status: o.status,
+        date: date,
+        month: moment(date).format("MM"),
+        year: moment(date).format("YYYY")
+      };
+    });
+    if (year) {
+      ctx.send(ordersInfo.filter((o) => o.year === year));
+      return
+    }
+    ctx.send(ordersInfo);
+    return
+  },
   createCSV: async (ctx) => {
     const order = ctx.request.body;
     delete order.id;

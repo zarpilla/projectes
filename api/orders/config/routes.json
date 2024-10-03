@@ -18,6 +18,14 @@
     },
     {
       "method": "GET",
+      "path": "/orders/infoall",
+      "handler": "orders.infoAll",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "GET",
       "path": "/orders/:id",
       "handler": "orders.findOne",
       "config": {

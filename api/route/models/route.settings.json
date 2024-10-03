@@ -47,6 +47,10 @@
     },
     "order": {
       "type": "integer"
+    },
+    "route_rate": {
+      "via": "routes",
+      "model": "route-rate"
     }
   }
 }

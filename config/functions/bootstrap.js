@@ -135,6 +135,7 @@ async function importSeedData() {
       "createcsv",
       "invoice",
       "pdf",
+      "infoall",
     ],
     "orders-imports": ["create", "find", "findone", "update"],
     "delivery-type": ["find"],

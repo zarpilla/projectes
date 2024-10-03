@@ -2,7 +2,8 @@
   "kind": "collectionType",
   "collectionName": "route_rates",
   "info": {
-    "name": "RouteRate"
+    "name": "RouteRate",
+    "description": ""
   },
   "options": {
     "increments": true,
@@ -12,9 +13,6 @@
   "attributes": {
     "name": {
       "type": "string"
-    },
-    "route": {
-      "model": "route"
     },
     "delivery_type": {
       "model": "delivery-type"
@@ -30,6 +28,10 @@
     },
     "additional30": {
       "type": "decimal"
+    },
+    "routes": {
+      "collection": "route",
+      "via": "route_rate"
     }
   }
 }
