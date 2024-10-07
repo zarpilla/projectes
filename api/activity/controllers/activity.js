@@ -15,11 +15,13 @@ module.exports = {
     const activities = await strapi.query("activity").find(ctx.query);
 
     const activitiesInfo = activities.map((entity) => {
-      const { project, users_permissions_user,...activity } = entity
-      const { phases, original_phases, ...projectData } = project
+      const { project, users_permissions_user,...activity } = entity      
       const { id, username, email, ical, ...rest } = users_permissions_user
-      entity.project = projectData
-      entity.users_permissions_user = { id, username, email, ical }
+      entity.users_permissions_user = { id, username, email, ical }      
+      if (project && project.phases) {
+        const { phases, original_phases, documents, ...projectData } = project
+        entity.project = projectData
+      }
       return entity
     }
     );
