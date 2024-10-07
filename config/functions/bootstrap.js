@@ -55,6 +55,7 @@ async function importSeedData() {
       "importcalendar",
       "move",
       "totalByDay",
+      "getforcalendar",
     ],
     "activity-type": ["create", "find", "getBasic"],
     "emitted-invoice": [

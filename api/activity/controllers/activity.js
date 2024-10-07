@@ -11,6 +11,20 @@ const projectController = require("../../project/controllers/project");
  */
 
 module.exports = {
+  getForCalendar: async (ctx) => {
+    const activities = await strapi.query("activity").find(ctx.query);
+
+    const activitiesInfo = activities.map((entity) => {
+      const { project, users_permissions_user,...activity } = entity
+      const { phases, original_phases, ...projectData } = project
+      const { id, username, email, ical, ...rest } = users_permissions_user
+      entity.project = projectData
+      entity.users_permissions_user = { id, username, email, ical }
+      return entity
+    }
+    );
+    ctx.send(activitiesInfo);
+  },
   totalByDay: async (ctx) => {
     let activities;
     if (ctx.query._q) {
