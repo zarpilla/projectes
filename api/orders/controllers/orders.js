@@ -279,7 +279,7 @@ module.exports = {
         {
           done: false,
           message:
-            "ERROR. No hi ha provider per a l'usuari " + invoice.owner.id,
+            `ERROR. L'usuària ${invoice.owner.username} no te cap contacte associat. Ves a contactes i crea un nou contacte associat a l'usuària a través del camp 'Persona'.`,
         },
         500
       );
