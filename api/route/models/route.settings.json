@@ -48,9 +48,9 @@
     "order": {
       "type": "integer"
     },
-    "route_rate": {
+    "route_rates": {
       "via": "routes",
-      "model": "route-rate"
+      "collection": "route-rate"
     }
   }
 }

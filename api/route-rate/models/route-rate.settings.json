@@ -31,7 +31,8 @@
     },
     "routes": {
       "collection": "route",
-      "via": "route_rate"
+      "via": "route_rates",
+      "dominant": true
     }
   }
 }
