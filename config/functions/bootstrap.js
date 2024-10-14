@@ -112,7 +112,7 @@ async function importSeedData() {
       "getProjectIsDirty",
     ],
     quote: ["create", "find", "findone", "update", "delete"],
-    contact: ["create", "find", "findone", "update", "delete", "basic"],
+    contact: ["create", "find", "findone", "update", "delete", "basic", "withorders"],
     "festive-type": ["find"],
     festive: ["create", "find", "findone", "update", "delete"],
     "daily-dedication": ["create", "find", "findone", "update", "delete"],

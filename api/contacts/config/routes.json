@@ -26,6 +26,14 @@
     },
     {
       "method": "GET",
+      "path": "/contacts/withorders",
+      "handler": "contacts.withorders",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "GET",
       "path": "/contacts/:id",
       "handler": "contacts.findOne",
       "config": {
