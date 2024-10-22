@@ -1020,12 +1020,18 @@ module.exports = {
       )}.pdf`;
       await myInvoice.generate(docName);
 
+      // wait until docName is created
+      while (!fs.existsSync(docName)) {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+
+
       //urls.push(docName.substring("./public".length));
       urls.push(docName)
     }
 
     // delay 200ms
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    await new Promise((resolve) => setTimeout(resolve, 10));
 
     // get all pdfs and merge them
     const fileName = orders.join('-');    
