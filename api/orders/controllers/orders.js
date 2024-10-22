@@ -6,7 +6,6 @@ const moment = require("moment");
 const crypto = require("crypto");
 const QRCode = require("qrcode");
 const PDFMerge = require('pdf-merge');
-const doc = require("pdfkit");
 
 /**
  * Read the documentation (https://strapi.io/documentation/developer-docs/latest/development/backend-customization.html#core-controllers)
@@ -1019,21 +1018,16 @@ module.exports = {
       const docName = `./public/uploads/orders/${order.id}-H${hash.substring(
         16
       )}.pdf`;
-      const docNameAbs = process.env.CWD + `public/uploads/orders/${order.id}-H${hash.substring(
-        16
-      )}.pdf`;
       await myInvoice.generate(docName);
 
-      // wait until docName is created
-      while (!fs.existsSync(docName)) {
-        await new Promise((resolve) => setTimeout(resolve, 100));
-      }
+      
 
-      urls.push(docNameAbs);
+      //urls.push(docName.substring("./public".length));
+      urls.push(docName)
     }
 
     // delay 200ms
-    await new Promise((resolve) => setTimeout(resolve, 10));
+    await new Promise((resolve) => setTimeout(resolve, 0));
 
     // get all pdfs and merge them
     const fileName = orders.join('-');    
