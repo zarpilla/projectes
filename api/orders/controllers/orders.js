@@ -1019,6 +1019,9 @@ module.exports = {
       const docName = `./public/uploads/orders/${order.id}-H${hash.substring(
         16
       )}.pdf`;
+      const docNameAbs = process.env.CWD + `public/uploads/orders/${order.id}-H${hash.substring(
+        16
+      )}.pdf`;
       await myInvoice.generate(docName);
 
       // wait until docName is created
@@ -1026,8 +1029,7 @@ module.exports = {
         await new Promise((resolve) => setTimeout(resolve, 100));
       }
 
-      const absoluteUrl = process.env.CWD + docName;
-      urls.push(absoluteUrl.replace(/\/\.\//g, '/'));
+      urls.push(docNameAbs);
     }
 
     // delay 200ms
