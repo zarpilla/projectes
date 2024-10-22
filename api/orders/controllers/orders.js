@@ -1025,7 +1025,7 @@ module.exports = {
     }
 
     // delay 200ms
-    await new Promise((resolve) => setTimeout(resolve, 250));
+    await new Promise((resolve) => setTimeout(resolve, 1000));
 
     // get all pdfs and merge them
     const fileName = orders.join('-');    
