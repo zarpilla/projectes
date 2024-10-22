@@ -5,6 +5,7 @@ const sharp = require("sharp");
 const moment = require("moment");
 const crypto = require("crypto");
 const QRCode = require("qrcode");
+const PDFMerge = require('pdf-merge');
 
 /**
  * Read the documentation (https://strapi.io/documentation/developer-docs/latest/development/backend-customization.html#core-controllers)
@@ -601,8 +602,8 @@ module.exports = {
               value: [
                 me.name,
                 me.nif,
-                me.address,
-                me.postcode + " " + me.city,
+                // me.address,
+                // me.postcode + " " + me.city,
                 me.email,
               ],
             },
@@ -648,5 +649,389 @@ module.exports = {
     //}
 
     return { urls };
+  },
+
+  pdfmultiple: async (ctx) => {
+    const { orders } = ctx.request.body;
+
+    // print multiple orders in a single pdf
+    const ordersEntities = await strapi.query("orders").find({ id_in: orders });
+
+    const me = await strapi.query("me").findOne();
+    const config = await strapi.query("config").findOne();
+
+    const qrWidth = 60;
+    const logoWidth = 100;
+    const ratio = me.logo.width / logoWidth;
+
+    const logoUrl = `./public${me.logo.url}`;
+    let logo = logoUrl;
+
+    if (logoUrl.endsWith(".svg")) {
+      logo = "./public/uploads/invoice-logo.jpg";
+      await sharp(logoUrl).png().toFile(logo);
+    }
+
+    const urls = [];
+
+    for await (const order of ordersEntities) {
+      const qrCodeImage = await QRCode.toDataURL(
+        `${config.front_url}order/${order.id}`
+      );
+
+      const qr = qrCodeImage;
+
+      const contacts = await strapi
+        .query("contacts")
+        .find({ users_permissions_user: order.owner.id });
+      if (contacts.length === 0) {
+        ctx.send(
+          {
+            done: false,
+            message:
+              `ERROR. L'usuària ${order.owner.username} no te cap contacte associat. Ves a contactes i crea un nou contacte associat a l'usuària a través del camp 'Persona'.`,
+          },
+          500
+        );
+        return;
+      }
+      const provider = contacts[0];
+
+      const invoiceHeader = [
+        {
+          label: "COMANDA",
+          value: order.id.toString().padStart(4, "0"),
+        },
+        {
+          label: "DATA",
+          value: moment(order.route_date, "YYYY-MM-DD").format("DD-MM-YYYY"),
+        },
+      ];
+
+      const showDate = false;
+      const showQuantity = false;
+      const showVat = true;
+      const showIrpf = false;
+
+      const detailsHeader = [];
+
+      let columnsWidth =
+        0.35 +
+        (showDate ? 0.1 : 0) +
+        (showQuantity ? 0.08 * 2 : 0) +
+        0.19 +
+        (showVat ? 0.1 : 0) +
+        (showIrpf ? 0.1 : 0) +
+        0.1;
+
+      let columnsRatio = 1 / columnsWidth;
+
+      detailsHeader.push({
+        value: "Concepte",
+        width: 0.35 * columnsRatio,
+      });
+      if (showDate) {
+        detailsHeader.push({
+          value: "Data",
+          width: 0.12 * columnsRatio,
+        });
+      }
+      if (showQuantity) {
+        detailsHeader.push({
+          value: "Q.",
+          width: 0.07 * columnsRatio,
+        });
+      }
+      if (showQuantity) {
+        detailsHeader.push({
+          value: "Base",
+          width: 0.09 * columnsRatio,
+        });
+      }
+      detailsHeader.push({
+        value: "Base imposable",
+        width: 0.18 * columnsRatio,
+      });
+      if (showVat) {
+        detailsHeader.push({
+          value: "IVA",
+          width: 0.1 * columnsRatio,
+        });
+      }
+      if (showIrpf) {
+        detailsHeader.push({
+          value: "IRPF",
+          width: 0.1 * columnsRatio,
+        });
+      }
+      detailsHeader.push({
+        value: "TOTAL",
+        width: 0.1 * columnsRatio,
+      });
+
+      const parts = [];
+
+      const line = order;
+      line.quantity = 1;
+      line.vat = 21;
+      line.base = line.price;
+      line.irpf = 0;
+      const part = [];
+
+      if (line.quantity && line.price) {
+        var concept = `${order.route.name.trim()}${
+          order.estimated_delivery_date
+            ? " - " + order.estimated_delivery_date
+            : ""
+        } - ${order.pickup.name} ${order.refrigerated ? "Refrigerada" : ""} - ${
+          order.units
+        } ${order.units > 1 ? "caixes" : "caixa"} - ${order.kilograms} kg`;
+        part.push({
+          value: concept,
+          width: 0.31 * columnsRatio,
+        });
+        if (showDate) {
+          part.push({
+            value: line.date,
+            width: 0.12 * columnsRatio,
+          });
+        }
+        if (showQuantity) {
+          part.push({
+            value: line.quantity,
+            width: 0.07 * columnsRatio,
+          });
+        }
+
+        if (showQuantity) {
+          part.push({
+            value: line.price,
+            width: 0.09 * columnsRatio,
+            price: true,
+          });
+        }
+
+        part.push({
+          value: line.quantity * line.price,
+          price: true,
+          width: 0.18 * columnsRatio,
+        });
+        if (showVat) {
+          part.push({
+            value:
+              formatCurrency((line.quantity * line.price * line.vat) / 100) +
+              ` EUR (${line.vat}%)`,
+            width: 0.14 * columnsRatio,
+          });
+        }
+        if (showIrpf) {
+          part.push({
+            value:
+              formatCurrency((-1 * line.quantity * line.base * line.irpf) / 100) +
+              ` EUR (${line.irpf}%)`,
+            width: 0.1 * columnsRatio,
+          });
+        }
+        part.push({
+          value:
+            line.quantity * line.price -
+            (line.quantity * line.price * line.irpf) / 100 +
+            (line.quantity * line.price * line.vat) / 100,
+          price: true,
+          width: 0.1 * columnsRatio,
+        });
+        parts.push(part);
+      }
+
+      const total = [];
+      total.push({
+        label: "Base imposable",
+        value: order.price,
+        price: true,
+      });
+      if (showVat) {
+        total.push({
+          label: "IVA",
+          value: order.price * 0.21,
+          price: true,
+        });
+      }
+      if (showIrpf) {
+        total.push({
+          label: "IRPF",
+          value: -1 * 0,
+          price: true,
+        });
+      }
+      total.push({
+        label: "TOTAL",
+        value: order.price * 1.21,
+        price: true,
+      });
+
+      const legal = [];
+
+      legal.push({
+        value: "NOTES:",
+        color: "primary",
+        weight: "bold",
+      });
+      let more = "";
+
+      more = order.contact_notes ? order.contact_notes + "\n" : "";
+
+      more += order.contact_legal_form
+        ? order.contact_legal_form.name + " - "
+        : "";
+      if (order.fragile) {
+        more += "Fràgil" + " - ";
+      }
+
+      if (order.contact_time_slot_1_ini && order.contact_time_slot_1_end) {
+        more +=
+          "De " +
+          order.contact_time_slot_1_ini +
+          "h a " +
+          order.contact_time_slot_1_end +
+          "h" +
+          " - ";
+      }
+      if (order.contact_time_slot_2_ini && order.contact_time_slot_2_end) {
+        more +=
+          "De " +
+          order.contact_time_slot_2_ini +
+          "h a " +
+          order.contact_time_slot_2_end +
+          "h";
+      }
+      order.comments = more + "\n" + (order.comments ? order.comments : "");
+
+      legal.push({
+        value: order.comments,
+        color: "secondary",
+      });
+
+      legal.push({
+        value: "DETALLS:",
+        color: "primary",
+        weight: "bold",
+      });
+
+      var concept = `${order.route.name.trim()}${
+        order.estimated_delivery_date
+          ? " - " + order.estimated_delivery_date
+          : ""
+      } - ${order.pickup.name} ${order.refrigerated ? "Refrigerada" : ""} - ${
+        order.units
+      } ${order.units > 1 ? "caixes" : "caixa"} - ${order.kilograms} kg`;
+
+      legal.push({
+        value: concept,
+        color: "secondary",
+      });
+
+      const invoiceHeaderBoxes = [...invoiceHeader];
+
+      let myInvoice = new MicroInvoiceOrder({
+        style: {
+          header: {
+            image: {
+              path: logo,
+              width: logoWidth,
+              height: me.logo.height / ratio,
+            },
+            qr: {
+              path: qr,
+              width: qrWidth,
+              height: qrWidth,
+            },
+          },
+        },
+        data: {
+          pages: order.units,
+          invoice: {
+            name: "COMANDA",
+
+            header: invoiceHeaderBoxes,
+
+            currency: "EUR",
+
+            customer: [
+              {
+                label: "ENTREGA",
+                value: [
+                  order.contact.name,
+                  order.contact.nif,
+                  order.contact.address,
+                  order.contact.postcode + " " + order.contact.city,
+                  `Tel: ${order.contact.phone}`,
+                ],
+              },
+            ],
+
+            seller: [
+              {
+                label: "EMISSORA",
+                value: [
+                  me.name,
+                  me.nif,
+                  // me.address,
+                  // me.postcode + " " + me.city,
+                  me.email,
+                ],
+              },
+            ],
+
+            provider: [
+              {
+                label: "PROVEÏDORA",
+                value: [
+                  provider.name,
+                  provider.nif,
+                  provider.address,
+                  provider.postcode + " " + provider.city,
+                  provider.phone,
+                ],
+              },
+            ],
+
+            legal: legal,
+
+            details: {
+              // header: detailsHeader,
+              // parts: parts,
+              // total: total,
+            },
+          },
+        },
+      });
+
+      if (!fs.existsSync("./public/uploads/orders")) {
+        fs.mkdirSync("./public/uploads/orders");
+      }
+      const hash = crypto
+        .createHash("md5")
+        .update(
+          `${myInvoice.options.data.invoice.name}-${order.createdAt}-${order.id}`
+        )
+        .digest("hex");
+      const docName = `./public/uploads/orders/${order.id}-H${hash.substring(
+        16
+      )}.pdf`;
+      await myInvoice.generate(docName);
+
+      //urls.push(docName.substring("./public".length));
+      urls.push(docName)
+    }
+
+    // get all pdfs and merge them
+    const fileName = orders.join('-');    
+    const mergedPdf = await PDFMerge(urls, { output: "Buffer" });
+    const mergedPdfPath = `./public/uploads/orders/orders-${fileName}.pdf`;
+    fs.writeFileSync(mergedPdfPath, mergedPdf);
+    
+    ctx.send({ urls: mergedPdfPath.substring("./public".length) });   
+
+
   },
 };

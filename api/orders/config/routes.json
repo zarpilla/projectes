@@ -65,6 +65,14 @@
       }
     },
     {
+      "method": "POST",
+      "path": "/orders/pdf/",
+      "handler": "orders.pdfmultiple",
+      "config": {
+        "policies": []
+      }
+    },
+    {
       "method": "PUT",
       "path": "/orders/:id",
       "handler": "orders.update",

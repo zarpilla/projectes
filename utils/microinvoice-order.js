@@ -51,14 +51,14 @@ module.exports = class MicroinvoiceOrder {
         },
         header : {
           backgroundColor : "#F8F8FA",
-          height          : 132,
+          height          : 112,
           image           : null,
           qr              : {
             left: 460
           },
           textPosition    : 330,
           textPositionSeller: 430,
-          textPositionProvider: 230
+          textPositionProvider: 330
         },
         table : {
           quantity : {
@@ -278,14 +278,27 @@ module.exports = class MicroinvoiceOrder {
     this.setCursor("x", this.options.style.header.textPosition);
     this.setCursor("y", this.options.style.document.marginTop);
 
-    this.setText(this.options.data.invoice.name, {
+    this.setText(`CAIXA:`, {
       fontSize   : "heading",
       fontWeight : "bold",
       color      : this.options.style.header.regularColor
     });
 
+    this.setCursor("y", this.options.style.document.marginTop);
+    this.setCursor("x", this.options.style.header.textPosition + 45);
+
+    this.setText(`${pageNumber + 1}/${this.options.data.pages}`, {
+      fontSize   : "heading",
+      fontWeight : "bold",
+      color      : this.options.style.text.secondaryColor
+    });
+
+    this.setCursor("y", this.options.style.document.marginTop + 20);
+
     const lines = [...this.options.data.invoice.header]
-    lines.push({ label: 'CAIXA', value: `${pageNumber + 1} / ${this.options.data.pages}`})
+    //lines.push({ label: 'CAIXA', value: `${pageNumber + 1} / ${this.options.data.pages}`})
+
+    this.setCursor("x", this.options.style.header.textPosition);
 
     lines.forEach(line => {
       this.setText(`${line.label}:`, {
@@ -310,6 +323,23 @@ module.exports = class MicroinvoiceOrder {
         });
       });
     });
+
+    // this.setCursor("x", this.options.style.document.marginLeft);
+    // this.setCursor("y", this.options.style.document.marginTop + 50);
+
+    // const line = { label: 'CAIXA', value: `${pageNumber + 1} / ${this.options.data.pages}`}
+
+    // this.setText(`${line.label}:`, {
+    //   fontWeight : "bold",
+    //   color      : this.options.style.header.regularColor,
+    //   marginTop  : _fontMargin
+    // });
+    // this.setText(line.value, {
+    //   colorCode : "secondary",
+    //   color     : this.options.style.header.secondaryColor,
+    //   marginTop : _fontMargin
+    // });
+
   }
 
   /**
@@ -322,10 +352,13 @@ module.exports = class MicroinvoiceOrder {
     let _maxWidth   = 250;
     let _fontMargin = 4;
 
+    let _fontSize = "regular"
+
     this.setCursor("y", this.options.style.header.height + 1);
     // Use a different left position
     if (type === "customer") {
       this.setCursor("x", this.options.style.document.marginLeft);
+      _fontSize = "big"
     } else if (type === "provider") {
       this.setCursor("x", this.options.style.header.textPositionProvider);
     } else {
@@ -352,7 +385,8 @@ module.exports = class MicroinvoiceOrder {
         this.setText(value, {
           colorCode : "secondary",
           marginTop : _fontMargin,
-          maxWidth  : _maxWidth
+          maxWidth  : _maxWidth,
+          fontSize: _fontSize
         });
       });
     });
@@ -564,9 +598,81 @@ module.exports = class MicroinvoiceOrder {
         fontWeight : legal.weight,
         colorCode  : legal.color || "primary",
         align      : "left",
-        marginTop  : 0
+        marginTop  : 0,
+        maxWidth   : 250
       });
     });
+  }
+
+  generateRectangle(x, y, width, height, color) {
+    this.document
+      .rect(
+        x,
+        y,
+        width,
+        height
+      ).stroke(color);      
+  }
+
+
+  generateFooter() {
+
+    this.storage.cursor.y = this.document.page.height - 90;
+    
+    this.generateLine();
+
+    //this.storage.cursor.y = this.document.page.height - 160;    
+
+    let _fontMargin = 4;
+
+    //console.log('this.document.page', this.document.page)
+
+    this.setCursor("x", this.options.style.document.marginLeft);
+    // this.setCursor("y", 310);
+
+    let text = this.options.data.invoice['seller'][0].value.join(' · ');
+
+    this.setText(text, {
+      colorCode : "secondary",
+      marginTop : _fontMargin,
+      // maxWidth  : _maxWidth
+    });
+
+    // this.options.data.invoice['seller'].forEach(line => {
+    //   this.setText(`${line.label}:`, {
+    //     colorCode  : "primary",
+    //     fontWeight : "bold",
+    //     marginTop  : 8,
+    //     maxWidth   : _maxWidth
+    //   });
+
+    //   let _values = [];
+
+    //   if (Array.isArray(line.value)) {
+    //     _values = line.value;
+    //   } else {
+    //     _values = [line.value];
+    //   }
+
+    //   _values.forEach((value) => {
+        
+    //   });
+    // });
+
+    // this.storage[type].height = this.storage.cursor.y;
+
+    // (this.options.data.invoice.legal || []).forEach(legal => {
+    //     this.generateLine();    
+    //     this.storage.cursor.y += 10;
+    //   this.setCursor("x", this.options.style.document.marginLeft);
+
+    //   this.setText(legal.value, {
+    //     fontWeight : legal.weight,
+    //     colorCode  : legal.color || "primary",
+    //     align      : "left",
+    //     marginTop  : 0
+    //   });
+    // });
   }
 
   /**
@@ -635,6 +741,9 @@ module.exports = class MicroinvoiceOrder {
 
     if (_fontSize === "regular") {
       _fontSizeValue = this.options.style.text.regularSize;
+    }
+    else if (_fontSize === "big") {
+      _fontSizeValue = this.options.style.text.bigSize || 10;
     } else {
       _fontSizeValue = this.options.style.text.headingSize;
     }
@@ -691,12 +800,14 @@ module.exports = class MicroinvoiceOrder {
     // this.generateLegal();
     // this.document.addPage( { size : "A5", layout : "landscape" } );
     for (let i = 0; i < this.options.data.pages; i++) {
-      this.generateHeader(i);
+      this.generateHeader(i);      
       this.generateDetails("customer");
-      this.generateDetails("seller");    
+      //this.generateDetails("seller");    
       this.generateDetails("provider");    
       this.generateParts();    
-      this.generateLegal();
+      this.generateRectangle(330, this.storage.cursor.y + 20, 180, 90, this.options.style.text.primaryColor);
+      this.generateLegal();      
+      this.generateFooter();
       if (i < this.options.data.pages - 1) {
         this.document.addPage( { size : "A5", layout : "landscape" } );
       }
