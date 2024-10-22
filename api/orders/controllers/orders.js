@@ -1027,7 +1027,7 @@ module.exports = {
       }
 
       const absoluteUrl = process.env.CWD + docName;
-      urls.push(absoluteUrl.replace("/./", "/"));
+      urls.push(absoluteUrl.replace(/\/\.\//g, '/'));
     }
 
     // delay 200ms
