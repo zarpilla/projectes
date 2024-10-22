@@ -6,6 +6,7 @@ const moment = require("moment");
 const crypto = require("crypto");
 const QRCode = require("qrcode");
 const PDFMerge = require('pdf-merge');
+const doc = require("pdfkit");
 
 /**
  * Read the documentation (https://strapi.io/documentation/developer-docs/latest/development/backend-customization.html#core-controllers)
@@ -1025,9 +1026,8 @@ module.exports = {
         await new Promise((resolve) => setTimeout(resolve, 100));
       }
 
-
-      //urls.push(docName.substring("./public".length));
-      urls.push(docName)
+      const absoluteUrl = process.env.CWD + docName;
+      urls.push(absoluteUrl)
     }
 
     // delay 200ms
