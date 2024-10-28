@@ -30,8 +30,6 @@ module.exports = {
     // Calling the default core action
     const contacts = [];
 
-    console.log("ctx.user", ctx.state.user);
-
     const orders = await strapi.query("orders").find({ owner: ctx.state.user.id, _limit: -1 });
 
     for (const order of orders) {
