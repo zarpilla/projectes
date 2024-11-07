@@ -38,10 +38,16 @@ module.exports = {
                     data.refrigerated = 0
                 }
             }
+            if (data.status === 'lastmile') {
+                data.last_mile = true
+            }
         },        
         async beforeUpdate(params, data) {
             if (data.status === 'delivered' && !data.delivery_date) {
                 data.delivery_date = new Date()
+            }
+            if (data.status === 'lastmile') {
+                data.last_mile = true
             }
             if (data.delivery_type && data.delivery_type.id) {
                 const deliveryTypes = await strapi.services['delivery-type'].find();

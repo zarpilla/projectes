@@ -44,7 +44,8 @@
         "delivered",
         "invoiced",
         "cancelled",
-        "distributing"
+        "distributing",
+        "lastmile"
       ]
     },
     "route": {
@@ -115,6 +116,9 @@
     },
     "contact_notes": {
       "type": "text"
+    },
+    "last_mile": {
+      "type": "boolean"
     }
   }
 }

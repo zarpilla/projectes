@@ -587,7 +587,7 @@ module.exports = {
             {
               label: "ENTREGA",
               value: [
-                invoice.contact.name,
+                invoice.contact.trade_name + " - " + invoice.contact.name,
                 invoice.contact.nif,
                 invoice.contact.address,
                 invoice.contact.postcode + " " + invoice.contact.city,
@@ -960,7 +960,7 @@ module.exports = {
               {
                 label: "ENTREGA",
                 value: [
-                  order.contact.name,
+                  order.contact.trade_name + " - " + order.contact.name,
                   order.contact.nif,
                   order.contact.address,
                   order.contact.postcode + " " + order.contact.city,
