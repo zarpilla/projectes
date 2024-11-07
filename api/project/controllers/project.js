@@ -923,6 +923,8 @@ module.exports = {
     let projects;
     const { published_at_null, _limit, ...where } = ctx.query;
 
+    const project_state_in = where._where.project_state_in
+
     if (ctx.query._q) {
       projects = await strapi
         .query("project")
@@ -931,7 +933,7 @@ module.exports = {
       projects = await strapi
         .query("project")
         .model.query((qb) => {
-          qb.select("id", "name", "published_at").where(where._where || {});
+          qb.select("id", "name", "published_at").where('project_state', 'in', project_state_in.split(',').map(s => parseInt(s)));
         })
         .fetchAll({ withRelated: ["original_phases"] });
     }
@@ -949,28 +951,31 @@ module.exports = {
 
     const start = +new Date();
 
-    const { query, year, paid, document } = ctx.query;
+    const { query, paid, document } = ctx.query;
     // ctx.query = { _limit: -1 }
 
     const promises = [];
+    
+    //console.log('query', query, year)
+    const year = ctx.query && ctx.query._where && ctx.query._where.year_eq ? ctx.query._where.year_eq : null;
+    
     if (ctx.query._q) {
       promises.push(strapi.query("project").search(ctx.query));
     } else {
       promises.push(strapi.query("project").find({ _limit: -1 }));
     }
 
-    // promises.push(strapi.query("activity").find({ _limit: 0 }));
     promises.push(strapi.query("daily-dedication").find({ _limit: -1 }));
+
     promises.push(strapi.query("festive").find({ _limit: -1 }));
 
     const results = await Promise.all(promises);
+    console.timeEnd("Promise.all");
     let projects = results[0];
     //const activities = results[1];
     const dailyDedications = results[1];
     const festives = results[2];
 
-    var end = +new Date();
-    // console.log('end -start', new Date() - start)
 
     projects = projects.filter((p) => p.published_at !== null);
     if (ctx.query && ctx.query._where && ctx.query._where.project_state_eq) {
@@ -994,14 +999,15 @@ module.exports = {
     }
 
     // console.log('projects', projects[0].activities ? projects[0].activities[0] : 0)
-
     const activities = [];
     projects.forEach((p) => {
       p.activities.forEach((a) => {
-        activities.push(a);
+        if (!year || (a.date && a.date.substring(0, 4) === year.toString())) {        
+          activities.push(a);
+        }
       });
     });
-
+    
     var response = [];
 
     const activitiesPYM = activities
@@ -1056,7 +1062,7 @@ module.exports = {
         structural_expenses: p.structural_expenses,
         grantable: p.grantable ? 1 : 0,
       };
-
+      
       for (var j = 0; j < p.phases.length; j++) {
         const ph = p.phases[j];
         for (var k = 0; k < ph.incomes.length; k++) {
@@ -1216,8 +1222,8 @@ module.exports = {
           total_estimated_hours_price: 0,
           total_real_hours_price: -1 * (pa.cost || 0),
           total_real_hours: pa.hours || 0,
-          year: pa.year.toString(),
-          month: pa.month,
+          year: pa.year.toString().padStart(4, '0'),
+          month: pa.month.toString().padStart(2, '0'),
           row_type: "",
           // document: "0",
         });
@@ -1264,12 +1270,14 @@ module.exports = {
           total_estimated_hours: g.q || 0,
           total_real_hours_price: 0,
           year: g.year.toString(),
-          month: g.month,
+          month: g.month.toString().padStart(2, '0'),
           row_type: "",
           // document: "0",
         });
       }
     }
+
+    console.timeEnd("projects for");
 
     if (year) {
       response = response.filter((r) => r.year === year);
@@ -1287,7 +1295,7 @@ module.exports = {
 
     // Removing some info
     // const newArray = projects.map(({ phases, activities, emitted_invoices, received_invoices, tickets, diets, emitted_grants, received_grants, quotes, original_phases, incomes, expenses, strategies, estimated_hours, intercooperations, clients, received_expenses, received_incomes, ...item }) => item)
-    return response;
+    return _.sortBy(response, ["year", "month", "name"]);
   },
 
   async findEstimatedTotalsByDay(ctx) {
@@ -1322,7 +1330,7 @@ module.exports = {
         ...totalsByDay.map((t) => ({ ...t, day: t.day.format("YYYY-MM-DD") }))
       );
     }
-    // for await (const event of eventsAdded) {
+    // for await (const event of eventsAdded) {    
     if (year) {
       return totals.filter((r) => r.day.substring(0, 4) === year);
     }

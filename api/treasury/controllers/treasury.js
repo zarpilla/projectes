@@ -23,6 +23,8 @@ module.exports = {
       where = { _limit: -1, project_state_in: ctx.query.project_states.split(",").map((x) => parseInt(x)) };
     }
 
+    const year = ctx.query.year;
+
     if (ctx.query && ctx.query.filter && ctx.query.filter === "approved") {
       where = { _limit: -1, project_state_in: [1, 2] };
     } else if (ctx.query && ctx.query.filter && ctx.query.filter === "requested") {
@@ -301,7 +303,7 @@ module.exports = {
       type: "Inici Any",
       concept: "-",
       total_amount: 0,
-      date: moment().startOf("year"),
+      date: moment(year, 'YYYY').startOf("year"),
       date_error: false,
       paid: null,
       contact: "-",
