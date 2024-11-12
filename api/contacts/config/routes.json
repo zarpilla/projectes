@@ -23,11 +23,19 @@
       "config": {
         "policies": []
       }
-    },
+    },    
     {
       "method": "GET",
       "path": "/contacts/withorders",
       "handler": "contacts.withorders",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/contacts/orders",
+      "handler": "contacts.orders",
       "config": {
         "policies": []
       }
