@@ -21,11 +21,14 @@ async function setPermissions(role, type, newPermissions) {
     .query("permission", "users-permissions")
     .find({ type: type, role: publicRole.id, _limit: -1 });
 
-  // Update permission to match new config
+  // Update permission to match new config  
   const controllersToUpdate = Object.keys(newPermissions);
   const updatePromises = publicPermissions
     .filter((permission) => {
       // Only update permissions included in newConfig
+      if (permission.controller === "contact") {
+        console.log('permission', permission);
+      }
       if (!controllersToUpdate.includes(permission.controller)) {
         return false;
       }
@@ -34,7 +37,7 @@ async function setPermissions(role, type, newPermissions) {
       }
       return true;
     })
-    .map((permission) => {
+    .map((permission) => {      
       // Enable the selected permissions
       return strapi
         .query("permission", "users-permissions")
@@ -112,7 +115,7 @@ async function importSeedData() {
       "getProjectIsDirty",
     ],
     quote: ["create", "find", "findone", "update", "delete"],
-    contact: ["create", "find", "findone", "update", "delete", "basic", "withorders"],
+    contacts: ["create", "find", "findone", "update", "delete", "basic", "withorders", "orders"],
     "festive-type": ["find"],
     festive: ["create", "find", "findone", "update", "delete"],
     "daily-dedication": ["create", "find", "findone", "update", "delete"],

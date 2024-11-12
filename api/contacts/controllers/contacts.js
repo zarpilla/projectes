@@ -26,6 +26,27 @@ module.exports = {
       sanitizeEntity(entity, { model: strapi.models.contacts })
     );
   },
+  async orders(ctx) {
+    // Calling the default core action
+    const contacts = [];
+
+    const orders = await strapi.query("orders").find({ _limit: -1 });
+
+    for (const order of orders) {
+      if (order.contact) {
+        const contact = contacts.find(c => c.id === order.contact.id);
+        if (!contact) {
+          contacts.push(order.contact);
+          order.contact.num_orders = 1;
+        } else {
+          contact.num_orders = contact.num_orders + 1;
+        }
+      }
+    }
+
+    return contacts
+
+  },
   async withorders(ctx) {
     // Calling the default core action
     const contacts = [];

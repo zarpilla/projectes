@@ -67,6 +67,35 @@ module.exports = {
                     data.refrigerated = 0
                 }
             }
+            if (data.incidence && !data.incidence_solved) {
+                const me = await strapi.query('me').findOne()
+                if (!me.contact_form_email) {
+                    throw new Error('contact_form_email not set')
+                }
+
+                const to = [data.email]
+                me.contact_form_email.split(',').forEach(email => {
+                    to.push(email)
+                })
+                const from = strapi.config.get("plugins.email.settings.defaultFrom", "");
+                const subject = `[ESSSTRAPIS] Incidència amb una comanda`
+                const userData = await strapi.query('user', 'users-permissions').findOne(data.user)            
+                const html = `
+                <b>Incidència amb una comanda</b><br><br>
+                PROVEÏDORA: ${userData.fullname || userData.username} (${userData.id})<br>
+                COMANDA: #${params.id.toString().padStart(4, "0") } <br>
+                INCIDÈNCIA: ${data.incidence_description } <br>                
+                --<br>
+                Missatge automàtic.<br>                
+                --<br>`
+                
+                await strapi.plugins["email"].services.email.send({
+                    to,
+                    from,
+                    subject,
+                    html
+                });
+            }
         },   
 
         // afterFind: async (results, params, populate) => {
