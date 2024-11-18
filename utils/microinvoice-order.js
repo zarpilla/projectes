@@ -20,9 +20,9 @@ module.exports = class MicroinvoiceOrder {
     this.defaultOptions = {
       style : {
         document : {
-          marginLeft  : 30,
-          marginRight : 30,
-          marginTop   : 26
+          marginLeft  : 20,
+          marginRight : 20,
+          marginTop   : 20
         },
 
         fonts : {
@@ -54,7 +54,7 @@ module.exports = class MicroinvoiceOrder {
           height          : 112,
           image           : null,
           qr              : {
-            left: 460
+            left: 500
           },
           textPosition    : 330,
           textPositionSeller: 430,
@@ -71,11 +71,12 @@ module.exports = class MicroinvoiceOrder {
           }
         },
         text : {
-          primaryColor   : "#000100",
-          secondaryColor : "#8F8F8F",
-          headingSize    : 13,
-          regularSize    : 8,
-          zregularSize    : 10
+          primaryColor   : "#8F8F8F",
+          secondaryColor : "#000100",
+          headingSize    : 18,
+          regularSize    : 12,
+          bigSize        : 18,
+          smallSize    : 8,
         },        
       },
 
@@ -238,27 +239,27 @@ module.exports = class MicroinvoiceOrder {
    */
   generateHeader(pageNumber) {
     // Background Rectangle
-    this.document
-      .rect(
-        0,
-        0,
-        this.document.page.width,
-        this.options.style.header.height
-      )
-      .fill(this.options.style.header.backgroundColor);
+    // this.document
+    //   .rect(
+    //     0,
+    //     0,
+    //     this.document.page.width,
+    //     this.options.style.header.height
+    //   )
+    //   .fill(this.options.style.header.backgroundColor);
 
     // Add an image to the header if any
-    if (this.options.style.header.image &&
-      this.options.style.header.image.path) {
-      this.document.image(
-        this.options.style.header.image.path,
-        this.options.style.document.marginLeft,
-        this.options.style.document.marginTop, {
-          width  : this.options.style.header.image.width,
-          height : this.options.style.header.image.height
-        }
-      );
-    }
+    // if (this.options.style.header.image &&
+    //   this.options.style.header.image.path) {
+    //   this.document.image(
+    //     this.options.style.header.image.path,
+    //     this.options.style.document.marginLeft,
+    //     this.options.style.document.marginTop, {
+    //       width  : this.options.style.header.image.width,
+    //       height : this.options.style.header.image.height
+    //     }
+    //   );
+    // }
 
     if (this.options.style.header.qr &&
       this.options.style.header.qr.path) {
@@ -276,7 +277,7 @@ module.exports = class MicroinvoiceOrder {
 
     // Write header details
     this.setCursor("x", this.options.style.header.textPosition);
-    this.setCursor("y", this.options.style.document.marginTop);
+    this.setCursor("y", this.options.style.document.marginTop + 2);
 
     this.setText(`CAIXA:`, {
       fontSize   : "heading",
@@ -284,8 +285,8 @@ module.exports = class MicroinvoiceOrder {
       color      : this.options.style.header.regularColor
     });
 
-    this.setCursor("y", this.options.style.document.marginTop);
-    this.setCursor("x", this.options.style.header.textPosition + 45);
+    this.setCursor("y", this.options.style.document.marginTop + 2);
+    this.setCursor("x", this.options.style.header.textPosition + 74);
 
     this.setText(`${pageNumber + 1}/${this.options.data.pages}`, {
       fontSize   : "heading",
@@ -296,7 +297,6 @@ module.exports = class MicroinvoiceOrder {
     this.setCursor("y", this.options.style.document.marginTop + 20);
 
     const lines = [...this.options.data.invoice.header]
-    //lines.push({ label: 'CAIXA', value: `${pageNumber + 1} / ${this.options.data.pages}`})
 
     this.setCursor("x", this.options.style.header.textPosition);
 
@@ -354,13 +354,17 @@ module.exports = class MicroinvoiceOrder {
 
     let _fontSize = "regular"
 
+    
     this.setCursor("y", this.options.style.header.height + 1);
     // Use a different left position
     if (type === "customer") {
+      this.setCursor("y", this.options.style.document.marginTop);
       this.setCursor("x", this.options.style.document.marginLeft);
       _fontSize = "big"
-    } else if (type === "provider") {
+    } else if (type === "provider") {      
+      
       this.setCursor("x", this.options.style.header.textPositionProvider);
+      _fontSize = "regular"
     } else {
       this.setCursor("x", this.options.style.header.textPositionSeller);
     }
@@ -617,26 +621,23 @@ module.exports = class MicroinvoiceOrder {
 
   generateFooter() {
 
-    this.storage.cursor.y = this.document.page.height - 90;
-    
+    this.storage.cursor.y = 356;
     this.generateLine();
+    let _fontMargin = 0;
 
-    //this.storage.cursor.y = this.document.page.height - 160;    
-
-    let _fontMargin = 4;
-
-    //console.log('this.document.page', this.document.page)
-
+    this.storage.cursor.y = 366;
     this.setCursor("x", this.options.style.document.marginLeft);
-    // this.setCursor("y", 310);
+    this.setCursor("y", this.storage.cursor.y);
 
     let text = this.options.data.invoice['seller'][0].value.join(' · ');
 
     this.setText(text, {
       colorCode : "secondary",
       marginTop : _fontMargin,
-      // maxWidth  : _maxWidth
+      fontSize: "small"
     });
+
+    
 
     // this.options.data.invoice['seller'].forEach(line => {
     //   this.setText(`${line.label}:`, {
@@ -738,9 +739,12 @@ module.exports = class MicroinvoiceOrder {
         this.document.fillColor(this.options.style.text.secondaryColor);
       }
     }
-
     if (_fontSize === "regular") {
       _fontSizeValue = this.options.style.text.regularSize;
+    }
+    else if (_fontSize === "small") {
+      _fontSizeValue = this.options.style.text.smallSize;
+      console.log('small', _fontSizeValue)
     }
     else if (_fontSize === "big") {
       _fontSizeValue = this.options.style.text.bigSize || 10;
@@ -789,6 +793,12 @@ module.exports = class MicroinvoiceOrder {
     this.document = new PDFDocument({
       size : "A5",
       layout : "landscape",
+      margins: {
+        top: 20,
+        bottom: 0,
+        left: 20,
+        right: 20
+      }
     });
 
     this.loadCustomFonts();
@@ -805,11 +815,19 @@ module.exports = class MicroinvoiceOrder {
       //this.generateDetails("seller");    
       this.generateDetails("provider");    
       this.generateParts();    
-      this.generateRectangle(330, this.storage.cursor.y + 20, 180, 90, this.options.style.text.primaryColor);
+      this.generateRectangle(330, this.storage.cursor.y + 86, 222, 80, this.options.style.text.primaryColor);
       this.generateLegal();      
       this.generateFooter();
       if (i < this.options.data.pages - 1) {
-        this.document.addPage( { size : "A5", layout : "landscape" } );
+        this.storage.cursor.y = 0;
+        this.document.addPage( { size : "A5", layout : "landscape",
+          margins: {
+            top: 20,
+            bottom: 0,
+            left: 20,
+            right: 20
+          }
+         } );
       }
     }
     //this.generateHeader();
