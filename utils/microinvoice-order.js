@@ -743,8 +743,7 @@ module.exports = class MicroinvoiceOrder {
       _fontSizeValue = this.options.style.text.regularSize;
     }
     else if (_fontSize === "small") {
-      _fontSizeValue = this.options.style.text.smallSize;
-      console.log('small', _fontSizeValue)
+      _fontSizeValue = this.options.style.text.smallSize;      
     }
     else if (_fontSize === "big") {
       _fontSizeValue = this.options.style.text.bigSize || 10;
