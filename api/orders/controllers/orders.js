@@ -960,7 +960,7 @@ module.exports = {
               {
                 label: "ENTREGA",
                 value: [
-                  order.contact.trade_name + " - " + order.contact.name,
+                  order.contact.trade_name + (order.contact.name && order.contact.name !== order.contact.trade_name ? " - " + order.contact.name : ""),
                   order.contact.nif,
                   order.contact.address,
                   order.contact.postcode + " " + order.contact.city,
