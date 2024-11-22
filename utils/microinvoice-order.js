@@ -54,7 +54,7 @@ module.exports = class MicroinvoiceOrder {
           height          : 112,
           image           : null,
           qr              : {
-            left: 500
+            left: 465
           },
           textPosition    : 330,
           textPositionSeller: 430,
@@ -813,9 +813,9 @@ module.exports = class MicroinvoiceOrder {
       this.generateDetails("customer");
       //this.generateDetails("seller");    
       this.generateDetails("provider");    
-      this.generateParts();    
-      this.generateRectangle(330, this.storage.cursor.y + 86, 222, 80, this.options.style.text.primaryColor);
-      this.generateLegal();      
+      this.generateParts();          
+      this.generateLegal();    
+      this.generateRectangle(330, 260, 222, 80, this.options.style.text.primaryColor);  
       this.generateFooter();
       if (i < this.options.data.pages - 1) {
         this.storage.cursor.y = 0;
