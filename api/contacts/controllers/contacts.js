@@ -51,7 +51,12 @@ module.exports = {
     // Calling the default core action
     const contacts = [];
 
-    const orders = await strapi.query("orders").find({ owner: ctx.state.user.id, _limit: -1 });
+    let contactFilter = {};
+    if (ctx.query.contact_id) {
+      contactFilter = { contact: ctx.query.contact_id };
+    }
+
+    const orders = await strapi.query("orders").find({ owner: ctx.state.user.id, ...contactFilter, _limit: -1 });
 
     for (const order of orders) {
       if (order.contact) {
@@ -62,6 +67,8 @@ module.exports = {
         } else {
           contact.num_orders = contact.num_orders + 1;
         }
+        const contact2 = contacts.find(c => c.id === order.contact.id);
+        contact2.can_edit = contact2.can_edit || ['delivered', 'invoiced'].includes(order.status)
       }
     }
 
