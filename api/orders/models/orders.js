@@ -44,7 +44,7 @@ module.exports = {
         },        
         async beforeUpdate(params, data) {
             if (data.status === 'delivered' && !data.delivery_date) {
-                data.delivery_date = new Date()
+                data.delivery_date = data.estimated_delivery_date ? data.estimated_delivery_date : new Date()
             }
             if (data.status === 'lastmile') {
                 data.last_mile = true
