@@ -146,7 +146,7 @@ module.exports = {
       return;
     }
 
-    const ordersEntities = await strapi.query("orders").find({ id_in: orders });
+    const ordersEntities = await strapi.query("orders").find({ id_in: orders, _limit: -1 });
 
     const uniqueOwners = ordersEntities
       .map((o) => o.owner.id)
