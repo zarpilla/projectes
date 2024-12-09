@@ -7,6 +7,13 @@ const crypto = require("crypto");
 const QRCode = require("qrcode");
 const PDFMerge = require('pdf-merge');
 
+
+const isNumber = (value) =>
+{
+   return typeof value === 'number' && isFinite(value);
+}
+
+
 /**
  * Read the documentation (https://strapi.io/documentation/developer-docs/latest/development/backend-customization.html#core-controllers)
  * to customize this controller
@@ -235,6 +242,18 @@ module.exports = {
           });
         }
 
+        // fix {} phases
+        project.phases.forEach(ph => {
+          ph.incomes.forEach(income => {
+            if (income.invoice !== null && !income.invoice.hasOwnProperty('id') && !isNumber(income.invoice)) {
+              income.invoice = null;
+            }
+            if (income.income && !income.income.hasOwnProperty('id') && !isNumber(income.income)) {
+              income.income = null;
+            }
+          })          
+        });
+        
         await strapi
           .query("project")
           .update({ id: p }, { phases: project.phases });
