@@ -1038,6 +1038,7 @@ module.exports = {
     // console.log('grouped', grouped)
 
     // const activities = await strapi.query("activity").find({ _limit: -1 });
+    const noPhaseInfo = { phase: '-', subphase: '-' };
 
     const me = await strapi.query("me").findOne();
     const deductible_vat_pct =
@@ -1064,9 +1065,10 @@ module.exports = {
       };
       
       for (var j = 0; j < p.phases.length; j++) {
-        const ph = p.phases[j];
+        const ph = p.phases[j];        
         for (var k = 0; k < ph.incomes.length; k++) {
           const sph = ph.incomes[k];
+          const phaseInfo = { phase: ph.name, subphase: sph.concept };
 
           if (sph.quantity && sph.amount) {
             const document = sph.income || sph.invoice;
@@ -1076,6 +1078,7 @@ module.exports = {
                 : sph.date_estimate_document;
             response.push({
               ...projectInfo,
+              ...phaseInfo,
               type: "income",
               paid: sph.paid,
               date: date,
@@ -1095,7 +1098,7 @@ module.exports = {
 
         for (var k = 0; k < ph.expenses.length; k++) {
           const sph = ph.expenses[k];
-
+          const phaseInfo = { phase: ph.name, subphase: sph.concept };
           if (sph.quantity && sph.amount) {            
             const document = sph.expense || sph.invoice;            
             const date =
@@ -1104,6 +1107,7 @@ module.exports = {
                 : sph.date_estimate_document;
             response.push({
               ...projectInfo,
+              ...phaseInfo,
               type: "expense",
               paid: sph.paid,
               expense_esti: 0,
@@ -1129,11 +1133,13 @@ module.exports = {
         const ph = p.original_phases[j];
         for (var k = 0; k < ph.incomes.length; k++) {
           const sph = ph.incomes[k];
+          const phaseInfo = { phase: ph.name, subphase: sph.concept };
           if (sph.quantity && sph.amount) {
             const document = sph.income || sph.invoice;
             const date = sph.date_estimate_document || sph.date;
             response.push({
               ...projectInfo,
+              ...phaseInfo,
               type: "income",
               // paid: sph.paid,
               date: date,
@@ -1151,11 +1157,13 @@ module.exports = {
         }
         for (var k = 0; k < ph.expenses.length; k++) {
           const sph = ph.expenses[k];
+          const phaseInfo = { phase: ph.name, subphase: sph.concept };
           if (sph.quantity && sph.amount) {
             const document = sph.expense || sph.invoice;
             const date = sph.date_estimate_document || sph.date;
             response.push({
               ...projectInfo,
+              ...phaseInfo,
               type: "expense",
               // paid: sph.paid,
               expense_esti: -1 * Math.abs(sph.quantity * sph.amount),
@@ -1187,6 +1195,7 @@ module.exports = {
 
           response.push({
             ...projectInfo,
+            ...noPhaseInfo,
             type: "income",
             income_esti: pp.incomes,
             income_real: pp.real_incomes,
@@ -1198,6 +1207,7 @@ module.exports = {
 
           response.push({
             ...projectInfo,
+            ...noPhaseInfo,
             type: "expense",
             expense_esti: pp.expenses,
             expense_real: pp.real_expenses,
@@ -1217,6 +1227,7 @@ module.exports = {
         const pa = projectActivities[j];
         response.push({
           ...projectInfo,
+          ...noPhaseInfo,
           type: "real_hours",
           date: "",
           total_estimated_hours_price: 0,
@@ -1264,6 +1275,7 @@ module.exports = {
 
         response.push({
           ...projectInfo,
+          ...noPhaseInfo,
           type: "estimated_hours",
           date: "",
           total_estimated_hours_price: -1 * (g.cost || 0),
