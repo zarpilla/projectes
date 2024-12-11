@@ -30,8 +30,8 @@
       "type": "decimal"
     },
     "routes": {
-      "collection": "route",
       "via": "route_rates",
+      "collection": "route",
       "dominant": true
     }
   }
