@@ -55,6 +55,7 @@ module.exports = {
         pickup: o.pickup ? o.pickup.name : '-',
         delivery_type: o.delivery_type ? o.delivery_type.name : '-', 
         status: o.status,
+        lastmile: o.last_mile ? 'Sí' : 'No',
         date: date,
         month: moment(date).format("MM"),
         year: moment(date).format("YYYY")
