@@ -268,7 +268,7 @@ const doProjectInfoCalculations = async (data, id) => {
     data.total_real_expenses -
     data.total_real_hours_price;
 
-  if (data.structural_expenses_pct) {
+  if (data.structural_expenses_pct && false) {
     data.total_expenses =
       data.total_expenses +
       (data.structural_expenses_pct / 100) * data.total_incomes;
