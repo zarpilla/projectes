@@ -135,8 +135,9 @@ module.exports = {
     return createdOrder;
   },
   invoice: async (ctx) => {
-    const { orders } = ctx.request.body;
+    const { orders, project } = ctx.request.body;
 
+    const uniqueProjects = [project]
     const year = new Date().getFullYear();
     const serial = await strapi.query("serie").find({ name: year });
     if (serial.length === 0) {
@@ -178,10 +179,10 @@ module.exports = {
         (c) => c.users_permissions_user.id === owner
       );
       const contactOrders = ordersEntities.filter((o) => o.owner.id === owner);
-      const uniqueProjects = ordersEntities
-        .filter((o) => o.owner.id === owner)
-        .map((o) => o.route.project)
-        .filter((value, index, self) => self.indexOf(value) === index);
+      // const uniqueProjects = ordersEntities
+      //   .filter((o) => o.owner.id === owner)
+      //   .map((o) => o.route.project)
+      //   .filter((value, index, self) => self.indexOf(value) === index);
       const emittedInvoice = {
         emitted: new Date(),
         serial: serial[0].id,
@@ -199,7 +200,7 @@ module.exports = {
             discount: 0,
           };
         }),
-        projects: uniqueProjects,
+        projects: [project],
       };
       const invoice = await strapi
         .query("emitted-invoice")
@@ -228,20 +229,22 @@ module.exports = {
         }
 
         const phase = project.phases[project.phases.length - 1];
-
-        for (const o of contactOrders.filter((o) => o.route.project === p)) {
-          phase.incomes.push({
-            concept: `Comanda #${o.id.toString().padStart(4, "0")}# - ${
-              contact.name
-            }`,
-            quantity: 1,
-            amount: o.price,
-            total_amount: o.price,
-            date: new Date(),
-            income_type: 1,
-            invoice: invoice.id,
-          });
+        let price = 0
+        for (const o of contactOrders) {
+          price += o.price;
         }
+
+        phase.incomes.push({
+          concept: `Factura #${invoice.code}# - ${contact.trade_name || contact.name}`,
+          quantity: 1,
+          amount: price,
+          total_amount: price,
+          date: new Date(),
+          income_type: 1,
+          invoice: invoice.id,
+          paid: true,
+          date_estimate_document: new Date(),
+        });
 
         // fix {} phases
         project.phases.forEach(ph => {
@@ -260,6 +263,7 @@ module.exports = {
           .update({ id: p }, { phases: project.phases });
       }
     }
+
 
     ctx.send({
       orders: orders,

@@ -21,7 +21,7 @@ module.exports = {
             })
             const from = strapi.config.get("plugins.email.settings.defaultFrom", "");
             const subject = `[ESSSTRAPIS] Contacte a través del formulari`
-            const userData = await strapi.query('user', 'users-permissions').findOne(data.user)            
+            const userData = await strapi.query('user', 'users-permissions').findOne({ id: data.user})            
             const html = `
             <b>Contacte a través del formulari</b><br><br>
             PROVEÏDORA: ${userData.fullname || userData.username} (${userData.id})<br>
@@ -32,7 +32,6 @@ module.exports = {
             Missatge automàtic. Gràcies per contactar amb nosaltres.<br>
             ${me.name}<br>
             --<br>`
-            //console.log('me', me)
             
 
             await strapi.plugins["email"].services.email.send({

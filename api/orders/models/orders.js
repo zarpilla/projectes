@@ -79,7 +79,7 @@ module.exports = {
                 })
                 const from = strapi.config.get("plugins.email.settings.defaultFrom", "");
                 const subject = `[ESSSTRAPIS] Incidència amb una comanda`
-                const userData = await strapi.query('user', 'users-permissions').findOne(data.user)            
+                const userData = await strapi.query('user', 'users-permissions').findOne({ id: data.user})            
                 const html = `
                 <b>Incidència amb una comanda</b><br><br>
                 PROVEÏDORA: ${userData.fullname || userData.username} (${userData.id})<br>
