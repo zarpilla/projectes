@@ -158,93 +158,93 @@ async function importSeedData() {
   });
 
   // set user permissions
-  const users = await strapi
-    .query("user", "users-permissions")
-    .find({ _limit: -1 });
+  // const users = await strapi
+  //   .query("user", "users-permissions")
+  //   .find({ _limit: -1 });
 
-  for await (const user of users) {
-    // if (user.permissions.length === 0 && user.blocked === false) {
-    //   await strapi
-    //     .query("user", "users-permissions")
-    //     .update({ id: user.id }, { permissions: [{ permission: 'projects' }] });
-    // }
-    if (user.permissions.length > 0 && user.blocked === false) {
-      const permissionHasProjects = user.permissions.filter(p => p.permission === 'projects').length > 0;
-      const permissionHasHours = user.permissions.filter(p => p.permission === 'hours').length > 0;
+  // for await (const user of users) {
+  //   // if (user.permissions.length === 0 && user.blocked === false) {
+  //   //   await strapi
+  //   //     .query("user", "users-permissions")
+  //   //     .update({ id: user.id }, { permissions: [{ permission: 'projects' }] });
+  //   // }
+  //   if (user.permissions.length > 0 && user.blocked === false) {
+  //     const permissionHasProjects = user.permissions.filter(p => p.permission === 'projects').length > 0;
+  //     const permissionHasHours = user.permissions.filter(p => p.permission === 'hours').length > 0;
 
-      if (permissionHasProjects && !permissionHasHours) {        
-        const permissions = [...user.permissions]
-        permissions.push({ permission: 'hours' });
-        await strapi
-          .query("user", "users-permissions")
-          .update({ id: user.id }, { permissions: permissions });
-      }
-    }
-  }
+  //     if (permissionHasProjects && !permissionHasHours) {        
+  //       const permissions = [...user.permissions]
+  //       permissions.push({ permission: 'hours' });
+  //       await strapi
+  //         .query("user", "users-permissions")
+  //         .update({ id: user.id }, { permissions: permissions });
+  //     }
+  //   }
+  // }
 
-  const expenseTypes = await strapi.query("expense-type").find({ _limit: -1 });
+  // const expenseTypes = await strapi.query("expense-type").find({ _limit: -1 });
 
-  for await (const expenseType of expenseTypes) {
-    if (expenseType.vat_pct === null) {
-      if (expenseType.id === 1) {
-        await strapi
-          .query("expense-type")
-          .update({ id: expenseType.id }, { vat_pct: 21 });
-      }
-      if (expenseType.id === 2) {
-        await strapi
-          .query("expense-type")
-          .update({ id: expenseType.id }, { vat_pct: 0 });
-      }
-      if (expenseType.id === 3) {
-        await strapi
-          .query("expense-type")
-          .update({ id: expenseType.id }, { vat_pct: 10 });
-      }
-      if (expenseType.id === 4) {
-        await strapi
-          .query("expense-type")
-          .update({ id: expenseType.id }, { vat_pct: 21 });
-      }
-      if (expenseType.id === 5) {
-        await strapi
-          .query("expense-type")
-          .update({ id: expenseType.id }, { vat_pct: 21 });
-      }
-      if (expenseType.id === 6) {
-        await strapi
-          .query("expense-type")
-          .update({ id: expenseType.id }, { vat_pct: 0 });
-      }
-    }
-  }
+  // for await (const expenseType of expenseTypes) {
+  //   if (expenseType.vat_pct === null) {
+  //     if (expenseType.id === 1) {
+  //       await strapi
+  //         .query("expense-type")
+  //         .update({ id: expenseType.id }, { vat_pct: 21 });
+  //     }
+  //     if (expenseType.id === 2) {
+  //       await strapi
+  //         .query("expense-type")
+  //         .update({ id: expenseType.id }, { vat_pct: 0 });
+  //     }
+  //     if (expenseType.id === 3) {
+  //       await strapi
+  //         .query("expense-type")
+  //         .update({ id: expenseType.id }, { vat_pct: 10 });
+  //     }
+  //     if (expenseType.id === 4) {
+  //       await strapi
+  //         .query("expense-type")
+  //         .update({ id: expenseType.id }, { vat_pct: 21 });
+  //     }
+  //     if (expenseType.id === 5) {
+  //       await strapi
+  //         .query("expense-type")
+  //         .update({ id: expenseType.id }, { vat_pct: 21 });
+  //     }
+  //     if (expenseType.id === 6) {
+  //       await strapi
+  //         .query("expense-type")
+  //         .update({ id: expenseType.id }, { vat_pct: 0 });
+  //     }
+  //   }
+  // }
 
-  const incomesTypes = await strapi.query("income-type").find({ _limit: -1 });
+  // const incomesTypes = await strapi.query("income-type").find({ _limit: -1 });
 
-  for await (const incomeType of incomesTypes) {
-    if (incomeType.vat_pct === null) {
-      if (incomeType.id === 1) {
-        await strapi
-          .query("income-type")
-          .update({ id: incomeType.id }, { vat_pct: 21 });
-      }
-      if (incomeType.id === 2) {
-        await strapi
-          .query("income-type")
-          .update({ id: incomeType.id }, { vat_pct: 0 });
-      }
-      if (incomeType.id === 3) {
-        await strapi
-          .query("income-type")
-          .update({ id: incomeType.id }, { vat_pct: 0 });
-      }
-      if (incomeType.id === 4) {
-        await strapi
-          .query("income-type")
-          .update({ id: incomeType.id }, { vat_pct: 21 });
-      }
-    }
-  }
+  // for await (const incomeType of incomesTypes) {
+  //   if (incomeType.vat_pct === null) {
+  //     if (incomeType.id === 1) {
+  //       await strapi
+  //         .query("income-type")
+  //         .update({ id: incomeType.id }, { vat_pct: 21 });
+  //     }
+  //     if (incomeType.id === 2) {
+  //       await strapi
+  //         .query("income-type")
+  //         .update({ id: incomeType.id }, { vat_pct: 0 });
+  //     }
+  //     if (incomeType.id === 3) {
+  //       await strapi
+  //         .query("income-type")
+  //         .update({ id: incomeType.id }, { vat_pct: 0 });
+  //     }
+  //     if (incomeType.id === 4) {
+  //       await strapi
+  //         .query("income-type")
+  //         .update({ id: incomeType.id }, { vat_pct: 21 });
+  //     }
+  //   }
+  // }
 
   // const sql1 = `UPDATE components_project_phase_original_project_phases_components SET field = 'incomes' WHERE field = 'subphases';`;
   // await strapi.connections.default.raw(sql1);
@@ -252,16 +252,65 @@ async function importSeedData() {
   // const sql2 = `UPDATE components_project_phase_project_phases_components SET field = 'incomes' WHERE field = 'subphases';`;
   // await strapi.connections.default.raw(sql2);
 
-  const projectStates = await strapi
-    .query("project-state")
-    .find({ _limit: -1 });
-  for await (const projectState of projectStates) {
-    if (projectState.id === 1 && projectState.can_assign_activities === null) {
+  // const projectStates = await strapi
+  //   .query("project-state")
+  //   .find({ _limit: -1 });
+  // for await (const projectState of projectStates) {
+  //   if (projectState.id === 1 && projectState.can_assign_activities === null) {
+  //     await strapi
+  //       .query("project-state")
+  //       .update({ id: projectState.id }, { can_assign_activities: true });
+  //   }
+  // }
+
+  const festives = await strapi.query("festive").find({ _limit: -1 });
+
+  const festives2025 = [
+     { date: '2025-01-01', festive_type: 1 },
+      { date: '2025-01-06', festive_type: 1 },      
+      { date: '2025-04-21', festive_type: 2 },
+      { date: '2025-05-01', festive_type: 1 },
+      { date: '2025-06-24', festive_type: 2 },
+      { date: '2025-08-15', festive_type: 1 },
+      { date: '2025-09-11', festive_type: 2 },
+      { date: '2025-12-08', festive_type: 1 },
+      { date: '2025-12-25', festive_type: 1 },
+      { date: '2025-12-26', festive_type: 2 }];
+  
+  // if festives2025 is not in festives, add them
+  for (const festive of festives2025) {
+    const festiveExists = festives.filter(f => f.date === festive.date).length > 0;
+    if (!festiveExists) {
       await strapi
-        .query("project-state")
-        .update({ id: projectState.id }, { can_assign_activities: true });
+        .query("festive")
+        .create({ date: festive.date, festive_type: festive.festive_type });
+        console.log('Festive added', festive);
     }
   }
+
+  const years = await strapi.query("year").find({ _limit: -1 });
+  // if 2025 is not in years, add it
+  const year2025 = years.filter(y => y.year === 2025);
+  if (year2025.length === 0) {
+    await strapi
+      .query("year")
+      .create({ year: 2025, working_hours: 1760, deductible_vat_pct: 100 });
+
+      console.log('year added', 2025);
+  }
+
+  const series = await strapi.query("serie").find({ _limit: -1 });
+  // if 2025 is not in years, add it
+  const serie2025 = series.filter(s => s.name === '2025');
+  if (serie2025.length === 0) {
+    await strapi
+      .query("serie")
+      .create({ name: '2025', leadingZeros: 3, emitted_invoice_number: 0 });
+
+      console.log('serie added', '2025');
+  }
+
+
 }
 
 module.exports = async () => {
