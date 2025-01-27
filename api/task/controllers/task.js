@@ -37,6 +37,10 @@ let sendEmail = async (data, config) => {
     data.email === process.env.TASK_EMAIL_TO ||
     process.env.TASK_EMAIL_TO === "*"
   ) {
+    console.log("----------------")
+    console.log("Sending email to", data.email);
+    console.log("process.env.TASK_EMAIL_TO", process.env.TASK_EMAIL_TO);
+    console.log("----------------")
     await strapi.plugins["email"].services.email.send({
       to: data.email,
       from: emailFrom,
@@ -197,8 +201,8 @@ module.exports = {
     const sentEmails = [];
 
     if (emails.length) {
-      for (var i = 0; i < emails.length; i++) {
-        const msg = await sendEmail(emails[i], config);
+      for await (const email of emails) {
+        const msg = await sendEmail(email, config);
         sentEmails.push(msg);
       }
     }
