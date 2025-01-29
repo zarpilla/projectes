@@ -527,7 +527,7 @@ module.exports = {
     });
     let more = "";
 
-    more = invoice.contact_notes ? invoice.contact_notes + "\n" : "";
+    more = invoice.contact && invoice.contact.notes ? invoice.contact.notes + "\n" : (invoice.contact_notes ? invoice.contact_notes + "\n" : "");
 
     more += invoice.contact_legal_form
       ? invoice.contact_legal_form.name + " - "
@@ -902,8 +902,8 @@ module.exports = {
       });
       let more = "";
 
-      more = order.contact_notes ? order.contact_notes + "\n" : "";
-
+      more = order.contact && order.contact.notes ? order.contact.notes + "\n" : (order.contact_notes ? order.contact_notes + "\n" : "");
+      
       more += order.contact_legal_form
         ? order.contact_legal_form.name + " - "
         : "";
