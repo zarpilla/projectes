@@ -34,8 +34,8 @@ module.exports = {
   infoAll: async (ctx) => {    
     const { year, ...query } = ctx.query;
     const orders = await strapi.query("orders").find(query);
-    const ordersInfo = orders.map((o) => {
-      const date = o.delivery_date || o.route_date;
+    const ordersInfo = orders.filter((o) => o.status !== 'cancelled').map((o) => {
+      const date = o.estimated_delivery_date || o.delivery_date || o.route_date;
       return {
         id: o.id,
         count: 1,

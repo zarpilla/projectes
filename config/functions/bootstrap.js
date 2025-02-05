@@ -132,6 +132,7 @@ async function importSeedData() {
     "user-festive": ["find"],
     orders: [
       "create",
+      "count",
       "find",
       "findone",
       "update",
