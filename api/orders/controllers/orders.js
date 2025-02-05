@@ -32,7 +32,7 @@ const formatCurrency = (val) => {
 
 module.exports = {
   infoAll: async (ctx) => {    
-    const { year, ...query } = ctx.query;
+    const { year, month, ...query } = ctx.query;
     const orders = await strapi.query("orders").find(query);
     const ordersInfo = orders.filter((o) => o.status !== 'cancelled').map((o) => {
       const date = o.estimated_delivery_date || o.delivery_date || o.route_date;
@@ -61,11 +61,15 @@ module.exports = {
         year: moment(date).format("YYYY")
       };
     });
+
+    let ordersInfoFiltered = ordersInfo;
     if (year) {
-      ctx.send(ordersInfo.filter((o) => o.year === year));
-      return
+      ordersInfoFiltered = ordersInfoFiltered.filter((o) => o.year === year);      
     }
-    ctx.send(ordersInfo);
+    if (month) {
+      ordersInfoFiltered = ordersInfoFiltered.filter((o) => parseInt(o.month) === parseInt(month));
+    }
+    ctx.send(ordersInfoFiltered);
     return
   },
   createCSV: async (ctx) => {

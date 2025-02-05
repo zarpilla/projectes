@@ -109,6 +109,9 @@
     "partner_amount": {
       "type": "decimal"
     },
+    "partner_amount_date": {
+      "type": "date"
+    },
     "followup_date": {
       "type": "date"
     },
