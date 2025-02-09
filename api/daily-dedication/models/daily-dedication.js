@@ -17,6 +17,15 @@ module.exports = {
                 throw new Error('daily-dedication overlaps')
             }
             service.setDailyDedicationsDirty(true);
+            // update all activities price between dates
+            const activities = await strapi.query('activity').find({ users_permissions_user: data.users_permissions_user, date_gte: data.from , date_lte: data.to, _limit: -1 });
+            const activitiesPrice = activities.filter(a => a.cost_by_hour !== data.costByHour);
+            for await (const ap of activitiesPrice) {
+                if (ap.cost_by_hour !== data.costByHour && data.costByHour !== null) {
+                    const activity = { cost_by_hour: data.costByHour };
+                    await strapi.query('activity').update({ id: ap.id }, activity);
+                }
+            }
         },
         async beforeUpdate(params, data) {            
             const dedications = await strapi.query('daily-dedication').find({ users_permissions_user: data.users_permissions_user, _limit: -1 });
@@ -26,16 +35,16 @@ module.exports = {
                 console.error('daily-dedication overlaps', invalids)
                 throw new Error('daily-dedication overlaps')
             }
-            // update all activities price between dates            
-            const activities = await strapi.query('activity').find({ users_permissions_user: data.users_permissions_user, date_gte: data.from , date_lte: data.to, _limit: -1 });
-            const activitiesPrice = activities.filter(a => a.cost_by_hour !== data.costByHour, data)            
-            activitiesPrice.forEach(async ap => {
-                if (ap.cost_by_hour !== data.costByHour && data.costByHour) {
-                    const activity = { cost_by_hour: data.costByHour }
-                    await strapi.query('activity').update( { id: ap.id }, activity)
-                }
-            });
             service.setDailyDedicationsDirty(true);
+            // update all activities price between dates
+            const activities = await strapi.query('activity').find({ users_permissions_user: data.users_permissions_user, date_gte: data.from , date_lte: data.to, _limit: -1 });
+            const activitiesPrice = activities.filter(a => a.cost_by_hour !== data.costByHour);
+            for await (const ap of activitiesPrice) {
+                if (ap.cost_by_hour !== data.costByHour && data.costByHour !== null) {
+                    const activity = { cost_by_hour: data.costByHour };
+                    await strapi.query('activity').update({ id: ap.id }, activity);
+                }
+            }
         },
         async beforeDelete(params) {
             service.setDailyDedicationsDirty(true);

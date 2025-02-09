@@ -82,20 +82,20 @@
     },
     {
       "method": "GET",
-      "path": "/projects/:id/calculate",
-      "handler": "project.doCalculateProjectInfo",
+      "path": "/projects/:id/phases",
+      "handler": "project.findOneExtended",
       "config": {
         "policies": []
       }
     },
     {
       "method": "GET",
-      "path": "/projects/:id/dirty",
-      "handler": "project.getProjectIsDirty",
+      "path": "/projects/:id/calculate",
+      "handler": "project.calculateProject2",
       "config": {
         "policies": []
       }
-    },
+    },    
     {
       "method": "GET",
       "path": "/projects/:id",
