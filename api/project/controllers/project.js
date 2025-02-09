@@ -1778,6 +1778,8 @@ module.exports = {
   createPhasesForAllProjects: async (ctx) => {
     console.log("createPhasesForAllProjects!");
 
+    return
+
     const phases0 = await strapi
       .query("project-original-phases")
       .find({ _limit: 1 });
