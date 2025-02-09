@@ -1,4 +1,5 @@
 "use strict";
+const projectController = require("../../api/project/controllers/project");
 
 /**
  * An asynchronous bootstrap function that runs before
@@ -21,13 +22,13 @@ async function setPermissions(role, type, newPermissions) {
     .query("permission", "users-permissions")
     .find({ type: type, role: publicRole.id, _limit: -1 });
 
-  // Update permission to match new config  
+  // Update permission to match new config
   const controllersToUpdate = Object.keys(newPermissions);
   const updatePromises = publicPermissions
     .filter((permission) => {
       // Only update permissions included in newConfig
       if (permission.controller === "contact") {
-        console.log('permission', permission);
+        console.log("permission", permission);
       }
       if (!controllersToUpdate.includes(permission.controller)) {
         return false;
@@ -37,7 +38,7 @@ async function setPermissions(role, type, newPermissions) {
       }
       return true;
     })
-    .map((permission) => {      
+    .map((permission) => {
       // Enable the selected permissions
       return strapi
         .query("permission", "users-permissions")
@@ -115,7 +116,16 @@ async function importSeedData() {
       "getProjectIsDirty",
     ],
     quote: ["create", "find", "findone", "update", "delete"],
-    contacts: ["create", "find", "findone", "update", "delete", "basic", "withorders", "orders"],
+    contacts: [
+      "create",
+      "find",
+      "findone",
+      "update",
+      "delete",
+      "basic",
+      "withorders",
+      "orders",
+    ],
     "festive-type": ["find"],
     festive: ["create", "find", "findone", "update", "delete"],
     "daily-dedication": ["create", "find", "findone", "update", "delete"],
@@ -139,7 +149,7 @@ async function importSeedData() {
       "delete",
       "createcsv",
       "invoice",
-      "pdf",      
+      "pdf",
       "infoall",
       "pdfmultiple",
     ],
@@ -152,6 +162,18 @@ async function importSeedData() {
     "city-route": ["find", "findone", "create", "delete"],
     "form-submission": ["create"],
     "route-festive": ["find", "findone", "create", "delete"],
+    "project-phases": ["find", "findone", "create", "update", "delete"],
+    "project-original-phases": [
+      "find",
+      "findone",
+      "create",
+      "update",
+      "delete",
+      "findwithhours",
+    ],
+    "estimated-hours": ["find", "findone", "create", "update", "delete"],
+    "phase-income": ["find", "findassigned"],
+    "phase-expense": ["find", "findassigned"],
   });
 
   await setPermissions("authenticated", "upload", {
@@ -173,7 +195,7 @@ async function importSeedData() {
   //     const permissionHasProjects = user.permissions.filter(p => p.permission === 'projects').length > 0;
   //     const permissionHasHours = user.permissions.filter(p => p.permission === 'hours').length > 0;
 
-  //     if (permissionHasProjects && !permissionHasHours) {        
+  //     if (permissionHasProjects && !permissionHasHours) {
   //       const permissions = [...user.permissions]
   //       permissions.push({ permission: 'hours' });
   //       await strapi
@@ -267,51 +289,52 @@ async function importSeedData() {
   const festives = await strapi.query("festive").find({ _limit: -1 });
 
   const festives2025 = [
-     { date: '2025-01-01', festive_type: 1 },
-      { date: '2025-01-06', festive_type: 1 },      
-      { date: '2025-04-21', festive_type: 2 },
-      { date: '2025-05-01', festive_type: 1 },
-      { date: '2025-06-24', festive_type: 2 },
-      { date: '2025-08-15', festive_type: 1 },
-      { date: '2025-09-11', festive_type: 2 },
-      { date: '2025-12-08', festive_type: 1 },
-      { date: '2025-12-25', festive_type: 1 },
-      { date: '2025-12-26', festive_type: 2 }];
-  
+    { date: "2025-01-01", festive_type: 1 },
+    { date: "2025-01-06", festive_type: 1 },
+    { date: "2025-04-21", festive_type: 2 },
+    { date: "2025-05-01", festive_type: 1 },
+    { date: "2025-06-24", festive_type: 2 },
+    { date: "2025-08-15", festive_type: 1 },
+    { date: "2025-09-11", festive_type: 2 },
+    { date: "2025-12-08", festive_type: 1 },
+    { date: "2025-12-25", festive_type: 1 },
+    { date: "2025-12-26", festive_type: 2 },
+  ];
+
   // if festives2025 is not in festives, add them
   for (const festive of festives2025) {
-    const festiveExists = festives.filter(f => f.date === festive.date).length > 0;
+    const festiveExists =
+      festives.filter((f) => f.date === festive.date).length > 0;
     if (!festiveExists) {
       await strapi
         .query("festive")
         .create({ date: festive.date, festive_type: festive.festive_type });
-        console.log('Festive added', festive);
+      console.log("Festive added", festive);
     }
   }
 
   const years = await strapi.query("year").find({ _limit: -1 });
   // if 2025 is not in years, add it
-  const year2025 = years.filter(y => y.year === 2025);
+  const year2025 = years.filter((y) => y.year === 2025);
   if (year2025.length === 0) {
     await strapi
       .query("year")
       .create({ year: 2025, working_hours: 1760, deductible_vat_pct: 100 });
 
-      console.log('year added', 2025);
+    console.log("year added", 2025);
   }
 
   const series = await strapi.query("serie").find({ _limit: -1 });
   // if 2025 is not in years, add it
-  const serie2025 = series.filter(s => s.name === '2025');
+  const serie2025 = series.filter((s) => s.name === "2025");
   if (serie2025.length === 0) {
     await strapi
       .query("serie")
-      .create({ name: '2025', leadingZeros: 3, emitted_invoice_number: 0 });
-
-      console.log('serie added', '2025');
+      .create({ name: "2025", leadingZeros: 3, emitted_invoice_number: 0 });
   }
 
-
+  console.log("Creating phases for all projects");
+  await projectController.createPhasesForAllProjects();
 }
 
 module.exports = async () => {

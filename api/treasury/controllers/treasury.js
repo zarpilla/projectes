@@ -61,7 +61,9 @@ module.exports = {
     await strapi.query("payroll").find({ _limit: -1 })
     
     const projects = 
-    await strapi.query("project").find(where)
+    await strapi.query("project").find(where,
+      ["project_phases", "project_phases.expenses", "project_phases.expenses.provider", "project_phases.expenses.expense_type", "project_phases.expenses.invoice", "project_phases.expenses.grant", "project_phases.expenses.ticket", "project_phases.expenses.diet", "project_phases.incomes", "project_phases.incomes.client", "project_phases.incomes.income_type", "project_phases.incomes.invoice", "project_phases.incomes.income"]
+    )
 
     const years = 
     await strapi.query("year").find({ _limit: -1 })
@@ -71,97 +73,8 @@ module.exports = {
     const vat_expected = { paid: 0, received: 0 };    
 
     for (let p of projects) {
-      for (let e of p.expenses) {
-        if (!e.paid) {          
-          const expense = {
-            project_name: p.name,
-            project_id: p.id,
-            type: "Despesa esperada",
-            concept: e.concept,
-            total_amount: e.total_amount ? -1 * e.total_amount : 0,
-            date: moment(e.date, "YYYY-MM-DD") || moment(),
-            date_error: e.date === null,
-            paid: false,
-            contact: e.provider && e.provider.name ? e.provider.name : "-",
-          };
-          treasury.push(expense);
-        }
-        if (e.invoice && e.invoice.id) {
-          projectExpenses.push({
-            type: "invoice",
-            id: e.invoice.id,
-            code: e.invoice.code,
-          });
-        }
-        if (e.grant && e.grant.id) {
-          projectExpenses.push({
-            type: "grant",
-            id: e.grant.id,
-            code: e.grant.code,
-          });
-        }
-        if (e.ticket && e.ticket.id) {
-          projectExpenses.push({
-            type: "ticket",
-            id: e.ticket.id,
-            code: e.ticket.code,
-          });
-        }
-        if (e.diet && e.diet.id) {
-          projectExpenses.push({
-            type: "diet",
-            id: e.diet.id,
-            code: e.diet.code,
-          });
-        }
-        if (e.expense && e.expense.id) {
-          projectExpenses.push({
-            type: "expense",
-            id: e.expense.id,
-            code: e.expense.code,
-          });
-        }
-      }
-      for (let i of p.incomes) {      
-        if (!i.paid) {
-          const income = {
-            project_name: p.name,
-            project_id: p.id,
-            type: "Ingrés esperat",
-            concept: i.concept,
-            total_amount: i.total_amount ? i.total_amount : 0,
-            date: moment(i.date, "YYYY-MM-DD") || moment(),
-            date_error: i.date === null,
-            paid: false,
-            contact: i.client && i.client.name ? i.client.name : "-",
-          };
-          treasury.push(income);
-        }
-        if (i.invoice && i.invoice.id) {
-          projectIncomes.push({
-            type: "invoice",
-            id: i.invoice.id,
-            code: i.invoice.code,
-          });
-        }
-        if (i.grant && i.grant.id) {
-          projectIncomes.push({
-            type: "grant",
-            id: i.grant.id,
-            code: i.grant.code,
-          });
-        }
-        if (i.income && i.income.id) {
-          projectIncomes.push({
-            type: "income",
-            id: i.income.id,
-            code: i.income.code,
-          });
-        }
-      }
-
-      for (let ph of p.phases) {
-        for (let e of ph.expenses || []) {
+      for (let ph of p.project_phases) {
+        for (let e of ph.expenses || []) {          
           if (!e.paid) {
             const expense = {
               expenseId: e.id,
@@ -218,7 +131,6 @@ module.exports = {
             });
           }
         }
-        
         for (let i of ph.incomes || []) {
           if (!i.paid) {
             const income = {

@@ -104,6 +104,15 @@
         "policies": []
       }
     },
+    
+    {
+      "method": "POST",
+      "path": "/projects/create-phases",
+      "handler": "project.createPhasesForAllProjects",
+      "config": {
+        "policies": []
+      }
+    },    
     {
       "method": "POST",
       "path": "/projects",

@@ -1,0 +1,60 @@
+{
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/phase-incomes",
+      "handler": "phase-income.find",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/phase-incomes/assigned",
+      "handler": "phase-income.findAssigned",
+      "config": {
+        "policies": []
+      }      
+    },
+    {
+      "method": "GET",
+      "path": "/phase-incomes/count",
+      "handler": "phase-income.count",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/phase-incomes/:id",
+      "handler": "phase-income.findOne",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/phase-incomes",
+      "handler": "phase-income.create",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "PUT",
+      "path": "/phase-incomes/:id",
+      "handler": "phase-income.update",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "DELETE",
+      "path": "/phase-incomes/:id",
+      "handler": "phase-income.delete",
+      "config": {
+        "policies": []
+      }
+    }
+  ]
+}

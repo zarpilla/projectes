@@ -1,0 +1,52 @@
+{
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/estimated-hours",
+      "handler": "estimated-hours.find",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/estimated-hours/count",
+      "handler": "estimated-hours.count",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/estimated-hours/:id",
+      "handler": "estimated-hours.findOne",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/estimated-hours",
+      "handler": "estimated-hours.create",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "PUT",
+      "path": "/estimated-hours/:id",
+      "handler": "estimated-hours.update",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "DELETE",
+      "path": "/estimated-hours/:id",
+      "handler": "estimated-hours.delete",
+      "config": {
+        "policies": []
+      }
+    }
+  ]
+}

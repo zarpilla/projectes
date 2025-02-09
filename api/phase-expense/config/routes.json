@@ -1,0 +1,60 @@
+{
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/phase-expenses",
+      "handler": "phase-expense.find",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/phase-expenses/assigned",
+      "handler": "phase-expense.findAssigned",
+      "config": {
+        "policies": []
+      }      
+    },
+    {
+      "method": "GET",
+      "path": "/phase-expenses/count",
+      "handler": "phase-expense.count",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/phase-expenses/:id",
+      "handler": "phase-expense.findOne",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/phase-expenses",
+      "handler": "phase-expense.create",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "PUT",
+      "path": "/phase-expenses/:id",
+      "handler": "phase-expense.update",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "DELETE",
+      "path": "/phase-expenses/:id",
+      "handler": "phase-expense.delete",
+      "config": {
+        "policies": []
+      }
+    }
+  ]
+}

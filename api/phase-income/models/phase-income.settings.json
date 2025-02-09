@@ -1,0 +1,62 @@
+{
+  "kind": "collectionType",
+  "collectionName": "phase_incomes",
+  "info": {
+    "name": "PhaseIncome"
+  },
+  "options": {
+    "increments": true,
+    "timestamps": true,
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "concept": {
+      "type": "string"
+    },
+    "quantity": {
+      "type": "decimal"
+    },
+    "amount": {
+      "type": "decimal"
+    },
+    "total_amount": {
+      "type": "decimal"
+    },
+    "date": {
+      "type": "date"
+    },
+    "paid": {
+      "type": "boolean"
+    },
+    "client": {
+      "model": "contacts"
+    },
+    "invoice": {
+      "model": "emitted-invoice"
+    },
+    "total_estimated_hours": {
+      "type": "decimal"
+    },
+    "income_type": {
+      "model": "income-type"
+    },
+    "income": {
+      "model": "received-income"
+    },
+    "date_estimated_document": {
+      "type": "date"
+    },
+    "estimated_hours": {
+      "collection": "estimated-hours",
+      "via": "phase_income"
+    },
+    "project_phase": {
+      "via": "incomes",
+      "model": "project-phases"
+    },
+    "project_original_phase": {
+      "via": "incomes",
+      "model": "project-original-phases"
+    }
+  }
+}

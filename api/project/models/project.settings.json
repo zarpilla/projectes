@@ -36,16 +36,6 @@
       "collection": "contacts",
       "dominant": true
     },
-    "incomes": {
-      "type": "component",
-      "repeatable": true,
-      "component": "budget-line.budget-line"
-    },
-    "estimated_hours": {
-      "type": "component",
-      "repeatable": true,
-      "component": "hours.hours"
-    },
     "total_estimated_hours": {
       "type": "decimal"
     },
@@ -89,11 +79,6 @@
     "invoice_hours_price": {
       "type": "decimal",
       "default": 0
-    },
-    "expenses": {
-      "type": "component",
-      "repeatable": true,
-      "component": "expense.expense"
     },
     "emitted_invoices": {
       "via": "project",
@@ -278,6 +263,14 @@
       "type": "component",
       "repeatable": true,
       "component": "grantable-contact.grantable-contact"
+    },
+    "project_original_phases": {
+      "collection": "project-original-phases",
+      "via": "project"
+    },
+    "project_phases": {
+      "collection": "project-phases",
+      "via": "project"
     }
   }
 }
