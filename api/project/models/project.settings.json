@@ -142,18 +142,8 @@
     "total_real_hours_price": {
       "type": "decimal"
     },
-    "phases": {
-      "type": "component",
-      "repeatable": true,
-      "component": "project-phase.project-phase"
-    },
     "default_dedication_type": {
       "model": "dedication-type"
-    },
-    "original_phases": {
-      "type": "component",
-      "repeatable": true,
-      "component": "project-phase.original-project-phase"
     },
     "received_incomes": {
       "via": "project",
