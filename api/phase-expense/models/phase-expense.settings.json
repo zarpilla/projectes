@@ -1,0 +1,55 @@
+{
+  "kind": "collectionType",
+  "collectionName": "phase_expenses",
+  "info": {
+    "name": "PhaseExpense"
+  },
+  "options": {
+    "increments": true,
+    "timestamps": true,
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "concept": {
+      "type": "string"
+    },
+    "quantity": {
+      "type": "decimal"
+    },
+    "amount": {
+      "type": "decimal"
+    },
+    "total_amount": {
+      "type": "decimal"
+    },
+    "expense_type": {
+      "model": "expense-type"
+    },
+    "date": {
+      "type": "date"
+    },
+    "paid": {
+      "type": "boolean"
+    },
+    "invoice": {
+      "model": "received-invoice"
+    },
+    "provider": {
+      "model": "contacts"
+    },
+    "expense": {
+      "model": "received-expense"
+    },
+    "date_estimate_document": {
+      "type": "date"
+    },
+    "project_phase": {
+      "via": "expenses",
+      "model": "project-phases"
+    },
+    "project_original_phase": {
+      "via": "expenses",
+      "model": "project-original-phases"
+    }
+  }
+}

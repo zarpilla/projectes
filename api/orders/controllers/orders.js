@@ -220,9 +220,11 @@ module.exports = {
         //   return acc + o.price;
         // }, 0);
 
-        const project = await strapi.query("project").findOne({ id: p });
+        const project = await strapi.query("project").findOne({ id: p },
+          ["project_phases", "project_phases.incomes", "project_phases.incomes.invoice", "project_phases.incomes.income"]
+        );
 
-        if (!project.phases || project.phases.length === 0) {
+        if (!project.project_phases || project.project_phases.length === 0) {
           ctx.send(
             {
               done: false,
@@ -232,10 +234,15 @@ module.exports = {
           );
         }
 
-        const phase = project.phases[project.phases.length - 1];
+        const phase = project.project_phases[project.project_phases.length - 1];
         let price = 0
         for (const o of contactOrders) {
           price += o.price;
+        }
+
+        if (!phase.incomes) {
+          phase.incomes = [];
+          phase.dirty = true;
         }
 
         phase.incomes.push({
@@ -248,23 +255,24 @@ module.exports = {
           invoice: invoice.id,
           paid: true,
           date_estimate_document: new Date(),
+          dirty: true,
         });
 
         // fix {} phases
-        project.phases.forEach(ph => {
-          ph.incomes.forEach(income => {
-            if (income.invoice !== null && !income.invoice.hasOwnProperty('id') && !isNumber(income.invoice)) {
-              income.invoice = null;
-            }
-            if (income.income && !income.income.hasOwnProperty('id') && !isNumber(income.income)) {
-              income.income = null;
-            }
-          })          
-        });
+        // project.project_phases.forEach(ph => {
+        //   ph.incomes.forEach(income => {
+        //     if (income.invoice !== null && !income.invoice.hasOwnProperty('id') && !isNumber(income.invoice)) {
+        //       income.invoice = null;
+        //     }
+        //     if (income.income && !income.income.hasOwnProperty('id') && !isNumber(income.income)) {
+        //       income.income = null;
+        //     }
+        //   })          
+        // });
         
         await strapi
           .query("project")
-          .update({ id: p }, { phases: project.phases });
+          .update({ id: p }, { project_phases: project.project_phases, project_phases_info: {} });
       }
     }
 

@@ -1,0 +1,29 @@
+{
+  "kind": "collectionType",
+  "collectionName": "project_phases",
+  "info": {
+    "name": "ProjectPhases"
+  },
+  "options": {
+    "increments": true,
+    "timestamps": true,
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "name": {
+      "type": "string"
+    },
+    "incomes": {
+      "collection": "phase-income",
+      "via": "project_phase"
+    },
+    "expenses": {
+      "collection": "phase-expense",
+      "via": "project_phase"
+    },
+    "project": {
+      "via": "project_phases",
+      "model": "project"
+    }
+  }
+}

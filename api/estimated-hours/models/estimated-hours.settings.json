@@ -1,0 +1,52 @@
+{
+  "kind": "collectionType",
+  "collectionName": "estimated_hours",
+  "info": {
+    "name": "EstimatedHours",
+    "description": ""
+  },
+  "options": {
+    "increments": true,
+    "timestamps": true,
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "users_permissions_user": {
+      "plugin": "users-permissions",
+      "model": "user"
+    },
+    "quantity": {
+      "type": "decimal"
+    },
+    "amount": {
+      "type": "decimal"
+    },
+    "total_amount": {
+      "type": "decimal"
+    },
+    "comment": {
+      "type": "string"
+    },
+    "from": {
+      "type": "date"
+    },
+    "to": {
+      "type": "date"
+    },
+    "monthly_quantity": {
+      "type": "decimal"
+    },
+    "quantity_type": {
+      "type": "enumeration",
+      "enum": [
+        "total",
+        "week",
+        "month"
+      ]
+    },
+    "phase_income": {
+      "via": "estimated_hours",
+      "model": "phase-income"
+    }
+  }
+}

@@ -1,0 +1,60 @@
+{
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/project-original-phases",
+      "handler": "project-original-phases.find",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/project-original-phases-hours",
+      "handler": "project-original-phases.findWithHours",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/project-original-phases/count",
+      "handler": "project-original-phases.count",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/project-original-phases/:id",
+      "handler": "project-original-phases.findOne",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/project-original-phases",
+      "handler": "project-original-phases.create",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "PUT",
+      "path": "/project-original-phases/:id",
+      "handler": "project-original-phases.update",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "DELETE",
+      "path": "/project-original-phases/:id",
+      "handler": "project-original-phases.delete",
+      "config": {
+        "policies": []
+      }
+    }
+  ]
+}

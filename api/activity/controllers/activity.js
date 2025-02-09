@@ -19,16 +19,16 @@ module.exports = {
       const { id, username, email, ical, ...rest } = users_permissions_user
       entity.users_permissions_user = { id, username, email, ical }      
       if (project) {
-        if (!project.phases) {
-          project.phases = []
+        if (!project.project_phases) {
+          project.project_phases = []
         }
         if (!project.documents) {
           project.documents = []
         }
-        if (!project.original_phases) {
-          project.original_phases = []
+        if (!project.project_original_phases) {
+          project.project_original_phases = []
         }
-        const { phases, original_phases, documents, ...projectData } = project
+        const { project_phases, project_original_phases, documents, ...projectData } = project
         entity.project = projectData
       }
       
