@@ -25,7 +25,7 @@ module.exports = {
    * Every 4 minutes.
    */
 
-  '*/4 * * * *': async () => {
+  '*/2 * * * *': async () => {
     await projectController.updateDirtyProjects()
   },
 

@@ -272,7 +272,7 @@ module.exports = {
         
         await strapi
           .query("project")
-          .update({ id: p }, { project_phases: project.project_phases, project_phases_info: {} });
+          .update({ id: p }, { project_phases: project.project_phases, project_phases_info: {}, _project_phases_updated: true });
       }
     }
 

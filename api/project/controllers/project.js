@@ -15,35 +15,35 @@ const doProjectInfoCalculations = async (data, id) => {
     return;
   }
 
-  const dataPhases = await strapi
-    .query("project")
-    .findOne({ id: id }, [
-      "project_phases",
-      "project_phases.incomes",
-      "project_phases.incomes.estimated_hours",
-      "project_phases.incomes.income_type",
-      "project_phases.incomes.estimated_hours.users_permissions_user",
-      "project_phases.incomes.invoice",
-      "project_phases.incomes.income",
-      "project_phases.expenses",
-      "project_phases.expenses.expense_type",
-      "project_phases.expenses.invoice",
-      "project_phases.expenses.expense",
-      "project_original_phases",
-      "project_original_phases.incomes",
-      "project_original_phases.incomes.estimated_hours",
-      "project_original_phases.incomes.income_type",
-      "project_original_phases.incomes.estimated_hours.users_permissions_user",
-      "project_original_phases.incomes.invoice",
-      "project_original_phases.incomes.income",
-      "project_original_phases.expenses",
-      "project_original_phases.expenses.expense_type",
-      "project_original_phases.expenses.invoice",
-      "project_original_phases.expenses.expense",
-    ]);
+  // const dataPhases = await strapi
+  //   .query("project")
+  //   .findOne({ id: id }, [
+  //     "project_phases",
+  //     "project_phases.incomes",
+  //     "project_phases.incomes.estimated_hours",
+  //     "project_phases.incomes.income_type",
+  //     "project_phases.incomes.estimated_hours.users_permissions_user",
+  //     "project_phases.incomes.invoice",
+  //     "project_phases.incomes.income",
+  //     "project_phases.expenses",
+  //     "project_phases.expenses.expense_type",
+  //     "project_phases.expenses.invoice",
+  //     "project_phases.expenses.expense",
+  //     "project_original_phases",
+  //     "project_original_phases.incomes",
+  //     "project_original_phases.incomes.estimated_hours",
+  //     "project_original_phases.incomes.income_type",
+  //     "project_original_phases.incomes.estimated_hours.users_permissions_user",
+  //     "project_original_phases.incomes.invoice",
+  //     "project_original_phases.incomes.income",
+  //     "project_original_phases.expenses",
+  //     "project_original_phases.expenses.expense_type",
+  //     "project_original_phases.expenses.invoice",
+  //     "project_original_phases.expenses.expense",
+  //   ]);
 
-  data.project_phases = dataPhases.project_phases;
-  data.project_original_phases = dataPhases.project_original_phases;
+  // data.project_phases = dataPhases.project_phases;
+  // data.project_original_phases = dataPhases.project_original_phases;
 
   const dailyDedications = await getDailyDedications();
   const festives = await getFestives();
@@ -63,29 +63,6 @@ const doProjectInfoCalculations = async (data, id) => {
   data.total_estimated_expenses = 0;
   data.total_expenses_vat = 0;
   data.total_real_expenses_vat = 0;
-
-  // if (data.expenses && data.expenses.length) {
-  //   let total_expenses = 0;
-  //   data.expenses.forEach((i) => {
-  //     i.total_amount =
-  //       (i.quantity ? i.quantity : 0) * (i.amount ? i.amount : 0);
-  //     i.tax_amount = (i.total_amount * (i.tax_pct ? i.tax_pct : 0)) / 100.0;
-  //     i.total_amount = i.total_amount + i.tax_amount;
-  //     total_expenses += i.total_amount;
-  //     data.total_expenses_vat += i.tax_amount * deductible_ratio;
-  //   });
-  //   data.total_expenses = total_expenses;
-  // }
-
-  // if (data.incomes && data.incomes.length) {
-  //   let total_incomes = 0;
-  //   data.incomes.forEach((i) => {
-  //     i.total_amount =
-  //       (i.quantity ? i.quantity : 0) * (i.amount ? i.amount : 0);
-  //     total_incomes += i.total_amount;
-  //   });
-  //   data.total_incomes = total_incomes;
-  // }
 
   if (data.project_phases && data.project_phases.length) {
     const infoPhases = await calculateEstimatedTotals(
@@ -378,37 +355,37 @@ const doProjectInfoCalculations = async (data, id) => {
   return data;
 };
 
-const updateProjectInfo = async (id, updateEstimated) => {
-  const data = await strapi.query("project").findOne({ id });
+// const updateProjectInfo = async (id, updateEstimated) => {
+//   const data = await strapi.query("project").findOne({ id });
 
-  const info = await doProjectInfoCalculations(data, id);
+//   const info = await doProjectInfoCalculations(data, id);
 
-  if (!updateEstimated) {
-    delete info.incomes;
-    delete info.expenses;
-    delete info.phases;
-    delete info.original_phases;
-  }
+//   if (!updateEstimated) {
+//     delete info.incomes;
+//     delete info.expenses;
+//     delete info.phases;
+//     delete info.original_phases;
+//   }
 
-  info._internal = true;
-  await strapi.query("project").update({ id: id }, info);
+//   info._internal = true;
+//   await strapi.query("project").update({ id: id }, info);
 
-  // var end = new Date() - start
-  // console.log("updateProjectInfo 4", end);
+//   // var end = new Date() - start
+//   // console.log("updateProjectInfo 4", end);
 
-  return { id };
-};
+//   return { id };
+// };
 
-const addToYear = (years, year, property, value) => {
-  if (!years[`y_${year}`]) {
-    years[`y_${year}`] = {};
-  }
-  if (!years[`y_${year}`][property]) {
-    years[`y_${year}`][property] = 0;
-  }
-  years[`y_${year}`][property] += value;
-  return years;
-};
+// const addToYear = (years, year, property, value) => {
+//   if (!years[`y_${year}`]) {
+//     years[`y_${year}`] = {};
+//   }
+//   if (!years[`y_${year}`][property]) {
+//     years[`y_${year}`][property] = 0;
+//   }
+//   years[`y_${year}`][property] += value;
+//   return years;
+// };
 
 const getEstimateYear = (item) => {
   if (item && item.date_estimate_document) {
@@ -801,6 +778,12 @@ const calculateEstimatedTotals = async (
 let projectsQueue = [];
 
 module.exports = {
+  async calculateProject(data, id) {
+    return await doProjectInfoCalculations(data, id);
+  },
+  async calculateProject2() {
+    return { done: true };
+  },
   async reset() {
     // await strapi.query("project").delete({ _limit: -1 });
     // await strapi.query("activity").delete({ _limit: -1 });
@@ -830,40 +813,85 @@ module.exports = {
 
     return [];
   },
-  async updateDirtyProject(id) {
-    const project = await strapi.query("project").findOne({ id: id });
+  // async updateDirtyProject(id) {
+  //   const project = await strapi.query("project").findOne({ id: id });
 
-    const data = await doProjectInfoCalculations(project, id);
+  //   const data = await doProjectInfoCalculations(project, id);
 
-    // data._internal = true;
-    data.dirty = false;
+  //   // data._internal = true;
+  //   data.dirty = false;
 
-    return data;
-  },
+  //   return data;
+  // },
   async updateDirtyProjects() {
-    const projects = await strapi
+    const projectsQueue = await strapi
       .query("dirty-queue")
       .find({ entity: "project", _limit: -1 });
 
-    await strapi.query("dirty-queue").delete({ _limit: -1 });
-
-    const uniqueProjects = _.union(projects.map((p) => p.entityId));
+    const uniqueProjects = _.union(projectsQueue.map((p) => p.entityId));
+    const ids = uniqueProjects.map((p) => p.id);
 
     if (uniqueProjects.length === 0) {
+      await strapi.connections.default.raw("TRUNCATE TABLE dirty_queues;");
       return;
     }
 
     // console.log('filtered', filtered)
-    for (let i = 0; i < uniqueProjects.length; i++) {
+
+    let ok = true;
+
+    for await (const project of uniqueProjects) {
       try {
-        const id = uniqueProjects[i];
-        await strapi.query("project").update({ id: id }, { dirty: false });
+        const data = await strapi
+          .query("project")
+          .findOne({ id: project }, [
+            "project_phases",
+            "project_phases.incomes",
+            "project_phases.incomes.estimated_hours",
+            "project_phases.incomes.income_type",
+            "project_phases.incomes.estimated_hours.users_permissions_user",
+            "project_phases.incomes.invoice",
+            "project_phases.incomes.income",
+            "project_phases.expenses",
+            "project_phases.expenses.expense_type",
+            "project_phases.expenses.invoice",
+            "project_phases.expenses.expense",
+            "project_original_phases",
+            "project_original_phases.incomes",
+            "project_original_phases.incomes.estimated_hours",
+            "project_original_phases.incomes.income_type",
+            "project_original_phases.incomes.estimated_hours.users_permissions_user",
+            "project_original_phases.incomes.invoice",
+            "project_original_phases.incomes.income",
+            "project_original_phases.expenses",
+            "project_original_phases.expenses.expense_type",
+            "project_original_phases.expenses.invoice",
+            "project_original_phases.expenses.expense",
+          ]);
+
+        // const info = await doProjectInfoCalculations(data, project);
+
+        const projectDataToUpdate = {
+          project_phases: data.project_phases,
+          project_original_phases: data.project_original_phases,
+          id: project,
+        };
+
+        await strapi
+          .query("project")
+          .update({ id: project }, projectDataToUpdate);
       } catch (e) {
         console.error(e);
+        ok = false;
       }
     }
 
-    return true;
+    // // delete from dirty-queue
+    if (ok) {
+      for await (const id of ids) {
+        await strapi.query("dirty-queue").delete({ id: id });
+      }
+    }
   },
   async findWithBasicInfo(ctx) {
     // Calling the default core action
@@ -1493,93 +1521,93 @@ module.exports = {
     }
   },
 
-  async updatePhases(ctx) {
-    const projects = await strapi.query("project").find({ _limit: -1 });
+  // async updatePhases(ctx) {
+  //   const projects = await strapi.query("project").find({ _limit: -1 });
 
-    for (let i = 0; i < projects.length; i++) {
-      const project = projects[i];
-      if (
-        project.phases &&
-        project.phases.length &&
-        (!project.original_phases || !project.original_phases.length)
-      ) {
-        const projectToUpdate = { id: project.id };
-        projectToUpdate.original_phases = project.phases;
-        projectToUpdate.original_phases.forEach((p) => {
-          delete p.id;
-          p.incomes.forEach((sp) => {
-            delete sp.id;
-          });
-          p.expenses.forEach((sp) => {
-            delete sp.id;
-          });
-        });
-        await strapi
-          .query("project")
-          .update({ id: project.id }, projectToUpdate);
-      }
-    }
-    return { done: true };
-  },
+  //   for (let i = 0; i < projects.length; i++) {
+  //     const project = projects[i];
+  //     if (
+  //       project.phases &&
+  //       project.phases.length &&
+  //       (!project.original_phases || !project.original_phases.length)
+  //     ) {
+  //       const projectToUpdate = { id: project.id };
+  //       projectToUpdate.original_phases = project.phases;
+  //       projectToUpdate.original_phases.forEach((p) => {
+  //         delete p.id;
+  //         p.incomes.forEach((sp) => {
+  //           delete sp.id;
+  //         });
+  //         p.expenses.forEach((sp) => {
+  //           delete sp.id;
+  //         });
+  //       });
+  //       await strapi
+  //         .query("project")
+  //         .update({ id: project.id }, projectToUpdate);
+  //     }
+  //   }
+  //   return { done: true };
+  // },
 
   payExpense: async (ctx) => {
-    const { id, expense } = ctx.params;
-    const project = await strapi.query("project").findOne({ id });
-    var found = false;
-    if (project && project.id) {
-      project.phases.forEach((ph) => {
-        const expenseItem = ph.expenses.find((e) => e.id == expense);
-        if (expenseItem) {
-          found = true;
-          expenseItem.paid = true;
-          if (ctx.request.body.received && ctx.request.body.received.id) {
-            expenseItem.invoice = ctx.request.body.received.id;
-          }
-          if (ctx.request.body.ticket && ctx.request.body.ticket.id) {
-            expenseItem.ticket = ctx.request.body.ticket.id;
-          }
-          if (ctx.request.body.diet && ctx.request.body.diet.id) {
-            expenseItem.diet = ctx.request.body.diet.id;
-          }
-          if (ctx.request.body.expense && ctx.request.body.expense.id) {
-            expenseItem.expense = ctx.request.body.expense.id;
-          }
-        }
-      });
-      if (found) {
-        const projectToUpdate = { phases: project.phases };
-        await strapi.query("project").update({ id: id }, projectToUpdate);
-      }
-    }
-    return { id, expense, found };
+    // const { id, expense } = ctx.params;
+    // const project = await strapi.query("project").findOne({ id });
+    // var found = false;
+    // if (project && project.id) {
+    //   project.project_phases.forEach((ph) => {
+    //     const expenseItem = ph.expenses.find((e) => e.id == expense);
+    //     if (expenseItem) {
+    //       found = true;
+    //       expenseItem.paid = true;
+    //       if (ctx.request.body.received && ctx.request.body.received.id) {
+    //         expenseItem.invoice = ctx.request.body.received.id;
+    //       }
+    //       if (ctx.request.body.ticket && ctx.request.body.ticket.id) {
+    //         expenseItem.ticket = ctx.request.body.ticket.id;
+    //       }
+    //       if (ctx.request.body.diet && ctx.request.body.diet.id) {
+    //         expenseItem.diet = ctx.request.body.diet.id;
+    //       }
+    //       if (ctx.request.body.expense && ctx.request.body.expense.id) {
+    //         expenseItem.expense = ctx.request.body.expense.id;
+    //       }
+    //     }
+    //   });
+    //   if (found) {
+    //     const projectToUpdate = { phases: project.phases };
+    //     await strapi.query("project").update({ id: id }, projectToUpdate);
+    //   }
+    // }
+    // return { id, expense, found };
   },
   payIncome: async (ctx) => {
-    const { id, income } = ctx.params;
-    const project = await strapi.query("project").findOne({ id });
-    var found = false;
-    if (project && project.id) {
-      project.phases.forEach((ph) => {
-        const incomeItem = ph.incomes.find((e) => e.id == income);
-        if (incomeItem) {
-          found = true;
-          incomeItem.paid = true;
-          if (ctx.request.body.emitted && ctx.request.body.emitted.id) {
-            incomeItem.emitted = ctx.request.body.emitted.id;
-          }
-          if (ctx.request.body.grant && ctx.request.body.grant.id) {
-            incomeItem.grant = ctx.request.body.grant.id;
-          }
-          if (ctx.request.body.income && ctx.request.body.income.id) {
-            incomeItem.income = ctx.request.body.income.id;
-          }
-        }
-      });
-      if (found) {
-        const projectToUpdate = { phases: project.phases };
-        await strapi.query("project").update({ id: id }, projectToUpdate);
-      }
-    }
-    return { id, income, found };
+    // const { id, income } = ctx.params;
+    // const project = await strapi.query("project").findOne({ id });
+    // var found = false;
+    // if (project && project.id) {
+    //   project.phases.forEach((ph) => {
+    //     const incomeItem = ph.incomes.find((e) => e.id == income);
+    //     if (incomeItem) {
+    //       found = true;
+    //       incomeItem.paid = true;
+    //       if (ctx.request.body.emitted && ctx.request.body.emitted.id) {
+    //         incomeItem.emitted = ctx.request.body.emitted.id;
+    //       }
+    //       if (ctx.request.body.grant && ctx.request.body.grant.id) {
+    //         incomeItem.grant = ctx.request.body.grant.id;
+    //       }
+    //       if (ctx.request.body.income && ctx.request.body.income.id) {
+    //         incomeItem.income = ctx.request.body.income.id;
+    //       }
+    //     }
+    //   });
+    //   if (found) {
+    //     const projectToUpdate = { phases: project.phases };
+    //     await strapi.query("project").update({ id: id }, projectToUpdate);
+    //   }
+    // }
+    // return { id, income, found };
   },
 
   async findOne(ctx) {
@@ -1606,44 +1634,94 @@ module.exports = {
         "global_activity_types",
         "treasury_annotations",
         "global_activity_types",
+        "project_phases",
+        "project_original_phases",
       ]);
-
-    const result = await doProjectInfoCalculations(data, id);
 
     return data;
   },
-  doCalculateProjectInfo: async (ctx) => {
+  async findOneExtended(ctx) {
     const { id } = ctx.params;
-    var start = new Date();
-    const data = await strapi.query("project").findOne({ id });
-    var end = new Date() - start;
-
-    const result = await doProjectInfoCalculations(data, id);
-    var end = new Date() - start;
-
-    return result;
-  },
-
-  getProjectIsDirty: async (ctx) => {
-    const { id } = ctx.params;
-    const projects = await strapi
+    // const data = await strapi.query("project").findOne({ id });
+    const data = await strapi
       .query("project")
-      .model.query((qb) => {
-        qb.select("id", "dirty").where({ id: id });
-      })
-      .fetchAll();
+      .findOne({ id: id }, [
+        "leader",
+        "project_scope",
+        "project_state",
+        "clients",
+        "default_dedication_type",
+        "mother",
+        "region",
+        "documents",
+        "strategies",
+        "intercooperations",
+        "emmited_invoices",
+        "received_invoices",
+        "activity_types",
+        "received_incomes",
+        "received_expenses",
+        "global_activity_types",
+        "treasury_annotations",
+        "global_activity_types",
+        "project_phases",
+        "project_phases.incomes",
+        "project_phases.incomes.estimated_hours",
+        "project_phases.incomes.income_type",
+        "project_phases.incomes.estimated_hours.users_permissions_user",
+        "project_phases.incomes.invoice",
+        "project_phases.incomes.income",
+        "project_phases.expenses",
+        "project_phases.expenses.expense_type",
+        "project_phases.expenses.invoice",
+        "project_phases.expenses.expense",
+        "project_original_phases",
+        "project_original_phases.incomes",
+        "project_original_phases.incomes.estimated_hours",
+        "project_original_phases.incomes.income_type",
+        "project_original_phases.incomes.estimated_hours.users_permissions_user",
+        "project_original_phases.incomes.invoice",
+        "project_original_phases.incomes.income",
+        "project_original_phases.expenses",
+        "project_original_phases.expenses.expense_type",
+        "project_original_phases.expenses.invoice",
+        "project_original_phases.expenses.expense",
+      ]);
 
-    const p = projects.map((entity) =>
-      sanitizeEntity(entity, { model: strapi.models.project })
-    );
-
-    return { id: id, dirty: p[0].dirty };
+    return data;
   },
+  // doCalculateProjectInfo: async (ctx) => {
+  //   const { id } = ctx.params;
+  //   var start = new Date();
+  //   const data = await strapi.query("project").findOne({ id });
+  //   var end = new Date() - start;
+
+  //   const result = await doProjectInfoCalculations(data, id);
+  //   var end = new Date() - start;
+
+  //   return result;
+  // },
+
+  // getProjectIsDirty: async (ctx) => {
+  //   const { id } = ctx.params;
+  //   const projects = await strapi
+  //     .query("project")
+  //     .model.query((qb) => {
+  //       qb.select("id", "dirty").where({ id: id });
+  //     })
+  //     .fetchAll();
+
+  //   const p = projects.map((entity) =>
+  //     sanitizeEntity(entity, { model: strapi.models.project })
+  //   );
+
+  //   return { id: id, dirty: p[0].dirty };
+  // },
 
   setDirty: async (id) => {
     // console.log("setDirty", id);
     if (parseInt(id) > 0) {
-      await updateProjectInfo(id, false);
+      //await updateProjectInfo(id, false);
 
       await strapi
         .query("dirty-queue")
@@ -1651,23 +1729,23 @@ module.exports = {
     }
   },
 
-  enqueueProjects: async (projects) => {
-    projectsQueue.push(projects);
-  },
+  // enqueueProjects: async (projects) => {
+  //   //projectsQueue.push(projects);
+  // },
 
-  updateQueuedProjects: async () => {
-    const projects = projectsQueue.pop();
-    if (projects && projects.current) {
-      await updateProjectInfo(projects.current, true);
-    }
-    if (
-      projects &&
-      projects.previous &&
-      projects.current !== projects.previous
-    ) {
-      await updateProjectInfo(projects.previous, true);
-    }
-  },
+  // updateQueuedProjects: async () => {
+  //   const projects = projectsQueue.pop();
+  //   if (projects && projects.current) {
+  //     await updateProjectInfo(projects.current, true);
+  //   }
+  //   if (
+  //     projects &&
+  //     projects.previous &&
+  //     projects.current !== projects.previous
+  //   ) {
+  //     await updateProjectInfo(projects.previous, true);
+  //   }
+  // },
 
   updatePhases: async (
     id,
@@ -1678,35 +1756,52 @@ module.exports = {
     deletedExpenses,
     deletedHours
   ) => {
-    for await (const income of deletedIncomes) {
+    for await (const income of deletedIncomes.filter((i) => i)) {
       await strapi.query("phase-income").delete({ id: income });
     }
-    for await (const expense of deletedExpenses) {
+    for await (const expense of deletedExpenses.filter((i) => i)) {
       await strapi.query("phase-expense").delete({ id: expense });
     }
-    for await (const hour of deletedHours) {
+    for await (const hour of deletedHours.filter((i) => i)) {
       await strapi.query("estimated-hours").delete({ id: hour });
     }
-    for await (const phase of deletedPhases) {
-      const incomesOfPhase = await strapi
-        .query("phase-income")
-        .find({ project_original_phase: phase, _limit: -1 });
-      for await (const income of incomesOfPhase) {
-        await strapi.query("phase-income").delete({ id: income.id });
+    for await (const phase of deletedPhases.filter((i) => i)) {
+      if (entity === "project-original-phases") {
+        const incomesOfPhase = await strapi
+          .query("phase-income")
+          .find({ project_original_phase: phase, _limit: -1 });
+        for await (const income of incomesOfPhase) {
+          await strapi.query("phase-income").delete({ id: income.id });
+        }
+        const expensesOfPhase = await strapi
+          .query("phase-expense")
+          .find({ project_original_phase: phase, _limit: -1 });
+
+        for await (const expense of expensesOfPhase) {
+          await strapi.query("phase-expense").delete({ id: expense.id });
+        }
+        await strapi.query(entity).delete({ id: phase });
+      } else {
+        const incomesOfPhase = await strapi
+          .query("phase-income")
+          .find({ project_phase: phase, _limit: -1 });
+        for await (const income of incomesOfPhase) {
+          await strapi.query("phase-income").delete({ id: income.id });
+        }
+        const expensesOfPhase = await strapi
+          .query("phase-expense")
+          .find({ project_phase: phase, _limit: -1 });
+        for await (const expense of expensesOfPhase) {
+          await strapi.query("phase-expense").delete({ id: expense.id });
+        }
       }
-      const expensesOfPhase = await strapi
-        .query("phase-expense")
-        .find({ project_original_phase: phase, _limit: -1 });
-      for await (const expense of expensesOfPhase) {
-        await strapi.query("phase-expense").delete({ id: expense.id });
-      }
-      await strapi.query(entity).delete({ id: phase });
     }
 
     for await (const phase of phases) {
       const { incomes, expenses, ...item } = phase;
       if (!phase.id) {
-        await strapi.query(entity).create({ project: id, name: item.name });
+        const resp = await strapi.query(entity).create({ project: id, name: item.name });
+        phase.id = resp.id;
       } else if (phase.dirty) {
         await strapi
           .query(entity)
@@ -1718,15 +1813,17 @@ module.exports = {
           if (!income.id) {
             const { estimated_hours, ...item } = income;
             if (entity === "project-original-phases") {
-              await strapi.query("phase-income").create({
+              const newIncome = await strapi.query("phase-income").create({
                 ...item,
                 project_original_phase: phase.id,
               });
+              income.id = newIncome.id;
             } else {
-              await strapi.query("phase-income").create({
+              const newIncome = await strapi.query("phase-income").create({
                 ...item,
                 project_phase: phase.id,
               });
+              income.id = newIncome.id;
             }
           } else if (income.dirty) {
             const { estimated_hours, ...item } = income;
@@ -1734,18 +1831,18 @@ module.exports = {
           }
 
           if (entity === "project-original-phases") {
-            for await (const estimated_hours of income.estimated_hours) {
-              if (!estimated_hours.id) {
-                console.log("estimated_hours create!!!", estimated_hours);
-                await strapi.query("estimated-hours").create({
-                  ...estimated_hours,
-                  phase_income: income.id,
-                });
-              } else if (estimated_hours.dirty) {
-                console.log("estimated_hours update!!!", estimated_hours);
-                await strapi
-                  .query("estimated-hours")
-                  .update({ id: estimated_hours.id }, estimated_hours);
+            if (income.estimated_hours) {
+              for await (const estimated_hours of income.estimated_hours) {
+                if (!estimated_hours.id) {
+                  await strapi.query("estimated-hours").create({
+                    ...estimated_hours,
+                    phase_income: income.id,
+                  });
+                } else if (estimated_hours.dirty) {
+                  await strapi
+                    .query("estimated-hours")
+                    .update({ id: estimated_hours.id }, estimated_hours);
+                }
               }
             }
           }
@@ -1760,7 +1857,7 @@ module.exports = {
                 ...expense,
                 project_original_phase: phase.id,
               });
-            } else if (expense.dirty) {
+            } else {
               await strapi.query("phase-expense").create({
                 ...expense,
                 project_phase: phase.id,
@@ -1774,9 +1871,10 @@ module.exports = {
         }
       }
     }
+    console.log("phases updated!!");
   },
   createPhasesForAllProjects: async (ctx) => {
-    return
+    return;
 
     const phases0 = await strapi
       .query("project-original-phases")

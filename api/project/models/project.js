@@ -11,19 +11,26 @@ const projectController = require("../controllers/project");
 module.exports = {
   lifecycles: {
     async afterCreate(result) {
-      await projectController.enqueueProjects({
-        current: result.id,
-        previous: null,
-      });
-      await projectController.updateQueuedProjects();
+      // await projectController.enqueueProjects({
+      //   current: result.id,
+      //   previous: null,
+      // });
+      // await projectController.updateQueuedProjects();
     },
     async beforeCreate(params, data) {
       // await projectController.enqueueProjects({ current: params.id, previous: null })
     },
     async beforeUpdate(params, data) {
-      if (data.project_original_phases && data.project_original_phases_info) {
+      const id = params.id || data.id;
+      let updatedPhases = false;
+      if (
+        data.project_original_phases &&
+        data.project_original_phases_info &&
+        data._project_original_phases_updated
+      ) {
+        updatedPhases = true;
         await projectController.updatePhases(
-          params.id,
+          id,
           "project-original-phases",
           data.project_original_phases,
           data.project_original_phases_info.deletedPhases || [],
@@ -33,9 +40,14 @@ module.exports = {
         );
       }
 
-      if (data.project_phases && data.project_phases_info) {
+      if (
+        data.project_phases &&
+        data.project_phases_info &&
+        data._project_phases_updated
+      ) {
+        updatedPhases = true;
         await projectController.updatePhases(
-          params.id,
+          id,
           "project-phases",
           data.project_phases,
           data.project_phases_info.deletedPhases || [],
@@ -45,19 +57,48 @@ module.exports = {
         );
       }
 
-      delete data.project_original_phases;
-      delete data.project_original_phases_info;
-      delete data.project_phases;
-      delete data.project_phases_info;
+      if (updatedPhases) {
+        const project_phases = await strapi
+          .query("project-phases")
+          .find({ project: id }, [
+            "incomes",
+            "incomes.estimated_hours",
+            "incomes.income_type",
+            "incomes.estimated_hours.users_permissions_user",
+            "incomes.invoice",
+            "incomes.income",
+            "expenses",
+            "expenses.expense_type",
+            "expenses.invoice",
+            "expenses.expense",
+          ]);
 
-    await projectController.enqueueProjects({ current: params.id, previous: null })
+        const project_original_phases = await strapi
+          .query("project-original-phases")
+          .find({ project: id }, [
+            "incomes",
+            "incomes.estimated_hours",
+            "incomes.income_type",
+            "incomes.estimated_hours.users_permissions_user",
+            "incomes.invoice",
+            "incomes.income",
+            "expenses",
+            "expenses.expense_type",
+            "expenses.invoice",
+            "expenses.expense",
+          ]);
 
+        data.project_phases = project_phases;
+        data.project_original_phases = project_original_phases;
+      }
+
+      data = await projectController.calculateProject(data, id);
     },
     async afterUpdate(result, params, data) {
       if (data._internal) {
         return;
       }
-      await projectController.updateQueuedProjects();
+      //await projectController.updateQueuedProjects();
     },
   },
 };

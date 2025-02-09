@@ -21,9 +21,9 @@ module.exports = {
       data = await calculateTotals(data);
     },
     async afterCreate(result) {
-      result.projects.forEach((p) => {
-        projectController.setDirty(p.id);
-      });
+      // result.projects.forEach((p) => {
+      //   projectController.setDirty(p.id);
+      // });
     },
     async beforeUpdate(params, data) {
       const invoice = await strapi.query(entity).findOne(params);
@@ -34,25 +34,25 @@ module.exports = {
       data = await calculateTotals(data);
     },
     async afterUpdate(result, params, data) {
-      if (result.projects) {
-        result.projects.forEach((p) => {
-          projectController.setDirty(p.id);
-        });
-      }
-      if (data.projects) {
-        data.projects.forEach((p) => {
-          projectController.setDirty(p.id);
-        });
-      }
+      // if (result.projects) {
+      //   result.projects.forEach((p) => {
+      //     projectController.setDirty(p.id);
+      //   });
+      // }
+      // if (data.projects) {
+      //   data.projects.forEach((p) => {
+      //     projectController.setDirty(p.id);
+      //   });
+      // }
     },
     async beforeDelete(params) {
       const invoice = await strapi.query(entity).findOne(params);
       if (invoice && invoice.updatable === false) {
         throw new Error("received-expense NOT updatable");
       }
-      if (invoice && invoice.project) {
-        await projectController.setDirty(invoice.project.id);
-      }
+      // if (invoice && invoice.project) {
+      //   await projectController.setDirty(invoice.project.id);
+      // }
     },
   },
 };
