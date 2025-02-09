@@ -1776,8 +1776,6 @@ module.exports = {
     }
   },
   createPhasesForAllProjects: async (ctx) => {
-    console.log("createPhasesForAllProjects!");
-
     return
 
     const phases0 = await strapi

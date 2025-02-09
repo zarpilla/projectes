@@ -45,12 +45,13 @@ module.exports = {
         );
       }
 
-    //   delete data.project_original_phases;
-    //   delete data.project_original_phases_info;
-    //   delete data.project_phases;
-    //   delete data.project_phases_info;
+      delete data.project_original_phases;
+      delete data.project_original_phases_info;
+      delete data.project_phases;
+      delete data.project_phases_info;
 
     await projectController.enqueueProjects({ current: params.id, previous: null })
+
     },
     async afterUpdate(result, params, data) {
       if (data._internal) {
