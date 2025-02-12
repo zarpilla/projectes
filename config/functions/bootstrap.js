@@ -112,7 +112,7 @@ async function importSeedData() {
       "payincome",
       "findwitheconomicdetail",
       "findChildren",
-      "calculateProject2",
+      "calculateproject2",
       "findoneextended",
     ],
     quote: ["create", "find", "findone", "update", "delete"],

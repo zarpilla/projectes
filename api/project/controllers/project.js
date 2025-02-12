@@ -781,8 +781,38 @@ module.exports = {
   async calculateProject(data, id) {
     return await doProjectInfoCalculations(data, id);
   },
-  async calculateProject2() {
-    return { done: true };
+  async calculateProject2(ctx) {
+    const id = ctx.params.id;
+
+    const dataPhases = await strapi
+    .query("project")
+    .findOne({ id: id }, [
+      "project_phases",
+      "project_phases.incomes",
+      "project_phases.incomes.estimated_hours",
+      "project_phases.incomes.income_type",
+      "project_phases.incomes.estimated_hours.users_permissions_user",
+      "project_phases.incomes.invoice",
+      "project_phases.incomes.income",
+      "project_phases.expenses",
+      "project_phases.expenses.expense_type",
+      "project_phases.expenses.invoice",
+      "project_phases.expenses.expense",
+      "project_original_phases",
+      "project_original_phases.incomes",
+      "project_original_phases.incomes.estimated_hours",
+      "project_original_phases.incomes.income_type",
+      "project_original_phases.incomes.estimated_hours.users_permissions_user",
+      "project_original_phases.incomes.invoice",
+      "project_original_phases.incomes.income",
+      "project_original_phases.expenses",
+      "project_original_phases.expenses.expense_type",
+      "project_original_phases.expenses.invoice",
+      "project_original_phases.expenses.expense",
+    ]);
+
+    const moreData = await doProjectInfoCalculations(dataPhases, id);
+    return { allByYear: moreData.allByYear };
   },
   async reset() {
     // await strapi.query("project").delete({ _limit: -1 });
@@ -1008,7 +1038,8 @@ module.exports = {
       projects = await strapi
         .query("project")
         .model.query((qb) => {
-          qb.select("id", "name", "published_at").where(
+          qb.select("id", "name", "published_at")
+          .where(
             "project_state",
             "in",
             project_state_in.split(",").map((s) => parseInt(s))
