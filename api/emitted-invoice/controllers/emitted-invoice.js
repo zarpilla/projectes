@@ -19,11 +19,8 @@ const getEntityInfo = async (entity) => {
   return { documents: documents, total_vat: _.sumBy(documents, "total_vat") };
 };
 
-
 const getYearsInfo = async () => {
-  const years = await strapi
-    .query('year')
-    .find({ _limit: -1 });
+  const years = await strapi.query("year").find({ _limit: -1 });
   return years;
 };
 
@@ -46,10 +43,16 @@ const payEntity = async (
         : "emitted_invoices";
 
     const emittedYear = documents[i].emitted.substring(0, 4);
-    
-    const isDeductible = entity === "received-income" || entity === "emitted-invoice" ? false : true;
-    const deductible_vat_pct_year = isDeductible ? years.find(y => y.year.toString() === emittedYear.toString())?.deductible_vat_pct || deductible_vat_pct : 100;
-    
+
+    const isDeductible =
+      entity === "received-income" || entity === "emitted-invoice"
+        ? false
+        : true;
+    const deductible_vat_pct_year = isDeductible
+      ? years.find((y) => y.year.toString() === emittedYear.toString())
+          ?.deductible_vat_pct || deductible_vat_pct
+      : 100;
+
     const sql = `UPDATE ${table} SET vat_paid_date = '${vat_paid_date
       .toISOString()
       .substring(0, 19)
@@ -60,7 +63,7 @@ const payEntity = async (
       documents[i].id
     }`;
 
-    total_vat += documents[i].total_vat * deductible_vat_pct_year / 100.0;
+    total_vat += (documents[i].total_vat * deductible_vat_pct_year) / 100.0;
 
     await strapi.connections.default.raw(sql);
   }
@@ -94,17 +97,18 @@ module.exports = {
 
     // console.log('invoice', invoice)
 
-    const logoUrl = `./public${me.logo.url}`;
-
+    const logoUrl = me.logo ? `./public${me.logo.url}` : null;
     var logo = logoUrl;
 
-    if (logoUrl.endsWith(".svg")) {
+    if (logoUrl && logoUrl.endsWith(".svg")) {
       logo = "./public/uploads/invoice-logo.jpg";
       await sharp(logoUrl).png().toFile(logo);
     }
 
+    const width = me.logo ? me.logo.width : 150;
+    const height = me.logo ? me.logo.height : 150;
     const logoWidth = 150;
-    const ratio = me.logo.width / logoWidth;
+    const ratio = width / logoWidth;
 
     const invoiceHeader = [
       {
@@ -325,7 +329,7 @@ module.exports = {
           image: {
             path: logo,
             width: logoWidth,
-            height: me.logo.height / ratio,
+            height: height / ratio,
           },
         },
       },
@@ -334,7 +338,9 @@ module.exports = {
           name: invoice.document_type?.name
             ? invoice.document_type?.name
             : doc === "quote"
-            ? "Pressupost"
+            ? invoice.proforma
+              ? "Factura Proforma"
+              : "Pressupost"
             : "Factura",
 
           header: invoiceHeader,
@@ -413,7 +419,12 @@ module.exports = {
     try {
       const invoice = await strapi.query("emitted-invoice").findOne({ id });
 
-      if (invoice && invoice.contact && invoice.contact.contact_email && invoice.pdf) {
+      if (
+        invoice &&
+        invoice.contact &&
+        invoice.contact.contact_email &&
+        invoice.pdf
+      ) {
         const me = await strapi.query("me").findOne();
 
         const attachments = [
@@ -422,9 +433,9 @@ module.exports = {
             content: fs
               .readFileSync(`./public${invoice.pdf}`)
               .toString("base64"),
-            encoding: 'base64'
-          }
-        ]
+            encoding: "base64",
+          },
+        ];
 
         // process.env.EMAIL_PROVIDER === 'sendgrid' ? attachments[0].content = fs.readFileSync(`./public${invoice.pdf}`).toString("base64") : attachments[0].path = `${process.env.URL}${invoice.pdf}`
 
@@ -487,7 +498,6 @@ module.exports = {
     const years = await getYearsInfo();
 
     if (me.options.deductible_vat_pct) {
-
       const vat_paid_date = new Date();
       let total_vat = 0;
 
@@ -521,22 +531,19 @@ module.exports = {
         years
       );
 
-
-
       // const total_vat =
       //   -1*((rInvoiceInfo.total_vat +
       //     expenseInfo.total_vat -
       //     (eInvoiceInfo.total_vat * me.options.deductible_vat_pct / 100.0) -
       //     ( incomeInfo.total_vat * me.options.deductible_vat_pct / 100.0) )
       //   );
-      
+
       if (total_vat !== 0) {
         await strapi.query("treasury").create({
           comment: "IVA Saldat",
           total: -1 * total_vat,
           date: vat_paid_date,
         });
-        
       }
     }
     return {
