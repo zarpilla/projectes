@@ -1825,6 +1825,7 @@ module.exports = {
         for await (const expense of expensesOfPhase) {
           await strapi.query("phase-expense").delete({ id: expense.id });
         }
+        await strapi.query(entity).delete({ id: phase });
       }
     }
 
