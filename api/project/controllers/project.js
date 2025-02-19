@@ -1026,9 +1026,20 @@ module.exports = {
   async findWithPhases(ctx) {
     // Calling the default core action
     let projects;
-    const { published_at_null, _limit, ...where } = ctx.query;
+    const { published_at_null, _limit, activities, ...where } = ctx.query;
 
     const project_state_in = where._where.project_state_in;
+
+    const withRelated = [
+      "project_original_phases",
+      "project_original_phases.incomes",
+      "project_original_phases.incomes.estimated_hours",
+      "project_original_phases.incomes.estimated_hours.users_permissions_user"
+    ]
+
+    if (activities) {
+      withRelated.push("activities");
+    }
 
     if (ctx.query._q) {
       projects = await strapi
@@ -1046,12 +1057,7 @@ module.exports = {
           );
         })
         .fetchAll({
-          withRelated: [
-            "project_original_phases",
-            "project_original_phases.incomes",
-            "project_original_phases.incomes.estimated_hours",
-            "project_original_phases.incomes.estimated_hours.users_permissions_user",
-          ],
+          withRelated: withRelated
         });
     }
 
