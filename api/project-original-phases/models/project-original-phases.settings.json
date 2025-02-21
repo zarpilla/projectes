@@ -14,8 +14,8 @@
       "type": "string"
     },
     "incomes": {
-      "collection": "phase-income",
-      "via": "project_original_phase"
+      "via": "project_original_phase",
+      "collection": "phase-income"
     },
     "expenses": {
       "collection": "phase-expense",
