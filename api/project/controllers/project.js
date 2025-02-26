@@ -15,36 +15,6 @@ const doProjectInfoCalculations = async (data, id) => {
     return;
   }
 
-  // const dataPhases = await strapi
-  //   .query("project")
-  //   .findOne({ id: id }, [
-  //     "project_phases",
-  //     "project_phases.incomes",
-  //     "project_phases.incomes.estimated_hours",
-  //     "project_phases.incomes.income_type",
-  //     "project_phases.incomes.estimated_hours.users_permissions_user",
-  //     "project_phases.incomes.invoice",
-  //     "project_phases.incomes.income",
-  //     "project_phases.expenses",
-  //     "project_phases.expenses.expense_type",
-  //     "project_phases.expenses.invoice",
-  //     "project_phases.expenses.expense",
-  //     "project_original_phases",
-  //     "project_original_phases.incomes",
-  //     "project_original_phases.incomes.estimated_hours",
-  //     "project_original_phases.incomes.income_type",
-  //     "project_original_phases.incomes.estimated_hours.users_permissions_user",
-  //     "project_original_phases.incomes.invoice",
-  //     "project_original_phases.incomes.income",
-  //     "project_original_phases.expenses",
-  //     "project_original_phases.expenses.expense_type",
-  //     "project_original_phases.expenses.invoice",
-  //     "project_original_phases.expenses.expense",
-  //   ]);
-
-  // data.project_phases = dataPhases.project_phases;
-  // data.project_original_phases = dataPhases.project_original_phases;
-
   const dailyDedications = await getDailyDedications();
   const festives = await getFestives();
 
