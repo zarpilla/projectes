@@ -193,9 +193,9 @@ module.exports = {
         contact: contact.id,
         lines: contactOrders.map((o) => {
           return {
-            concept: `Comanda #${o.id.toString().padStart(4, "0")}# ${
+            concept: `Comanda ${o.estimated_delivery_date} | ${o.id.toString().padStart(4, "0")} | ${
               o.route.name
-            } ${o.pickup.name} ${o.refrigerated ? "Refrigerada" : ""}`,
+            }`,
             base: o.price,
             quantity: 1,
             price: o.price,
@@ -331,7 +331,7 @@ module.exports = {
       },
       {
         label: "DATA",
-        value: moment(invoice.route_date, "YYYY-MM-DD").format("DD-MM-YYYY"),
+        value: moment(invoice.estimated_delivery_date, "YYYY-MM-DD").format("DD-MM-YYYY"),
       },
     ];
 
@@ -637,7 +637,7 @@ module.exports = {
               label: "EMISSORA",
               value: [
                 me.name,
-                me.nif,
+                me.phone,
                 // me.address,
                 // me.postcode + " " + me.city,
                 me.email,
@@ -650,9 +650,9 @@ module.exports = {
               label: "PROVEÏDORA",
               value: [
                 provider.name,
-                provider.nif,
-                provider.address,
-                provider.postcode + " " + provider.city,
+                // provider.nif,
+                // provider.address,
+                // provider.postcode + " " + provider.city,
                 provider.phone,
               ],
             },
@@ -740,7 +740,7 @@ module.exports = {
         },
         {
           label: "DATA",
-          value: moment(order.route_date, "YYYY-MM-DD").format("DD-MM-YYYY"),
+          value: moment(order.estimated_delivery_date, "YYYY-MM-DD").format("DD-MM-YYYY"),
         },
       ];
 
@@ -1010,7 +1010,7 @@ module.exports = {
                 label: "EMISSORA",
                 value: [
                   me.name,
-                  me.nif,
+                  me.phone,
                   // me.address,
                   // me.postcode + " " + me.city,
                   me.email,
@@ -1023,10 +1023,10 @@ module.exports = {
                 label: "PROVEÏDORA",
                 value: [
                   provider.name,
-                  provider.nif,
-                  provider.address,
-                  provider.postcode + " " + provider.city,
-                  provider.phone,
+                  // provider.nif,
+                  // provider.address,
+                  // provider.postcode + " " + provider.city,
+                  provider.contact_phone ? 'Tel: ' + provider.contact_phone : '',
                 ],
               },
             ],
