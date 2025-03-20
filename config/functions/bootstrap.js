@@ -334,6 +334,30 @@ async function importSeedData() {
   // }
 
   // await projectController.createPhasesForAllProjects();
+
+  // await strapi.query("phase-expense")
+  const allExpenses = await strapi.query("phase-expense").find({ _limit: -1 });
+  for (const expense of allExpenses) {
+    if (!expense.total_amount && expense.amount) {
+      await strapi.query("phase-expense").update(
+        { id: expense.id },
+        {
+          total_amount: expense.amount * expense.quantity,
+        }
+      )
+    }
+  }
+  const allIncomes = await strapi.query("phase-income").find({ _limit: -1 });
+  for (const income of allIncomes) {
+    if (!income.total_amount && income.amount) {
+      await strapi.query("phase-income").update(
+        { id: income.id },
+        {
+          total_amount: income.amount * income.quantity,
+        }
+      )
+    }
+  }
 }
 
 module.exports = async () => {

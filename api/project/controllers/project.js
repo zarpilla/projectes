@@ -1818,9 +1818,11 @@ module.exports = {
 
       if (incomes) {
         for await (const income of incomes) {
+          income.total_amount = income.quantity * income.amount;
           if (!income.id) {
             const { estimated_hours, ...item } = income;
             if (entity === "project-original-phases") {
+              
               const newIncome = await strapi.query("phase-income").create({
                 ...item,
                 project_original_phase: phase.id,
@@ -1859,8 +1861,9 @@ module.exports = {
 
       if (expenses) {
         for await (const expense of expenses) {
+          expense.total_amount = expense.quantity * expense.amount;
           if (!expense.id) {
-            if (entity === "project-original-phases") {
+            if (entity === "project-original-phases") {              
               await strapi.query("phase-expense").create({
                 ...expense,
                 project_original_phase: phase.id,
