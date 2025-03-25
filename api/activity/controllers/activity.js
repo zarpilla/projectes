@@ -46,8 +46,8 @@ module.exports = {
     }
 
     const activitiesByDay = activities.map((entity) => {
-      const { hours, date, rest } = entity;
-      return { hours, date };
+      const { hours, date, ...rest } = entity;
+      return { hours: rest.project && rest.project.id ? hours: 0, date };
     });
 
     const grouped = _(activitiesByDay)
@@ -59,11 +59,6 @@ module.exports = {
         };
       });
 
-    // return activities.map((entity) => {
-    //   const { hours, date, rest } = entity
-    //   return { hours, date }
-    // }
-    // );
     ctx.send(grouped);
   },
 
