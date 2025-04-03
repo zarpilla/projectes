@@ -286,32 +286,33 @@ async function importSeedData() {
   //   }
   // }
 
-  // const festives = await strapi.query("festive").find({ _limit: -1 });
+  const festives = await strapi.query("festive").find({ users_permissions_user_null: true, _limit: -1 });
 
-  // const festives2025 = [
-  //   { date: "2025-01-01", festive_type: 1 },
-  //   { date: "2025-01-06", festive_type: 1 },
-  //   { date: "2025-04-21", festive_type: 2 },
-  //   { date: "2025-05-01", festive_type: 1 },
-  //   { date: "2025-06-24", festive_type: 2 },
-  //   { date: "2025-08-15", festive_type: 1 },
-  //   { date: "2025-09-11", festive_type: 2 },
-  //   { date: "2025-12-08", festive_type: 1 },
-  //   { date: "2025-12-25", festive_type: 1 },
-  //   { date: "2025-12-26", festive_type: 2 },
-  // ];
+  const festives2025 = [
+    { date: "2025-01-01", festive_type: 1 },
+    { date: "2025-01-06", festive_type: 1 },
+    { date: "2025-04-18", festive_type: 1 },
+    { date: "2025-04-21", festive_type: 2 },
+    { date: "2025-05-01", festive_type: 1 },
+    { date: "2025-06-24", festive_type: 2 },
+    { date: "2025-08-15", festive_type: 1 },
+    { date: "2025-09-11", festive_type: 2 },
+    { date: "2025-12-08", festive_type: 1 },
+    { date: "2025-12-25", festive_type: 1 },
+    { date: "2025-12-26", festive_type: 2 },
+  ];
 
-  // // if festives2025 is not in festives, add them
-  // for (const festive of festives2025) {
-  //   const festiveExists =
-  //     festives.filter((f) => f.date === festive.date).length > 0;
-  //   if (!festiveExists) {
-  //     await strapi
-  //       .query("festive")
-  //       .create({ date: festive.date, festive_type: festive.festive_type });
-  //     console.log("Festive added", festive);
-  //   }
-  // }
+  // if festives2025 is not in festives, add them
+  for (const festive of festives2025) {
+    const festiveExists =
+      festives.filter((f) => f.date === festive.date).length > 0;
+    if (!festiveExists) {
+      await strapi
+        .query("festive")
+        .create({ date: festive.date, festive_type: festive.festive_type });
+      console.log("Festive added", festive);
+    }
+  }
 
   // const years = await strapi.query("year").find({ _limit: -1 });
   // // if 2025 is not in years, add it
