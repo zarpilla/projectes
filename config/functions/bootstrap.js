@@ -72,6 +72,7 @@ async function importSeedData() {
       "payvat",
       "pdf",
       "sendinvoicebyemail",
+      "pendingprovider"
     ],
     "received-invoice": [
       "create",

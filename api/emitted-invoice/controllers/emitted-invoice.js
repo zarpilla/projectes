@@ -554,4 +554,26 @@ module.exports = {
       receivedExpenses: expenseInfo.documents,
     };
   },
+
+  pendingProvider: async (ctx) => {
+    try {
+      const user = ctx.state.user;
+      const providers = await strapi
+        .query("contacts")
+        .find({ users_permissions_user: user.id }, []);
+
+      const invoices = await strapi
+        .query("emitted-invoice")
+        .find({ contact: providers.map((p) => p.id) }, []);
+
+      return {
+        invoices: invoices.filter((i) => i.paid !== true).length
+      };
+    } catch (error) {
+      console.log("error", error);
+      return {
+        invoices: 0,
+      };
+    }
+  },
 };

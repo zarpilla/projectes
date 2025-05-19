@@ -39,6 +39,14 @@
       "config": {
         "policies": []
       }
+    },    
+    {
+      "method": "GET",
+      "path": "/emitted-invoices/pending-provider",
+      "handler": "emitted-invoice.pendingProvider",
+      "config": {
+        "policies": []
+      }
     },
     {
       "method": "GET",
