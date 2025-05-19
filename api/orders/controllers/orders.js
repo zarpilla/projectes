@@ -274,6 +274,12 @@ module.exports = {
           .query("project")
           .update({ id: p }, { project_phases: project.project_phases, project_phases_info: {}, _project_phases_updated: true });
       }
+
+      for (const o of ordersEntities) {
+        await strapi
+          .query("orders")
+          .update({ id: o.id }, { emitted_invoice: invoice.id, emitted_invoice_datetime: new Date() });
+      }
     }
 
 

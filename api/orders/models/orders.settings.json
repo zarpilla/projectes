@@ -130,6 +130,9 @@
     "incidence_solved": {
       "type": "boolean",
       "default": false
+    },
+    "emitted_invoice_datetime": {
+      "type": "datetime"
     }
   }
 }
