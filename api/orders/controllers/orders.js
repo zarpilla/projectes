@@ -5,15 +5,7 @@ const sharp = require("sharp");
 const moment = require("moment");
 const crypto = require("crypto");
 const QRCode = require("qrcode");
-const PDFMerge = require('pdf-merge');
-
-
-const isNumber = (value) =>
-{
-   return typeof value === 'number' && isFinite(value);
-}
-
-
+const PDFMerge = require("pdf-merge");
 /**
  * Read the documentation (https://strapi.io/documentation/developer-docs/latest/development/backend-customization.html#core-controllers)
  * to customize this controller
@@ -31,46 +23,51 @@ const formatCurrency = (val) => {
 };
 
 module.exports = {
-  infoAll: async (ctx) => {    
+  infoAll: async (ctx) => {
     const { year, month, ...query } = ctx.query;
     const orders = await strapi.query("orders").find(query);
-    const ordersInfo = orders.filter((o) => o.status !== 'cancelled').map((o) => {
-      const date = o.estimated_delivery_date || o.delivery_date || o.route_date;
-      return {
-        id: o.id,
-        count: 1,
-        owner: o.owner ? (o.owner.fullname || o.owner.username) : '-',
-        //route_date: o.route_date,
-        contact_id : o.contact ? o.contact.id : '-',
-        contact: o.contact ? o.contact.name : '-',
-        city: o.contact_city || '-',
-        units: o.units || 0,
-        kilograms: o.kilograms || 0,
-        created_at: o.created_at,
-        route: o.route ? (o.route.short_name || o.route?.name) : '-',
-        refrigerated: o.refrigerated,
-        fragile: o.fragile,
-        route_rate: o.route_rate ? o.route_rate.name : '-',
-        price: o.price || 0,
-        pickup: o.pickup ? o.pickup.name : '-',
-        delivery_type: o.delivery_type ? o.delivery_type.name : '-', 
-        status: o.status,
-        lastmile: o.last_mile ? 'Sí' : 'No',
-        date: date,
-        month: moment(date).format("MM"),
-        year: moment(date).format("YYYY")
-      };
-    });
+    const ordersInfo = orders
+      .filter((o) => o.status !== "cancelled")
+      .map((o) => {
+        const date =
+          o.estimated_delivery_date || o.delivery_date || o.route_date;
+        return {
+          id: o.id,
+          count: 1,
+          owner: o.owner ? o.owner.fullname || o.owner.username : "-",
+          //route_date: o.route_date,
+          contact_id: o.contact ? o.contact.id : "-",
+          contact: o.contact ? o.contact.name : "-",
+          city: o.contact_city || "-",
+          units: o.units || 0,
+          kilograms: o.kilograms || 0,
+          created_at: o.created_at,
+          route: o.route ? o.route.short_name || o.route?.name : "-",
+          refrigerated: o.refrigerated,
+          fragile: o.fragile,
+          route_rate: o.route_rate ? o.route_rate.name : "-",
+          price: (o.price || 0) * (1 - (o.multidelivery_discount || 0) / 100),
+          pickup: o.pickup ? o.pickup.name : "-",
+          delivery_type: o.delivery_type ? o.delivery_type.name : "-",
+          status: o.status,
+          lastmile: o.last_mile ? "Sí" : "No",
+          date: date,
+          month: moment(date).format("MM"),
+          year: moment(date).format("YYYY"),
+        };
+      });
 
     let ordersInfoFiltered = ordersInfo;
     if (year) {
-      ordersInfoFiltered = ordersInfoFiltered.filter((o) => o.year === year);      
+      ordersInfoFiltered = ordersInfoFiltered.filter((o) => o.year === year);
     }
     if (month) {
-      ordersInfoFiltered = ordersInfoFiltered.filter((o) => parseInt(o.month) === parseInt(month));
+      ordersInfoFiltered = ordersInfoFiltered.filter(
+        (o) => parseInt(o.month) === parseInt(month)
+      );
     }
     ctx.send(ordersInfoFiltered);
-    return
+    return;
   },
   createCSV: async (ctx) => {
     const order = ctx.request.body;
@@ -141,7 +138,7 @@ module.exports = {
   invoice: async (ctx) => {
     const { orders, project } = ctx.request.body;
 
-    const uniqueProjects = [project]
+    const uniqueProjects = [project];
     const year = new Date().getFullYear();
     const serial = await strapi.query("serie").find({ name: year });
     if (serial.length === 0) {
@@ -152,7 +149,9 @@ module.exports = {
       return;
     }
 
-    const ordersEntities = await strapi.query("orders").find({ id_in: orders, _limit: -1 });
+    const ordersEntities = await strapi
+      .query("orders")
+      .find({ id_in: orders, _limit: -1 });
 
     const uniqueOwners = ordersEntities
       .map((o) => o.owner.id)
@@ -193,15 +192,15 @@ module.exports = {
         contact: contact.id,
         lines: contactOrders.map((o) => {
           return {
-            concept: `Comanda ${o.estimated_delivery_date} | ${o.id.toString().padStart(4, "0")} | ${
-              o.route.name
-            }`,
+            concept: `Comanda ${o.estimated_delivery_date} | ${o.id
+              .toString()
+              .padStart(4, "0")} | ${o.route.name}`,
             base: o.price,
             quantity: 1,
             price: o.price,
             vat: 21,
             irpf: 0,
-            discount: 0,
+            discount: o.multidelivery_discount || 0,
           };
         }),
         projects: [project],
@@ -220,9 +219,14 @@ module.exports = {
         //   return acc + o.price;
         // }, 0);
 
-        const project = await strapi.query("project").findOne({ id: p },
-          ["project_phases", "project_phases.incomes", "project_phases.incomes.invoice", "project_phases.incomes.income"]
-        );
+        const project = await strapi
+          .query("project")
+          .findOne({ id: p }, [
+            "project_phases",
+            "project_phases.incomes",
+            "project_phases.incomes.invoice",
+            "project_phases.incomes.income",
+          ]);
 
         if (!project.project_phases || project.project_phases.length === 0) {
           ctx.send(
@@ -235,9 +239,9 @@ module.exports = {
         }
 
         const phase = project.project_phases[project.project_phases.length - 1];
-        let price = 0
+        let price = 0;
         for (const o of contactOrders) {
-          price += o.price;
+          price += o.price * (1 - (o.multidelivery_discount || 0) / 100);
         }
 
         if (!phase.incomes) {
@@ -246,7 +250,9 @@ module.exports = {
         }
 
         phase.incomes.push({
-          concept: `Factura #${invoice.code}# - ${contact.trade_name || contact.name}`,
+          concept: `Factura #${invoice.code}# - ${
+            contact.trade_name || contact.name
+          }`,
           quantity: 1,
           amount: price,
           total_amount: price,
@@ -258,30 +264,31 @@ module.exports = {
           dirty: true,
         });
 
-        // fix {} phases
-        // project.project_phases.forEach(ph => {
-        //   ph.incomes.forEach(income => {
-        //     if (income.invoice !== null && !income.invoice.hasOwnProperty('id') && !isNumber(income.invoice)) {
-        //       income.invoice = null;
-        //     }
-        //     if (income.income && !income.income.hasOwnProperty('id') && !isNumber(income.income)) {
-        //       income.income = null;
-        //     }
-        //   })          
-        // });
-        
+
         await strapi
           .query("project")
-          .update({ id: p }, { project_phases: project.project_phases, project_phases_info: {}, _project_phases_updated: true });
+          .update(
+            { id: p },
+            {
+              project_phases: project.project_phases,
+              project_phases_info: {},
+              _project_phases_updated: true,
+            }
+          );
       }
 
       for (const o of ordersEntities) {
         await strapi
           .query("orders")
-          .update({ id: o.id }, { emitted_invoice: invoice.id, emitted_invoice_datetime: new Date() });
+          .update(
+            { id: o.id },
+            {
+              emitted_invoice: invoice.id,
+              emitted_invoice_datetime: new Date(),
+            }
+          );
       }
     }
-
 
     ctx.send({
       orders: orders,
@@ -321,8 +328,7 @@ module.exports = {
       ctx.send(
         {
           done: false,
-          message:
-            `ERROR. L'usuària ${invoice.owner.username} no te cap contacte associat. Ves a contactes i crea un nou contacte associat a l'usuària a través del camp 'Persona'.`,
+          message: `ERROR. L'usuària ${invoice.owner.username} no te cap contacte associat. Ves a contactes i crea un nou contacte associat a l'usuària a través del camp 'Persona'.`,
         },
         500
       );
@@ -337,7 +343,9 @@ module.exports = {
       },
       {
         label: "DATA",
-        value: moment(invoice.estimated_delivery_date, "YYYY-MM-DD").format("DD-MM-YYYY"),
+        value: moment(invoice.estimated_delivery_date, "YYYY-MM-DD").format(
+          "DD-MM-YYYY"
+        ),
       },
     ];
 
@@ -434,7 +442,7 @@ module.exports = {
     line.quantity = 1;
     line.vat = 21;
     line.base = line.price;
-    line.irpf = 0;
+    line.irpf = 0;    
     const part = [];
 
     if (line.quantity && line.price) {
@@ -545,7 +553,12 @@ module.exports = {
     });
     let more = "";
 
-    more = invoice.contact && invoice.contact.notes ? invoice.contact.notes + "\n" : (invoice.contact_notes ? invoice.contact_notes + "\n" : "");
+    more =
+      invoice.contact && invoice.contact.notes
+        ? invoice.contact.notes + "\n"
+        : invoice.contact_notes
+        ? invoice.contact_notes + "\n"
+        : "";
 
     more += invoice.contact_legal_form
       ? invoice.contact_legal_form.name + " - "
@@ -553,7 +566,7 @@ module.exports = {
     if (invoice.fragile) {
       more += "Fràgil" + " - ";
     }
-    
+
     if (invoice.contact_time_slot_1_ini && invoice.contact_time_slot_1_end) {
       more +=
         "De " +
@@ -730,8 +743,7 @@ module.exports = {
         ctx.send(
           {
             done: false,
-            message:
-              `ERROR. L'usuària ${order.owner.username} no te cap contacte associat. Ves a contactes i crea un nou contacte associat a l'usuària a través del camp 'Persona'.`,
+            message: `ERROR. L'usuària ${order.owner.username} no te cap contacte associat. Ves a contactes i crea un nou contacte associat a l'usuària a través del camp 'Persona'.`,
           },
           500
         );
@@ -746,7 +758,9 @@ module.exports = {
         },
         {
           label: "DATA",
-          value: moment(order.estimated_delivery_date, "YYYY-MM-DD").format("DD-MM-YYYY"),
+          value: moment(order.estimated_delivery_date, "YYYY-MM-DD").format(
+            "DD-MM-YYYY"
+          ),
         },
       ];
 
@@ -869,8 +883,9 @@ module.exports = {
         if (showIrpf) {
           part.push({
             value:
-              formatCurrency((-1 * line.quantity * line.base * line.irpf) / 100) +
-              ` EUR (${line.irpf}%)`,
+              formatCurrency(
+                (-1 * line.quantity * line.base * line.irpf) / 100
+              ) + ` EUR (${line.irpf}%)`,
             width: 0.1 * columnsRatio,
           });
         }
@@ -920,8 +935,13 @@ module.exports = {
       });
       let more = "";
 
-      more = order.contact && order.contact.notes ? order.contact.notes + "\n" : (order.contact_notes ? order.contact_notes + "\n" : "");
-      
+      more =
+        order.contact && order.contact.notes
+          ? order.contact.notes + "\n"
+          : order.contact_notes
+          ? order.contact_notes + "\n"
+          : "";
+
       more += order.contact_legal_form
         ? order.contact_legal_form.name + " - "
         : "";
@@ -1002,7 +1022,11 @@ module.exports = {
               {
                 label: "ENTREGA",
                 value: [
-                  order.contact.trade_name + (order.contact.name && order.contact.name !== order.contact.trade_name ? " - " + order.contact.name : ""),
+                  order.contact.trade_name +
+                    (order.contact.name &&
+                    order.contact.name !== order.contact.trade_name
+                      ? " - " + order.contact.name
+                      : ""),
                   order.contact.nif,
                   order.contact.address,
                   order.contact.postcode + " " + order.contact.city,
@@ -1032,7 +1056,9 @@ module.exports = {
                   // provider.nif,
                   // provider.address,
                   // provider.postcode + " " + provider.city,
-                  provider.contact_phone ? 'Tel: ' + provider.contact_phone : '',
+                  provider.contact_phone
+                    ? "Tel: " + provider.contact_phone
+                    : "",
                 ],
               },
             ],
@@ -1062,23 +1088,65 @@ module.exports = {
       )}.pdf`;
       await myInvoice.generate(docName);
 
-      
-
       //urls.push(docName.substring("./public".length));
-      urls.push(docName)
+      urls.push(docName);
     }
 
     // delay 200ms
     await new Promise((resolve) => setTimeout(resolve, 0));
 
     // get all pdfs and merge them
-    const fileName = orders.join('-');    
+    const fileName = orders.join("-");
     const mergedPdf = await PDFMerge(urls, { output: "Buffer" });
     const mergedPdfPath = `./public/uploads/orders/orders-${fileName}.pdf`;
     fs.writeFileSync(mergedPdfPath, mergedPdf);
+
+    ctx.send({ urls: mergedPdfPath.substring("./public".length) });
+  },
+
+  checkMultidelivery: async (ctx) => {
+    const firstDateOfMonth = moment().startOf("month").format("YYYY-MM-DD");
+    const date1 = moment().format("YYYY-MM-DD");
+    const ordersOfDate = await strapi.query("orders").find({
+      created_at_gte: firstDateOfMonth + "T00:00:00.000Z",
+      created_at_lte: date1 + "T23:59:59.999Z",
+      _limit: -1,
+    });
+
+    const distinctOrdersData = ordersOfDate.map((o) => ({
+      estimated_delivery_date: o.estimated_delivery_date,
+        contact: o.contact ? o.contact.id : "-",
+    }));
+
+    const groupedOrders = distinctOrdersData.reduce((acc, curr) => {
+      const key = `${curr.estimated_delivery_date}-${curr.contact}`;
+      if (!acc[key]) {
+        acc[key] = { ...curr, count: 0 };
+      }
+      acc[key].count++;
+      return acc;
+    }
+    , {});
+    const distinctOrdersDataCount = Object.values(groupedOrders).map((item) => ({
+      estimated_delivery_date: item.estimated_delivery_date,
+      contact: item.contact,
+      count: item.count,
+      items: ordersOfDate.filter(
+        (o) =>
+          o.estimated_delivery_date === item.estimated_delivery_date &&
+          o.contact.id === item.contact
+      ),
+    })).filter((item) => item.count > 1);
+
     
-    ctx.send({ urls: mergedPdfPath.substring("./public".length) });   
 
-
+    return {
+      distinctOrdersDataCount: distinctOrdersDataCount,
+      // distinctOrdersData: distinctOrdersData,
+      // orders: ordersOfDate,
+      meta: {
+        count: ordersOfDate.length,
+      },
+    };
   },
 };

@@ -133,6 +133,9 @@
     },
     "emitted_invoice_datetime": {
       "type": "datetime"
+    },
+    "multidelivery_discount": {
+      "type": "decimal"
     }
   }
 }

@@ -1,0 +1,13 @@
+{
+  "collectionName": "components_options_orders_options",
+  "info": {
+    "name": "orders_options",
+    "icon": "air-freshener"
+  },
+  "options": {},
+  "attributes": {
+    "multidelivery_discount": {
+      "type": "decimal"
+    }
+  }
+}

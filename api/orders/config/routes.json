@@ -26,6 +26,14 @@
     },
     {
       "method": "GET",
+      "path": "/orders/check-multidelivery/",
+      "handler": "orders.checkMultidelivery",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "GET",
       "path": "/orders/:id",
       "handler": "orders.findOne",
       "config": {

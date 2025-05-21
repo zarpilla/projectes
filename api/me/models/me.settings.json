@@ -88,6 +88,11 @@
     },
     "contact_form_email": {
       "type": "string"
+    },
+    "orders_options": {
+      "type": "component",
+      "repeatable": false,
+      "component": "options.orders-options"
     }
   }
 }
