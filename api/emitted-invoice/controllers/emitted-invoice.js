@@ -567,7 +567,7 @@ module.exports = {
         .find({ contact: providers.map((p) => p.id) }, []);
 
       return {
-        invoices: invoices.filter((i) => i.paid !== true).length
+        invoices: invoices.filter((i) => i.paid !== true && i.sent),
       };
     } catch (error) {
       console.log("error", error);
