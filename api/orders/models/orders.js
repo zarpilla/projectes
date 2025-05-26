@@ -49,6 +49,32 @@ module.exports = {
       if (data.status === "lastmile") {
         data.last_mile = true;
       }
+
+      if (data.status !== "invoiced" && data.contact) {
+        const { multidelivery, others } = await checkMultidelivery(
+          0,
+          data.estimated_delivery_date,
+          data.contact
+        );
+
+        if (multidelivery && !data.multidelivery_discount) {
+            const me = await strapi.query("me").findOne();
+            if (me && me.orders_options && me.orders_options.multidelivery_discount) {
+                data.multidelivery_discount = me.orders_options.multidelivery_discount
+            }
+
+            for await (const order of others) {                
+                if (order.multidelivery_discount !== data.multidelivery_discount) {
+                    const orderToUpdate = {
+                        id: order.id,
+                        multidelivery_discount: data.multidelivery_discount,
+                    }
+                    await strapi.query("orders").update({ id: orderToUpdate.id }, orderToUpdate);
+                }
+            }
+
+        }
+      }
     },
     async beforeUpdate(params, data) {
       if (data.status === "delivered" && !data.delivery_date) {
@@ -123,8 +149,6 @@ module.exports = {
           data.estimated_delivery_date,
           data.contact
         );
-
-        console.log("multidelivery", multidelivery);
 
         if (multidelivery && !data.multidelivery_discount) {
             const me = await strapi.query("me").findOne();
