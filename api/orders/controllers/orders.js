@@ -46,7 +46,7 @@ module.exports = {
           refrigerated: o.refrigerated,
           fragile: o.fragile,
           route_rate: o.route_rate ? o.route_rate.name : "-",
-          price: (o.price || 0) * (1 - (o.multidelivery_discount || 0) / 100),
+          price: (o.price || 0) * (1 - (o.multidelivery_discount || 0) / 100) * (1 - (o.contact_pickup_discount || 0) / 100),
           pickup: o.pickup ? o.pickup.name : "-",
           delivery_type: o.delivery_type ? o.delivery_type.name : "-",
           status: o.status,
@@ -200,7 +200,7 @@ module.exports = {
             price: o.price,
             vat: 21,
             irpf: 0,
-            discount: o.multidelivery_discount || 0,
+            discount: (o.multidelivery_discount || 0) + (o.contact_pickup_discount || 0),
           };
         }),
         projects: [project],
@@ -241,7 +241,7 @@ module.exports = {
         const phase = project.project_phases[project.project_phases.length - 1];
         let price = 0;
         for (const o of contactOrders) {
-          price += o.price * (1 - (o.multidelivery_discount || 0) / 100);
+          price += o.price * (1 - (o.multidelivery_discount || 0) / 100) * (1 - (o.contact_pickup_discount || 0) / 100);
         }
 
         if (!phase.incomes) {

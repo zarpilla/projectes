@@ -120,6 +120,9 @@
     },
     "multidelivery": {
       "type": "boolean"
+    },
+    "pickup_discount": {
+      "type": "decimal"
     }
   }
 }

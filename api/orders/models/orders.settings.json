@@ -136,6 +136,9 @@
     },
     "multidelivery_discount": {
       "type": "decimal"
+    },
+    "contact_pickup_discount": {
+      "type": "decimal"
     }
   }
 }

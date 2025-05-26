@@ -144,6 +144,8 @@ module.exports = {
       }
 
       if (data.status !== "invoiced" && data.contact) {
+        
+        // multidelivery discount
         const { multidelivery, others } = await checkMultidelivery(
           params.id,
           data.estimated_delivery_date,
@@ -165,7 +167,8 @@ module.exports = {
                     await strapi.query("orders").update({ id: orderToUpdate.id }, orderToUpdate);
                 }
             }
-
+        } else if (!multidelivery && data.multidelivery_discount) {
+          data.multidelivery_discount = 0;
         }
       }
     },
@@ -181,7 +184,7 @@ module.exports = {
 
     afterFind: async (results, params, populate) => {
         results.forEach((res, i) => {
-            res.finalPrice = res.price * (1 - (res.multidelivery_discount || 0) / 100);
+            res.finalPrice = res.price * (1 - (res.multidelivery_discount || 0) / 100) * (1 - (res.contact_pickup_discount || 0) / 100);
         })
     },
     // async afterFindOne(result, params, populate) {
