@@ -60,14 +60,14 @@ module.exports = {
         if (multidelivery && !data.multidelivery_discount) {
             const me = await strapi.query("me").findOne();
             if (me && me.orders_options && me.orders_options.multidelivery_discount) {
-                data.multidelivery_discount = me.orders_options.multidelivery_discount
+                data.multidelivery_discount = me.orders_options.multidelivery_discount || 0
             }
 
             for await (const order of others) {                
                 if (order.multidelivery_discount !== data.multidelivery_discount) {
                     const orderToUpdate = {
                         id: order.id,
-                        multidelivery_discount: data.multidelivery_discount,
+                        multidelivery_discount: data.multidelivery_discount || 0,
                     }
                     await strapi.query("orders").update({ id: orderToUpdate.id }, orderToUpdate);
                 }
@@ -155,14 +155,14 @@ module.exports = {
         if (multidelivery && !data.multidelivery_discount) {
             const me = await strapi.query("me").findOne();
             if (me && me.orders_options && me.orders_options.multidelivery_discount) {
-                data.multidelivery_discount = me.orders_options.multidelivery_discount
+                data.multidelivery_discount = me.orders_options.multidelivery_discount || 0
             }
 
             for await (const order of others) {                
                 if (order.multidelivery_discount !== data.multidelivery_discount) {
                     const orderToUpdate = {
                         id: order.id,
-                        multidelivery_discount: data.multidelivery_discount,
+                        multidelivery_discount: data.multidelivery_discount || 0,
                     }
                     await strapi.query("orders").update({ id: orderToUpdate.id }, orderToUpdate);
                 }
