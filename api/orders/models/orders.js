@@ -7,10 +7,12 @@ const checkMultidelivery = async (id, date, contactId) => {
     estimated_delivery_date: moment(date).format("YYYY-MM-DD"),
     contact: contactId,
     _limit: -1,
-  })
+  });
 
-  const others = ordersOfDateAndContact.filter((o) => o.id.toString() !== id.toString());
-    
+  const others = ordersOfDateAndContact.filter(
+    (o) => o.id.toString() !== id.toString()
+  );
+
   return {
     others,
     multidelivery: others.length > 0,
@@ -57,22 +59,34 @@ module.exports = {
           data.contact
         );
 
+        if (isNaN(data.multidelivery_discount)) {
+          data.multidelivery_discount = 0;
+        }
+
         if (multidelivery && !data.multidelivery_discount) {
-            const me = await strapi.query("me").findOne();
-            if (me && me.orders_options && me.orders_options.multidelivery_discount) {
-                data.multidelivery_discount = me.orders_options.multidelivery_discount || 0
-            }
+          // if data.multidelivery_discount is NaN, set it to 0
 
-            for await (const order of others) {                
-                if (order.multidelivery_discount !== data.multidelivery_discount) {
-                    const orderToUpdate = {
-                        id: order.id,
-                        multidelivery_discount: data.multidelivery_discount || 0,
-                    }
-                    await strapi.query("orders").update({ id: orderToUpdate.id }, orderToUpdate);
-                }
-            }
+          const me = await strapi.query("me").findOne();
+          if (
+            me &&
+            me.orders_options &&
+            me.orders_options.multidelivery_discount
+          ) {
+            data.multidelivery_discount =
+              me.orders_options.multidelivery_discount || 0;
+          }
 
+          for await (const order of others) {
+            if (order.multidelivery_discount !== data.multidelivery_discount) {
+              const orderToUpdate = {
+                id: order.id,
+                multidelivery_discount: data.multidelivery_discount || 0,
+              };
+              await strapi
+                .query("orders")
+                .update({ id: orderToUpdate.id }, orderToUpdate);
+            }
+          }
         }
       }
     },
@@ -144,7 +158,6 @@ module.exports = {
       }
 
       if (data.status !== "invoiced" && data.contact) {
-        
         // multidelivery discount
         const { multidelivery, others } = await checkMultidelivery(
           params.id,
@@ -152,21 +165,32 @@ module.exports = {
           data.contact
         );
 
-        if (multidelivery && !data.multidelivery_discount) {
-            const me = await strapi.query("me").findOne();
-            if (me && me.orders_options && me.orders_options.multidelivery_discount) {
-                data.multidelivery_discount = me.orders_options.multidelivery_discount || 0
-            }
+        if (isNaN(data.multidelivery_discount)) {
+          data.multidelivery_discount = 0;
+        }
 
-            for await (const order of others) {                
-                if (order.multidelivery_discount !== data.multidelivery_discount) {
-                    const orderToUpdate = {
-                        id: order.id,
-                        multidelivery_discount: data.multidelivery_discount || 0,
-                    }
-                    await strapi.query("orders").update({ id: orderToUpdate.id }, orderToUpdate);
-                }
+        if (multidelivery && !data.multidelivery_discount) {
+          const me = await strapi.query("me").findOne();
+          if (
+            me &&
+            me.orders_options &&
+            me.orders_options.multidelivery_discount
+          ) {
+            data.multidelivery_discount =
+              me.orders_options.multidelivery_discount || 0;
+          }
+
+          for await (const order of others) {
+            if (order.multidelivery_discount !== data.multidelivery_discount) {
+              const orderToUpdate = {
+                id: order.id,
+                multidelivery_discount: data.multidelivery_discount || 0,
+              };
+              await strapi
+                .query("orders")
+                .update({ id: orderToUpdate.id }, orderToUpdate);
             }
+          }
         } else if (!multidelivery && data.multidelivery_discount) {
           data.multidelivery_discount = 0;
         }
@@ -183,9 +207,12 @@ module.exports = {
     },
 
     afterFind: async (results, params, populate) => {
-        results.forEach((res, i) => {
-            res.finalPrice = res.price * (1 - (res.multidelivery_discount || 0) / 100) * (1 - (res.contact_pickup_discount || 0) / 100);
-        })
+      results.forEach((res, i) => {
+        res.finalPrice =
+          res.price *
+          (1 - (res.multidelivery_discount || 0) / 100) *
+          (1 - (res.contact_pickup_discount || 0) / 100);
+      });
     },
     // async afterFindOne(result, params, populate) {
     //     if (result && !result.pdf) {
