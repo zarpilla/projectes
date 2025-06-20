@@ -110,6 +110,13 @@
     },
     "estimated_payment": {
       "type": "date"
+    },
+    "state": {
+      "type": "enumeration",
+      "enum": [
+        "draft",
+        "real"
+      ]
     }
   }
 }

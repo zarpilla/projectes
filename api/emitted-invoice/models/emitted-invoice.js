@@ -30,8 +30,11 @@ module.exports = {
       if (invoice.updatable === false && !(data.updatable_admin === true)) {
         throw new Error("received-expense NOT updatable");
       }
-      data.updatable_admin = false;
-      data = await calculateTotals(data);
+      if (!data._internal) {
+        data.updatable_admin = false;
+        data = await calculateTotals(data);
+      }
+      
     },
     async afterUpdate(result, params, data) {
       // if (result.projects) {
@@ -66,7 +69,11 @@ let calculateTotals = async (data) => {
   data.total_irpf = 0;
   data.total = 0;
 
-  if (!data.code) {
+  console.log('data.code', data.code)
+  console.log('data.state', data.state)
+
+
+  if (data.code === "ESBORRANY" && data.state === "real") {
     const serial = await strapi.query("serie").findOne({ id: data.serial });
     if (!data.number) {
       var emitted_invoice_number = 1
@@ -84,6 +91,9 @@ let calculateTotals = async (data) => {
     const zeroPad = (num, places) => String(num).padStart(places, "0");
     const places = serial.leadingZeros || 1;
     data.code = `${serial.name}-${zeroPad(data.number, places)}`;
+  }
+  else if (data.state == "draft") {
+    data.code = `ESBORRANY`;
   }
 
   if (data.lines) {

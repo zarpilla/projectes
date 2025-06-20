@@ -72,7 +72,7 @@ async function importSeedData() {
       "payvat",
       "pdf",
       "sendinvoicebyemail",
-      "pendingprovider"
+      "pendingprovider",
     ],
     "received-invoice": [
       "create",
@@ -287,7 +287,9 @@ async function importSeedData() {
   //   }
   // }
 
-  const festives = await strapi.query("festive").find({ users_permissions_user_null: true, _limit: -1 });
+  const festives = await strapi
+    .query("festive")
+    .find({ users_permissions_user_null: true, _limit: -1 });
 
   const festives2025 = [
     { date: "2025-01-01", festive_type: 1 },
@@ -360,6 +362,17 @@ async function importSeedData() {
   //     )
   //   }
   // }
+
+  const allEmittedInvoices = await strapi
+    .query("emitted-invoice")
+    .find({ _limit: -1, state_null: true });
+  for (const invoice of allEmittedInvoices) {
+    if (invoice.code && !invoice.state) {
+      await strapi
+        .query("emitted-invoice")
+        .update({ id: invoice.id }, { state: "real", _internal: true });
+    }
+  }
 }
 
 module.exports = async () => {

@@ -20,6 +20,10 @@
     "emitted_invoice_number": {
       "type": "integer",
       "default": 0
+    },
+    "rectificative": {
+      "type": "boolean",
+      "default": false
     }
   }
 }

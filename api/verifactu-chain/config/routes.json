@@ -1,0 +1,52 @@
+{
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/verifactu-chains",
+      "handler": "verifactu-chain.find",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/verifactu-chains/count",
+      "handler": "verifactu-chain.count",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/verifactu-chains/:id",
+      "handler": "verifactu-chain.findOne",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/verifactu-chains",
+      "handler": "verifactu-chain.create",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "PUT",
+      "path": "/verifactu-chains/:id",
+      "handler": "verifactu-chain.update",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "DELETE",
+      "path": "/verifactu-chains/:id",
+      "handler": "verifactu-chain.delete",
+      "config": {
+        "policies": []
+      }
+    }
+  ]
+}
