@@ -10,7 +10,7 @@ const checkMultidelivery = async (id, date, contactId) => {
   });
 
   const others = ordersOfDateAndContact.filter(
-    (o) => o.id.toString() !== id.toString()
+    (o) => o.id.toString() !== id.toString() && o.status !== "cancelled"
   );
 
   return {
@@ -67,20 +67,32 @@ module.exports = {
           // if data.multidelivery_discount is NaN, set it to 0
 
           const me = await strapi.query("me").findOne();
+          // const owner = await strapi.query("users-permissions", "users-permissions").findOne({
+          //   id: data.owner,
+          // });
           if (
             me &&
             me.orders_options &&
             me.orders_options.multidelivery_discount
           ) {
+            const owner = await strapi
+              .query("user", "users-permissions")
+              .findOne({
+                id: data.owner,
+              });
+
+            const factor = owner.multidelivery_discount === false ? 0 : 1;
+
             data.multidelivery_discount =
-              me.orders_options.multidelivery_discount || 0;
+              factor * me.orders_options.multidelivery_discount || 0;
           }
 
           for await (const order of others) {
-            if (order.multidelivery_discount !== data.multidelivery_discount) {
+            if (order.multidelivery_discount !== me.orders_options.multidelivery_discount) {
               const orderToUpdate = {
                 id: order.id,
-                multidelivery_discount: data.multidelivery_discount || 0,
+                multidelivery_discount:
+                  me.orders_options.multidelivery_discount || 0,
               };
               await strapi
                 .query("orders")
@@ -170,6 +182,14 @@ module.exports = {
         }
 
         if (multidelivery && !data.multidelivery_discount) {
+          const owner = await strapi
+            .query("user", "users-permissions")
+            .findOne({
+              id: data.owner,
+            });
+
+          const factor = owner.multidelivery_discount === false ? 0 : 1;
+
           const me = await strapi.query("me").findOne();
           if (
             me &&
@@ -177,14 +197,18 @@ module.exports = {
             me.orders_options.multidelivery_discount
           ) {
             data.multidelivery_discount =
-              me.orders_options.multidelivery_discount || 0;
+              factor * me.orders_options.multidelivery_discount || 0;
           }
 
           for await (const order of others) {
-            if (order.multidelivery_discount !== data.multidelivery_discount) {
+            if (
+              order.multidelivery_discount !==
+              me.orders_options.multidelivery_discount
+            ) {
               const orderToUpdate = {
                 id: order.id,
-                multidelivery_discount: data.multidelivery_discount || 0,
+                multidelivery_discount:
+                  me.orders_options.multidelivery_discount || 0,
               };
               await strapi
                 .query("orders")

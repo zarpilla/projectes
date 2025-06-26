@@ -100,6 +100,9 @@
     },
     "naf": {
       "type": "string"
+    },
+    "multidelivery_discount": {
+      "type": "boolean"
     }
   }
 }
