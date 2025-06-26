@@ -1,5 +1,6 @@
 "use strict";
 const projectController = require("../../project/controllers/project");
+const emittedInvoiceController = require("../controllers/emitted-invoice");
 const entity = "emitted-invoice";
 /**
  * Read the documentation (https://strapi.io/documentation/developer-docs/latest/development/backend-customization.html#lifecycle-hooks)
@@ -10,20 +11,19 @@ let previousProjectId = 0;
 
 module.exports = {
   lifecycles: {
-    async afterFindOne(result, params, populate) {
-      if (result && !result.pdf) {
-        const config = await strapi.query("config").findOne();
-        const pdf = `${config.front_url}invoice/${params.id}`;
-        result.pdf = pdf;
-      }
-    },
+    // async afterFindOne(result, params, populate) {
+    //   if (result && !result.pdf) {
+    //     const config = await strapi.query("config").findOne();
+    //     const pdf = `${config.front_url}invoice/${params.id}`;
+    //     result.pdf = pdf;
+    //   }
+    // },
     async beforeCreate(data) {
       data = await calculateTotals(data);
     },
     async afterCreate(result) {
-      // result.projects.forEach((p) => {
-      //   projectController.setDirty(p.id);
-      // });
+      const ctx = { params: { id: result.id, doc: "emitted-invoice" } };
+      await emittedInvoiceController.pdf(ctx);
     },
     async beforeUpdate(params, data) {
       const invoice = await strapi.query(entity).findOne(params);
@@ -34,28 +34,55 @@ module.exports = {
         data.updatable_admin = false;
         data = await calculateTotals(data);
       }
-      
     },
     async afterUpdate(result, params, data) {
-      // if (result.projects) {
-      //   result.projects.forEach((p) => {
-      //     projectController.setDirty(p.id);
-      //   });
-      // }
-      // if (data.projects) {
-      //   data.projects.forEach((p) => {
-      //     projectController.setDirty(p.id);
-      //   });
-      // }
+      const me = await strapi.query("me").findOne();
+      const invoice = await strapi.query(entity).findOne(params);
+      if (
+        me.verifactu &&
+        (me.verifactu === "test" || me.verifactu === "real")
+      ) {
+        if (invoice && invoice.state === "real") {
+          const verifactuChain = await strapi
+            .query("verifactu-chain")
+            .find({ emitted_invoice: invoice.id });
+          if (verifactuChain.length === 0) {
+            const user =
+              invoice.user_real && typeof invoice.user_real === "object"
+                ? invoice.user_real && invoice.user_real.id
+                  ? invoice.user_real.id
+                  : 0
+                : invoice.user_real;
+
+            const chain = {
+              emitted_invoice: invoice.id,
+              users_permissions_user: user,
+              invoice_json: JSON.stringify(invoice),
+              state: "pending",
+              mode: me.verifactu,
+            };
+            const result = await strapi.query("verifactu-chain").create(chain);
+            const chainId = result.id;
+            console.log("verifactu-chain created", chainId);
+          }
+        }
+      }
+
+      if (invoice && !invoice.pdf) {
+        try {
+          const ctx = { params: { id: params.id, doc: "emitted-invoice" } };
+          await emittedInvoiceController.pdf(ctx);
+        } catch (err) {
+          console.error("Error generating PDF after update:", err);
+        }
+      }
     },
     async beforeDelete(params) {
-      const invoice = await strapi.query(entity).findOne(params);
-      if (invoice && invoice.updatable === false) {
-        throw new Error("received-expense NOT updatable");
-      }
-      // if (invoice && invoice.project) {
-      //   await projectController.setDirty(invoice.project.id);
+      // const invoice = await strapi.query(entity).findOne(params);
+      // if (invoice && invoice.updatable === false) {
+      //   throw new Error("received-expense NOT updatable");
       // }
+      throw new Error("received-expense NOT updatable");
     },
   },
 };
@@ -69,30 +96,32 @@ let calculateTotals = async (data) => {
   data.total_irpf = 0;
   data.total = 0;
 
-  console.log('data.code', data.code)
-  console.log('data.state', data.state)
-
-
   if (data.code === "ESBORRANY" && data.state === "real") {
+    data.user_real = data.user_last;
     const serial = await strapi.query("serie").findOne({ id: data.serial });
     if (!data.number) {
-      var emitted_invoice_number = 1
+      var emitted_invoice_number = 1;
       if (serial.emitted_invoice_number) {
-        emitted_invoice_number = serial.emitted_invoice_number + 1
+        emitted_invoice_number = serial.emitted_invoice_number + 1;
       } else {
         const quotes = await strapi
           .query("emitted-invoice")
           .find({ serial: data.serial, _limit: -1 });
-          emitted_invoice_number = quotes.length + 1
+        emitted_invoice_number = quotes.length + 1;
       }
-      await strapi.query("serie").update({ id: data.serial }, { emitted_invoice_number: emitted_invoice_number });      
+      await strapi
+        .query("serie")
+        .update(
+          { id: data.serial },
+          { emitted_invoice_number: emitted_invoice_number }
+        );
       data.number = emitted_invoice_number;
     }
     const zeroPad = (num, places) => String(num).padStart(places, "0");
     const places = serial.leadingZeros || 1;
     data.code = `${serial.name}-${zeroPad(data.number, places)}`;
-  }
-  else if (data.state == "draft") {
+  } else if (data.state == "draft" || !data.state) {
+    data.state = "draft";
     data.code = `ESBORRANY`;
   }
 
@@ -121,16 +150,4 @@ let calculateTotals = async (data) => {
   }
 
   return data;
-};
-
-let setPDFAfterCreation = async (id) => {
-  const config = await strapi.query("config").findOne();
-  const pdf = `${config.front_url}invoice/${id}`;
-  await strapi.query("emitted-invoice").update(
-    { id: id },
-    {
-      pdf: pdf,
-      _internal: true,
-    }
-  );
 };

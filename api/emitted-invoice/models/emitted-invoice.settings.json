@@ -117,6 +117,22 @@
         "draft",
         "real"
       ]
+    },
+    "user_draft": {
+      "plugin": "users-permissions",
+      "model": "user"
+    },
+    "user_real": {
+      "plugin": "users-permissions",
+      "model": "user"
+    },
+    "user_last": {
+      "plugin": "users-permissions",
+      "model": "user"
+    },
+    "verifactu": {
+      "type": "boolean",
+      "default": false
     }
   }
 }

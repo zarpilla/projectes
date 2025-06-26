@@ -46,7 +46,10 @@ module.exports = {
           refrigerated: o.refrigerated,
           fragile: o.fragile,
           route_rate: o.route_rate ? o.route_rate.name : "-",
-          price: (o.price || 0) * (1 - (o.multidelivery_discount || 0) / 100) * (1 - (o.contact_pickup_discount || 0) / 100),
+          price:
+            (o.price || 0) *
+            (1 - (o.multidelivery_discount || 0) / 100) *
+            (1 - (o.contact_pickup_discount || 0) / 100),
           pickup: o.pickup ? o.pickup.name : "-",
           delivery_type: o.delivery_type ? o.delivery_type.name : "-",
           status: o.status,
@@ -158,7 +161,7 @@ module.exports = {
       .filter((value, index, self) => self.indexOf(value) === index);
 
     const allContacts = [];
-    for (const owner of uniqueOwners) {
+    for await (const owner of uniqueOwners) {
       const contacts = await strapi
         .query("contacts")
         .find({ users_permissions_user: owner });
@@ -177,7 +180,7 @@ module.exports = {
     }
 
     const invoices = [];
-    for (const owner of uniqueOwners) {
+    for await (const owner of uniqueOwners) {
       const contact = allContacts.find(
         (c) => c.users_permissions_user.id === owner
       );
@@ -200,25 +203,61 @@ module.exports = {
             price: o.price,
             vat: 21,
             irpf: 0,
-            discount: (o.multidelivery_discount || 0) + (o.contact_pickup_discount || 0),
+            discount:
+              (o.multidelivery_discount || 0) +
+              (o.contact_pickup_discount || 0),
           };
         }),
         projects: [project],
       };
+
+      // validate project phases
+      for await (const p of uniqueProjects) {
+        const project = await strapi
+          .query("project")
+          .findOne({ id: p }, [
+            "project_phases",
+            "project_phases.incomes",
+            "project_phases.incomes.invoice",
+            "project_phases.incomes.income",
+          ]);
+
+        if (!project.project_phases || project.project_phases.length === 0) {
+          ctx.send(
+            {
+              done: false,
+              message: "ERROR. No hi ha fases per al projecte " + project.name,
+            },
+            500
+          );
+          return
+        } else {
+          const phase =
+            project.project_phases[project.project_phases.length - 1];
+          if (!phase.incomes) {
+            ctx.send(
+              {
+                done: false,
+                message:
+                  "ERROR. No hi ha fases per al projecte " + project.name,
+              },
+              500
+            );
+            return
+          }
+        }
+      }
+
       const invoice = await strapi
         .query("emitted-invoice")
         .create(emittedInvoice);
       invoices.push(invoice);
-      for (const o of contactOrders) {
+      for await (const o of contactOrders) {
         await strapi
           .query("orders")
           .update({ id: o.id }, { invoice: invoice.id, status: "invoiced" });
       }
-      for (const p of uniqueProjects) {
-        // const total = contactOrders.filter((o) => o.route.project === p).reduce((acc, o) => {
-        //   return acc + o.price;
-        // }, 0);
-
+      for await (const p of uniqueProjects) {
         const project = await strapi
           .query("project")
           .findOne({ id: p }, [
@@ -241,7 +280,10 @@ module.exports = {
         const phase = project.project_phases[project.project_phases.length - 1];
         let price = 0;
         for (const o of contactOrders) {
-          price += o.price * (1 - (o.multidelivery_discount || 0) / 100) * (1 - (o.contact_pickup_discount || 0) / 100);
+          price +=
+            o.price *
+            (1 - (o.multidelivery_discount || 0) / 100) *
+            (1 - (o.contact_pickup_discount || 0) / 100);
         }
 
         if (!phase.incomes) {
@@ -264,29 +306,24 @@ module.exports = {
           dirty: true,
         });
 
-
-        await strapi
-          .query("project")
-          .update(
-            { id: p },
-            {
-              project_phases: project.project_phases,
-              project_phases_info: {},
-              _project_phases_updated: true,
-            }
-          );
+        await strapi.query("project").update(
+          { id: p },
+          {
+            project_phases: project.project_phases,
+            project_phases_info: {},
+            _project_phases_updated: true,
+          }
+        );
       }
 
-      for (const o of ordersEntities) {
-        await strapi
-          .query("orders")
-          .update(
-            { id: o.id },
-            {
-              emitted_invoice: invoice.id,
-              emitted_invoice_datetime: new Date(),
-            }
-          );
+      for await (const o of ordersEntities) {
+        await strapi.query("orders").update(
+          { id: o.id },
+          {
+            emitted_invoice: invoice.id,
+            emitted_invoice_datetime: new Date(),
+          }
+        );
       }
     }
 
@@ -442,7 +479,7 @@ module.exports = {
     line.quantity = 1;
     line.vat = 21;
     line.base = line.price;
-    line.irpf = 0;    
+    line.irpf = 0;
     const part = [];
 
     if (line.quantity && line.price) {
@@ -1115,7 +1152,7 @@ module.exports = {
 
     const distinctOrdersData = ordersOfDate.map((o) => ({
       estimated_delivery_date: o.estimated_delivery_date,
-        contact: o.contact ? o.contact.id : "-",
+      contact: o.contact ? o.contact.id : "-",
     }));
 
     const groupedOrders = distinctOrdersData.reduce((acc, curr) => {
@@ -1125,20 +1162,19 @@ module.exports = {
       }
       acc[key].count++;
       return acc;
-    }
-    , {});
-    const distinctOrdersDataCount = Object.values(groupedOrders).map((item) => ({
-      estimated_delivery_date: item.estimated_delivery_date,
-      contact: item.contact,
-      count: item.count,
-      items: ordersOfDate.filter(
-        (o) =>
-          o.estimated_delivery_date === item.estimated_delivery_date &&
-          o.contact.id === item.contact
-      ),
-    })).filter((item) => item.count > 1);
-
-    
+    }, {});
+    const distinctOrdersDataCount = Object.values(groupedOrders)
+      .map((item) => ({
+        estimated_delivery_date: item.estimated_delivery_date,
+        contact: item.contact,
+        count: item.count,
+        items: ordersOfDate.filter(
+          (o) =>
+            o.estimated_delivery_date === item.estimated_delivery_date &&
+            o.contact.id === item.contact
+        ),
+      }))
+      .filter((item) => item.count > 1);
 
     return {
       distinctOrdersDataCount: distinctOrdersDataCount,

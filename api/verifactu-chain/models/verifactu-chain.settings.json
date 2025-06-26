@@ -1,0 +1,56 @@
+{
+  "kind": "collectionType",
+  "collectionName": "verifactu_chains",
+  "info": {
+    "name": "Verifactu Chain",
+    "description": ""
+  },
+  "options": {
+    "increments": true,
+    "timestamps": true,
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "emitted_invoice": {
+      "model": "emitted-invoice"
+    },
+    "users_permissions_user": {
+      "plugin": "users-permissions",
+      "model": "user"
+    },
+    "hash": {
+      "type": "string"
+    },
+    "qr": {
+      "type": "text"
+    },
+    "xml": {
+      "type": "string"
+    },
+    "invoice_json": {
+      "type": "text"
+    },
+    "state": {
+      "type": "enumeration",
+      "enum": [
+        "pending",
+        "ok",
+        "ko"
+      ],
+      "default": "pending"
+    },
+    "request_url": {
+      "type": "string"
+    },
+    "response_text": {
+      "type": "text"
+    },
+    "mode": {
+      "type": "enumeration",
+      "enum": [
+        "test",
+        "real"
+      ]
+    }
+  }
+}

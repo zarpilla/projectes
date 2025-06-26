@@ -86,14 +86,3 @@ let calculateTotals = async (data) => {
     return data;
 
 }
-
-let setPDFAfterCreation = async (id) => {
-    const config = await strapi.query('config').findOne();
-    const pdf = `${config.front_url}quote/${id}`
-    await strapi.query('quote').update(
-        { id: id },
-        {
-            pdf: pdf,
-            _internal: true
-        });
-}

@@ -93,6 +93,17 @@
       "type": "component",
       "repeatable": false,
       "component": "options.orders-options"
+    },
+    "verifactu": {
+      "type": "enumeration",
+      "enum": [
+        "no",
+        "test",
+        "real"
+      ]
+    },
+    "certificate_pwd": {
+      "type": "password"
     }
   }
 }

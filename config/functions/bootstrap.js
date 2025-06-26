@@ -370,7 +370,10 @@ async function importSeedData() {
     if (invoice.code && !invoice.state) {
       await strapi
         .query("emitted-invoice")
-        .update({ id: invoice.id }, { state: "real", _internal: true });
+        .update(
+          { id: invoice.id },
+          { state: "real", _internal: true, verifactu: false }
+        );
     }
   }
 }
