@@ -19,6 +19,7 @@ module.exports = {
     //   }
     // },
     async beforeCreate(data) {
+      data = await handleState(data);
       data = await calculateTotals(data);
     },
     async afterCreate(result) {
@@ -32,15 +33,17 @@ module.exports = {
       }
       if (!data._internal) {
         data.updatable_admin = false;
+        data = await handleState(data);
         data = await calculateTotals(data);
       }
     },
     async afterUpdate(result, params, data) {
-      const me = await strapi.query("me").findOne();
+      const verifactu = await strapi.query("verifactu").findOne();
       const invoice = await strapi.query(entity).findOne(params);
       if (
-        me.verifactu &&
-        (me.verifactu === "test" || me.verifactu === "real")
+        verifactu &&
+        (verifactu.mode === "test" || verifactu.mode === "real") &&
+        invoice.verifactu
       ) {
         if (invoice && invoice.state === "real") {
           const verifactuChain = await strapi
@@ -59,11 +62,9 @@ module.exports = {
               users_permissions_user: user,
               invoice_json: JSON.stringify(invoice),
               state: "pending",
-              mode: me.verifactu,
+              mode: verifactu.mode,
             };
-            const result = await strapi.query("verifactu-chain").create(chain);
-            const chainId = result.id;
-            console.log("verifactu-chain created", chainId);
+            await strapi.query("verifactu-chain").create(chain);
           }
         }
       }
@@ -78,23 +79,29 @@ module.exports = {
       }
     },
     async beforeDelete(params) {
-      // const invoice = await strapi.query(entity).findOne(params);
-      // if (invoice && invoice.updatable === false) {
-      //   throw new Error("received-expense NOT updatable");
-      // }
-      throw new Error("received-expense NOT updatable");
+      const invoice = await strapi.query(entity).findOne(params);
+      if (invoice.state === "real") {
+        throw new Error("Cannot delete a real invoice");
+      }
+      // check orders
+      const orders = await strapi.query("orders").find({ emitted_invoice: params.id });
+      if (orders && orders.length > 0) {
+        // throw new Error("Cannot delete emitted invoice with associated orders");
+        for await (const o of orders) {
+          await strapi
+            .query("orders")
+            .update({ id: o.id }, { emitted_invoice: null, status: "delivered" });
+        }
+      }
+      
     },
   },
 };
 
-let calculateTotals = async (data) => {
+let handleState = async (data) => {
   if (data._internal) {
-    return;
+    return data;
   }
-  data.total_base = 0;
-  data.total_vat = 0;
-  data.total_irpf = 0;
-  data.total = 0;
 
   if (data.code === "ESBORRANY" && data.state === "real") {
     data.user_real = data.user_last;
@@ -125,7 +132,20 @@ let calculateTotals = async (data) => {
     data.code = `ESBORRANY`;
   }
 
+  return data;
+};
+
+let calculateTotals = async (data) => {
+  if (data._internal) {
+    return data;
+  }
+
   if (data.lines) {
+    data.total_base = 0;
+    data.total_vat = 0;
+    data.total_irpf = 0;
+    data.total = 0;
+
     let total_base = 0;
     let total_vat = 0;
     let total_irpf = 0;

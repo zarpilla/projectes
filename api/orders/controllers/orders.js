@@ -152,6 +152,10 @@ module.exports = {
       return;
     }
 
+    const verifactu = await strapi.query("verifactu").findOne();
+
+    const verifactuEnabled = verifactu.mode === "test" || verifactu.mode === "real";
+
     const ordersEntities = await strapi
       .query("orders")
       .find({ id_in: orders, _limit: -1 });
@@ -193,6 +197,7 @@ module.exports = {
         emitted: new Date(),
         serial: serial[0].id,
         contact: contact.id,
+        verifactu: verifactuEnabled,
         lines: contactOrders.map((o) => {
           return {
             concept: `Comanda ${o.estimated_delivery_date} | ${o.id

@@ -25,7 +25,7 @@
       "type": "text"
     },
     "xml": {
-      "type": "string"
+      "type": "text"
     },
     "invoice_json": {
       "type": "text"
@@ -35,7 +35,8 @@
       "enum": [
         "pending",
         "ok",
-        "ko"
+        "ko",
+        "okwitherrors"
       ],
       "default": "pending"
     },
@@ -50,6 +51,13 @@
       "enum": [
         "test",
         "real"
+      ]
+    },
+    "actions": {
+      "type": "enumeration",
+      "enum": [
+        "none",
+        "replacement"
       ]
     }
   }

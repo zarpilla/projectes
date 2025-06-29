@@ -133,6 +133,9 @@
     "verifactu": {
       "type": "boolean",
       "default": false
+    },
+    "qr": {
+      "type": "text"
     }
   }
 }

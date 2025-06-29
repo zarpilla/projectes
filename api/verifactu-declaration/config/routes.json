@@ -1,0 +1,52 @@
+{
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/verifactu-declarations",
+      "handler": "verifactu-declaration.find",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/verifactu-declarations/count",
+      "handler": "verifactu-declaration.count",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/verifactu-declarations/:id",
+      "handler": "verifactu-declaration.findOne",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/verifactu-declarations",
+      "handler": "verifactu-declaration.create",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "PUT",
+      "path": "/verifactu-declarations/:id",
+      "handler": "verifactu-declaration.update",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "DELETE",
+      "path": "/verifactu-declarations/:id",
+      "handler": "verifactu-declaration.delete",
+      "config": {
+        "policies": []
+      }
+    }
+  ]
+}

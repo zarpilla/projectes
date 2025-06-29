@@ -1,0 +1,28 @@
+{
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/verifactu",
+      "handler": "verifactu.find",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "PUT",
+      "path": "/verifactu",
+      "handler": "verifactu.update",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "DELETE",
+      "path": "/verifactu",
+      "handler": "verifactu.delete",
+      "config": {
+        "policies": []
+      }
+    }
+  ]
+}

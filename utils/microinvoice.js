@@ -51,7 +51,7 @@ module.exports = class Microinvoice {
         },
         header : {
           backgroundColor : "#F8F8FA",
-          height          : 150,
+          height          : 135,
           image           : null,
           qr              : {
             left: 460
@@ -66,13 +66,14 @@ module.exports = class Microinvoice {
           total : {
             position : 490,
             maxWidth : 80
-          }
+          },
+          lineHeight : 9,
         },
         text : {
           primaryColor   : "#000100",
           secondaryColor : "#8F8F8F",
-          headingSize    : 15,
-          regularSize    : 10
+          headingSize    : 14,
+          regularSize    : 8
         }
       },
 
@@ -266,6 +267,17 @@ module.exports = class Microinvoice {
           height : this.options.style.header.qr.height
         }
       );
+
+      if (this.options.style.header.qr.verifactu) {
+        // Add text VER*FACTU at the bottom of the QR code
+        this.setCursor("x", this.options.style.header.qr.left + 7);
+        this.setCursor("y", this.options.style.document.marginTop + 65);
+        this.setText("VERI*FACTU", {
+          // fontSize   : "heading",
+          fontWeight : "bold",
+          color      : this.options.style.header.regularColor,          
+        });
+      }
     }
 
     let _fontMargin = 4;
@@ -365,7 +377,7 @@ module.exports = class Microinvoice {
 
     this.storage.cursor.y = this.document.y;
 
-    this.storage.cursor.y += 17;
+    this.storage.cursor.y += this.options.style.table.lineHeight;
 
     if (type === "header") {
       _fontWeight = "bold";
@@ -431,11 +443,14 @@ module.exports = class Microinvoice {
     }
 
     // Set y to the max y position
-    this.setCursor("y", _maxY);
+    this.setCursor("y", _maxY - 5);
 
     if (type === "header") {
       this.generateLine();
     }
+
+    this.setCursor("y", _maxY);
+
 
   }
 

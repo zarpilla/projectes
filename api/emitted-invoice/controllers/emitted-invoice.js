@@ -108,7 +108,10 @@ module.exports = {
     const width = me.logo ? me.logo.width : 150;
     const height = me.logo ? me.logo.height : 150;
     const logoWidth = 150;
+    const qrWidth = 65;
     const ratio = width / logoWidth;
+
+    const qr = invoice.qr
 
     const invoiceHeader = [
       {
@@ -140,7 +143,7 @@ module.exports = {
     const showDate = invoice.lines.find((l) => l.date) !== undefined;
     const showQuantity =
       invoice.lines.find((l) => l.quantity > 1) !== undefined;
-    const showVat = invoice.lines.find((l) => l.vat > 0) !== undefined;
+    const showVat = true //invoice.lines.find((l) => l.vat > 0) !== undefined;
     const showIrpf = invoice.lines.find((l) => l.irpf > 0) !== undefined;
 
     const detailsHeader = [];
@@ -240,12 +243,17 @@ module.exports = {
           price: true,
           width: 0.18 * columnsRatio,
         });
-        if (showVat) {
+        if (showVat && line.vat > 0) {
           part.push({
             value:
               formatCurrency((line.quantity * line.base * line.vat) / 100) +
               ` EUR (${line.vat}%)`,
             // price: true,
+            width: 0.14 * columnsRatio,
+          });
+        } else {
+          part.push({
+            value: "0 EUR (0%)",
             width: 0.14 * columnsRatio,
           });
         }
@@ -331,6 +339,12 @@ module.exports = {
             width: logoWidth,
             height: height / ratio,
           },
+          qr: qr ? {
+            path: qr,
+            verifactu: true,
+            width: qrWidth,
+            height: qrWidth,
+          } : null,
         },
       },
       data: {
@@ -351,8 +365,8 @@ module.exports = {
             {
               label:
                 doc !== "emitted-invoice" && doc !== "quote"
-                  ? "PROVEÏDOR"
-                  : "CLIENT",
+                  ? "PROVEÏDOR/A"
+                  : "CLIENT/A",
               value: [
                 invoice.contact.name,
                 invoice.contact.nif,
@@ -366,8 +380,8 @@ module.exports = {
             {
               label:
                 doc !== "emitted-invoice" && doc !== "quote"
-                  ? "CLIENT"
-                  : "PROVEÏDOR",
+                  ? "CLIENT/A"
+                  : "PROVEÏDOR/A",
               value: [
                 me.name,
                 me.nif,

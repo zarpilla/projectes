@@ -1,0 +1,31 @@
+{
+  "kind": "collectionType",
+  "collectionName": "verifactu_declarations",
+  "info": {
+    "name": "VerifactuDeclaration",
+    "description": ""
+  },
+  "options": {
+    "increments": true,
+    "timestamps": true,
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "version": {
+      "type": "string"
+    },
+    "pdf": {
+      "model": "file",
+      "via": "related",
+      "allowedTypes": [
+        "files"
+      ],
+      "plugin": "upload",
+      "required": false,
+      "pluginOptions": {}
+    },
+    "url": {
+      "type": "string"
+    }
+  }
+}

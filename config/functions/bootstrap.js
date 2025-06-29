@@ -175,6 +175,8 @@ async function importSeedData() {
     "estimated-hours": ["find", "findone", "create", "update", "delete"],
     "phase-income": ["find", "findassigned"],
     "phase-expense": ["find", "findassigned"],
+    "verifactu": ["find", "findone"],
+    "verifactu-declaration": ["find", "findone", "create"],
   });
 
   await setPermissions("authenticated", "upload", {
@@ -376,6 +378,34 @@ async function importSeedData() {
         );
     }
   }
+
+  const me = await strapi.query("me").findOne();
+  const verifactu = await strapi.query("verifactu").findOne();
+  if (!verifactu) {
+    await strapi.query("verifactu").create({
+      mode: "no",
+      software_developerName: "",
+      software_developerIrsId: "",
+      software_name: "ESSTRAPIS",
+      software_version: "2025.06.28",
+      software_id: "ESSTRAPIS",
+      software_number: me.nif,
+      software_useOnlyVerifactu: true,
+      software_useMulti: true,
+      software_useCurrentMulti: false,
+      software_address: '',
+      software_date: '1 de julio de 2025',
+      software_location: '-',
+    });
+  }
+  const verifactuDeclarations = await strapi.query("verifactu-declaration").find({ _limit: -1 });
+  if (verifactuDeclarations.length === 0) {
+    await strapi.query("verifactu-declaration").create({
+      version: "2025.06.28",
+      url: "https://github.com/zarpilla/projectes/tree/master/public/verifactu"
+    });
+  }
+  
 }
 
 module.exports = async () => {
