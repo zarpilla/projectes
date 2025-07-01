@@ -34,18 +34,17 @@ module.exports = {
 
     for (const order of orders) {
       if (order.contact) {
-        const contact = contacts.find(c => c.id === order.contact.id);
+        const contact = contacts.find((c) => c.id === order.contact.id);
         if (!contact) {
-          contacts.push(order.contact);
-          order.contact.num_orders = 1;
+          contacts.push({ id: order.contact.id, num_orders: 1 });
+          // order.contact.num_orders = 1;
         } else {
           contact.num_orders = contact.num_orders + 1;
         }
       }
     }
 
-    return contacts
-
+    return contacts;
   },
   async withorders(ctx) {
     // Calling the default core action
@@ -56,23 +55,25 @@ module.exports = {
       contactFilter = { contact: ctx.query.contact_id };
     }
 
-    const orders = await strapi.query("orders").find({ owner: ctx.state.user.id, ...contactFilter, _limit: -1 });
+    const orders = await strapi
+      .query("orders")
+      .find({ owner: ctx.state.user.id, ...contactFilter, _limit: -1 });
 
     for (const order of orders) {
       if (order.contact) {
-        const contact = contacts.find(c => c.id === order.contact.id);
+        const contact = contacts.find((c) => c.id === order.contact.id);
         if (!contact) {
           contacts.push(order.contact);
           order.contact.num_orders = 1;
         } else {
           contact.num_orders = contact.num_orders + 1;
         }
-        const contact2 = contacts.find(c => c.id === order.contact.id);
-        contact2.can_edit = contact2.can_edit || ['delivered', 'invoiced'].includes(order.status)
+        const contact2 = contacts.find((c) => c.id === order.contact.id);
+        contact2.can_edit =
+          contact2.can_edit || ["delivered", "invoiced"].includes(order.status);
       }
     }
 
-    return contacts
-
+    return contacts;
   },
 };
