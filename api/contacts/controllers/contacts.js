@@ -30,7 +30,7 @@ module.exports = {
     // Calling the default core action
     const contacts = [];
 
-    const orders = await strapi.query("orders").find({ _limit: -1 });
+    const orders = await strapi.query("orders").find({ _limit: -1 }, ["contact"]);
 
     for (const order of orders) {
       if (order.contact) {
@@ -57,7 +57,7 @@ module.exports = {
 
     const orders = await strapi
       .query("orders")
-      .find({ owner: ctx.state.user.id, ...contactFilter, _limit: -1 });
+      .find({ owner: ctx.state.user.id, ...contactFilter, _limit: -1 }, ["contact"]);
 
     for (const order of orders) {
       if (order.contact) {
