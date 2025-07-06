@@ -19,7 +19,8 @@ module.exports = {
     //   }
     // },
     async beforeCreate(data) {
-      data = await handleState(data);
+      data.state = "draft";
+      data.code = `ESBORRANY`;
       data = await calculateTotals(data);
     },
     async afterCreate(result) {
@@ -84,16 +85,20 @@ module.exports = {
         throw new Error("Cannot delete a real invoice");
       }
       // check orders
-      const orders = await strapi.query("orders").find({ emitted_invoice: params.id });
+      const orders = await strapi
+        .query("orders")
+        .find({ emitted_invoice: params.id });
       if (orders && orders.length > 0) {
         // throw new Error("Cannot delete emitted invoice with associated orders");
         for await (const o of orders) {
           await strapi
             .query("orders")
-            .update({ id: o.id }, { emitted_invoice: null, status: "delivered" });
+            .update(
+              { id: o.id },
+              { emitted_invoice: null, status: "delivered" }
+            );
         }
       }
-      
     },
   },
 };
@@ -108,14 +113,8 @@ let handleState = async (data) => {
     const serial = await strapi.query("serie").findOne({ id: data.serial });
     if (!data.number) {
       var emitted_invoice_number = 1;
-      if (serial.emitted_invoice_number) {
-        emitted_invoice_number = serial.emitted_invoice_number + 1;
-      } else {
-        const quotes = await strapi
-          .query("emitted-invoice")
-          .find({ serial: data.serial, _limit: -1 });
-        emitted_invoice_number = quotes.length + 1;
-      }
+      emitted_invoice_number = serial.emitted_invoice_number + 1;
+
       await strapi
         .query("serie")
         .update(
