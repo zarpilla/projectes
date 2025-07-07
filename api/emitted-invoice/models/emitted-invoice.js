@@ -32,6 +32,18 @@ module.exports = {
       if (invoice.updatable === false && !(data.updatable_admin === true)) {
         throw new Error("received-expense NOT updatable");
       }
+      
+      if (invoice.state === "real") {
+        data.lines = invoice.lines;
+        data.contact = invoice.contact;
+        data.emitted = invoice.emitted;
+        data.serial = invoice.serial;
+        data.user_real = invoice.user_real;
+        data.user_draft = invoice.user_draft;
+        data.comments = invoice.comments;
+        // data.number = invoice.number;
+        data.code = invoice.code;
+      }
       if (!data._internal) {
         data.updatable_admin = false;
         data = await handleState(data);

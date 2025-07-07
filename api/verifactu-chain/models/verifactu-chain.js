@@ -33,7 +33,7 @@ const sendVerifactu = async () => {
       number: verifactu.software_number,
       useOnlyVerifactu: verifactu.software_useOnlyVerifactu,
       useMulti: verifactu.software_useMulti,
-      useCurrentMulti: verifactu.software_useCurrentMulti,      
+      useCurrentMulti: verifactu.software_useCurrentMulti,
     };
 
     for await (const invoice of pendingInvoices) {
@@ -201,60 +201,66 @@ const sendVerifactu = async () => {
         }
       );
 
-      const certificateRelativePath = verifactu.certificate.url;
+      const certificateRelativePath = verifactu.certificate
+        ? verifactu.certificate.url
+        : "";
       const certificatePassphrase = verifactu.certificate_password || "";
 
-      const soapResponse = await sendToAEAT(
-        xml,
-        endpoint,
-        certificateRelativePath,
-        certificatePassphrase
-      );
-
-      if (
-        soapResponse.statusCode === 200 &&
-        soapResponse.body &&
-        soapResponse.body.includes("EstadoEnvio>Correcto<")
-      ) {
-        await strapi.query("verifactu-chain").update(
-          { id: invoice.id },
-          {
-            _internal: true,
-            response_text: soapResponse.body,
-            state: "ok",
-            actions: "none",
-          }
+      try {
+        const soapResponse = await sendToAEAT(
+          xml,
+          endpoint,
+          certificateRelativePath,
+          certificatePassphrase
         );
 
-        await updateInvoiceQr(invoice.emitted_invoice.id, qr);
-      } else if (
-        soapResponse.statusCode === 200 &&
-        soapResponse.body &&
-        soapResponse.body.includes(">AceptadaConErrores<")
-      ) {
-        await strapi.query("verifactu-chain").update(
-          { id: invoice.id },
-          {
-            _internal: true,
-            response_text: soapResponse.body,
-            state: "okwitherrors",
-            actions: "none",
-          }
-        );
+        if (
+          soapResponse.statusCode === 200 &&
+          soapResponse.body &&
+          soapResponse.body.includes("EstadoEnvio>Correcto<")
+        ) {
+          await strapi.query("verifactu-chain").update(
+            { id: invoice.id },
+            {
+              _internal: true,
+              response_text: soapResponse.body,
+              state: "ok",
+              actions: "none",
+            }
+          );
 
-        await updateInvoiceQr(invoice.emitted_invoice.id, qr);
-      } else {
-        await strapi.query("verifactu-chain").update(
-          { id: invoice.id },
-          {
-            _internal: true,
-            response_text: soapResponse.body,
-            state: "ko",
-            actions: "none",
-          }
-        );
+          await updateInvoiceQr(invoice.emitted_invoice.id, qr);
+        } else if (
+          soapResponse.statusCode === 200 &&
+          soapResponse.body &&
+          soapResponse.body.includes(">AceptadaConErrores<")
+        ) {
+          await strapi.query("verifactu-chain").update(
+            { id: invoice.id },
+            {
+              _internal: true,
+              response_text: soapResponse.body,
+              state: "okwitherrors",
+              actions: "none",
+            }
+          );
 
-        break;
+          await updateInvoiceQr(invoice.emitted_invoice.id, qr);
+        } else {
+          await strapi.query("verifactu-chain").update(
+            { id: invoice.id },
+            {
+              _internal: true,
+              response_text: soapResponse.body,
+              state: "ko",
+              actions: "none",
+            }
+          );
+
+          break;
+        }
+      } catch (error) {
+        console.error("Error sending to AEAT:", error);
       }
     }
   }
@@ -269,13 +275,17 @@ const sendToAEAT = async (
   try {
     // Read certificate file
     const currentDir = process.cwd();
+
+    if (!certificateRelativePath) {
+      throw new Error("Certificate relative path is required.");
+    }
     const certificatePath = path.join(
       currentDir,
       strapi.config.paths.static,
       certificateRelativePath
     );
 
-    if (!fs.existsSync(certificatePath)) {
+    if (!certificatePath || !fs.existsSync(certificatePath)) {
       throw new Error(`Certificate file not found: ${certificatePath}`);
     }
 
