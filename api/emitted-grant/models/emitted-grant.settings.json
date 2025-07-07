@@ -78,6 +78,9 @@
     "project": {
       "via": "emitted_grants",
       "model": "project"
+    },
+    "comments_internal": {
+      "type": "richtext"
     }
   }
 }

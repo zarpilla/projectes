@@ -110,6 +110,9 @@
     },
     "estimated_payment": {
       "type": "date"
+    },
+    "comments_internal": {
+      "type": "richtext"
     }
   }
 }

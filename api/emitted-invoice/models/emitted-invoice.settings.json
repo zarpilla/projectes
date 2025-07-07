@@ -136,6 +136,9 @@
     },
     "qr": {
       "type": "text"
+    },
+    "comments_internal": {
+      "type": "richtext"
     }
   }
 }

@@ -70,6 +70,9 @@
     "proforma": {
       "type": "boolean",
       "default": false
+    },
+    "comments_internal": {
+      "type": "richtext"
     }
   }
 }
