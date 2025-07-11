@@ -111,7 +111,7 @@ module.exports = {
     const qrWidth = 65;
     const ratio = width / logoWidth;
 
-    const qr = invoice.qr
+    const qr = invoice.qr;
 
     const invoiceHeader = [
       {
@@ -143,26 +143,49 @@ module.exports = {
     const showDate = invoice.lines.find((l) => l.date) !== undefined;
     const showQuantity =
       invoice.lines.find((l) => l.quantity > 1) !== undefined;
-    const showVat = true //invoice.lines.find((l) => l.vat > 0) !== undefined;
+    const showVat = true; //invoice.lines.find((l) => l.vat > 0) !== undefined;
     const showIrpf = invoice.lines.find((l) => l.irpf > 0) !== undefined;
+    const showDiscount =
+      invoice.lines.find((l) => l.discount > 0) !== undefined;
+
+    const euro = "EUR";
 
     const detailsHeader = [];
 
+    // Adjust the initial column widths based on what's shown
+    let conceptWidth = 0.35;
+
+    // Reduce concept width when we have many columns
+    const totalExtraColumns =
+      (showDate ? 1 : 0) +
+      (showQuantity ? 2 : 0) +
+      (showVat ? 1 : 0) +
+      (showIrpf ? 1 : 0) +
+      (showDiscount ? 1 : 0);
+
+    if (totalExtraColumns >= 4) {
+      conceptWidth = 0.25; // Reduce concept width significantly
+    } else if (totalExtraColumns >= 3) {
+      conceptWidth = 0.3; // Reduce concept width moderately
+    }
+
     let columnsWidth =
-      0.35 +
+      conceptWidth +
       (showDate ? 0.1 : 0) +
       (showQuantity ? 0.08 * 2 : 0) +
       0.19 +
       (showVat ? 0.1 : 0) +
       (showIrpf ? 0.1 : 0) +
+      (showDiscount ? 0.1 : 0) +
       0.1;
 
     let columnsRatio = 1 / columnsWidth;
 
     detailsHeader.push({
       value: "Concepte",
-      width: 0.35 * columnsRatio,
+      width: conceptWidth * columnsRatio, // Use the adjusted width
     });
+
     if (showDate) {
       detailsHeader.push({
         value: "Data",
@@ -185,6 +208,12 @@ module.exports = {
       value: "Base imposable",
       width: 0.18 * columnsRatio,
     });
+    if (showDiscount) {
+      detailsHeader.push({
+        value: "Descompte",
+        width: 0.1 * columnsRatio,
+      });
+    }
     if (showVat) {
       detailsHeader.push({
         value: "IVA",
@@ -213,16 +242,20 @@ module.exports = {
         if (line.comments) {
           concept += "\n\n" + line.comments;
         }
+
+        // Use the same adjusted width as header
         part.push({
           value: concept,
-          width: 0.31 * columnsRatio,
+          width: conceptWidth * columnsRatio,
         });
+
         if (showDate) {
           part.push({
             value: line.date,
             width: 0.12 * columnsRatio,
           });
         }
+
         if (showQuantity) {
           part.push({
             value: line.quantity,
@@ -243,38 +276,62 @@ module.exports = {
           price: true,
           width: 0.18 * columnsRatio,
         });
-        if (showVat && line.vat > 0) {
+
+        if (showDiscount) {
           part.push({
             value:
-              formatCurrency((line.quantity * line.base * line.vat) / 100) +
-              ` EUR (${line.vat}%)`,
-            // price: true,
-            width: 0.14 * columnsRatio,
-          });
-        } else {
-          part.push({
-            value: "0 EUR (0%)",
-            width: 0.14 * columnsRatio,
+              formatCurrency(
+                (line.quantity * line.base * line.discount) / 100
+              ) + ` ${euro} (${line.discount}%)`,
+            width: 0.1 * columnsRatio,
           });
         }
+
+        if (showVat) {
+          if (line.vat > 0) {
+            part.push({
+              value:
+                formatCurrency(
+                  (line.quantity *
+                    line.base *
+                    (1 - line.discount / 100) *
+                    line.vat) /
+                    100
+                ) + ` ${euro} (${line.vat}%)`,
+              width: 0.1 * columnsRatio,
+            });
+          } else {
+            part.push({
+              value: `0 ${euro} (0%)`,
+              width: 0.1 * columnsRatio,
+            });
+          }
+        }
+
         if (showIrpf) {
           part.push({
             value:
               formatCurrency(
                 (-1 * line.quantity * line.base * line.irpf) / 100
-              ) + ` EUR (${line.irpf}%)`,
-            // price: true,
+              ) + ` ${euro} (${line.irpf}%)`,
             width: 0.1 * columnsRatio,
           });
         }
+
         part.push({
           value:
-            line.quantity * line.base -
-            (line.quantity * line.base * line.irpf) / 100 +
-            (line.quantity * line.base * line.vat) / 100,
+            line.quantity * line.base * (1 - line.discount / 100) -
+            (line.quantity *
+              line.base *
+              (1 - line.discount / 100) *
+              line.irpf) /
+              100 +
+            (line.quantity * line.base * (1 - line.discount / 100) * line.vat) /
+              100,
           price: true,
           width: 0.1 * columnsRatio,
         });
+
         parts.push(part);
       }
     }
@@ -339,12 +396,14 @@ module.exports = {
             width: logoWidth,
             height: height / ratio,
           },
-          qr: qr ? {
-            path: qr,
-            verifactu: true,
-            width: qrWidth,
-            height: qrWidth,
-          } : null,
+          qr: qr
+            ? {
+                path: qr,
+                verifactu: true,
+                width: qrWidth,
+                height: qrWidth,
+              }
+            : null,
         },
       },
       data: {
@@ -450,8 +509,6 @@ module.exports = {
             encoding: "base64",
           },
         ];
-
-        // process.env.EMAIL_PROVIDER === 'sendgrid' ? attachments[0].content = fs.readFileSync(`./public${invoice.pdf}`).toString("base64") : attachments[0].path = `${process.env.URL}${invoice.pdf}`
 
         const email = {
           to: invoice.contact.contact_email,
