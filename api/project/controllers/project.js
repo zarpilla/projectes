@@ -755,31 +755,31 @@ module.exports = {
     const id = ctx.params.id;
 
     const dataPhases = await strapi
-    .query("project")
-    .findOne({ id: id }, [
-      "project_phases",
-      "project_phases.incomes",
-      "project_phases.incomes.estimated_hours",
-      "project_phases.incomes.income_type",
-      "project_phases.incomes.estimated_hours.users_permissions_user",
-      "project_phases.incomes.invoice",
-      "project_phases.incomes.income",
-      "project_phases.expenses",
-      "project_phases.expenses.expense_type",
-      "project_phases.expenses.invoice",
-      "project_phases.expenses.expense",
-      "project_original_phases",
-      "project_original_phases.incomes",
-      "project_original_phases.incomes.estimated_hours",
-      "project_original_phases.incomes.income_type",
-      "project_original_phases.incomes.estimated_hours.users_permissions_user",
-      "project_original_phases.incomes.invoice",
-      "project_original_phases.incomes.income",
-      "project_original_phases.expenses",
-      "project_original_phases.expenses.expense_type",
-      "project_original_phases.expenses.invoice",
-      "project_original_phases.expenses.expense",
-    ]);
+      .query("project")
+      .findOne({ id: id }, [
+        "project_phases",
+        "project_phases.incomes",
+        "project_phases.incomes.estimated_hours",
+        "project_phases.incomes.income_type",
+        "project_phases.incomes.estimated_hours.users_permissions_user",
+        "project_phases.incomes.invoice",
+        "project_phases.incomes.income",
+        "project_phases.expenses",
+        "project_phases.expenses.expense_type",
+        "project_phases.expenses.invoice",
+        "project_phases.expenses.expense",
+        "project_original_phases",
+        "project_original_phases.incomes",
+        "project_original_phases.incomes.estimated_hours",
+        "project_original_phases.incomes.income_type",
+        "project_original_phases.incomes.estimated_hours.users_permissions_user",
+        "project_original_phases.incomes.invoice",
+        "project_original_phases.incomes.income",
+        "project_original_phases.expenses",
+        "project_original_phases.expenses.expense_type",
+        "project_original_phases.expenses.invoice",
+        "project_original_phases.expenses.expense",
+      ]);
 
     const moreData = await doProjectInfoCalculations(dataPhases, id);
     return { allByYear: moreData.allByYear };
@@ -1004,8 +1004,8 @@ module.exports = {
       "project_original_phases",
       "project_original_phases.incomes",
       "project_original_phases.incomes.estimated_hours",
-      "project_original_phases.incomes.estimated_hours.users_permissions_user"
-    ]
+      "project_original_phases.incomes.estimated_hours.users_permissions_user",
+    ];
 
     if (activities) {
       withRelated.push("activities");
@@ -1019,15 +1019,14 @@ module.exports = {
       projects = await strapi
         .query("project")
         .model.query((qb) => {
-          qb.select("id", "name", "published_at")
-          .where(
+          qb.select("id", "name", "published_at").where(
             "project_state",
             "in",
             project_state_in.split(",").map((s) => parseInt(s))
           );
         })
         .fetchAll({
-          withRelated: withRelated
+          withRelated: withRelated,
         });
     }
 
@@ -1437,9 +1436,27 @@ module.exports = {
 
     const promises = [];
     if (query._q) {
-      promises.push(strapi.query("project").search(query));
+      promises.push(
+        strapi
+          .query("project")
+          .search(query, [
+            "project_original_phases",
+            "project_original_phases.incomes",
+            "project_original_phases.incomes.estimated_hours",
+            "project_original_phases.incomes.estimated_hours.users_permissions_user",
+          ])
+      );
     } else {
-      promises.push(strapi.query("project").find(query));
+      promises.push(
+        strapi
+          .query("project")
+          .find(query, [
+            "project_original_phases",
+            "project_original_phases.incomes",
+            "project_original_phases.incomes.estimated_hours",
+            "project_original_phases.incomes.estimated_hours.users_permissions_user",
+          ])
+      );
     }
 
     promises.push(strapi.query("daily-dedication").find({ _limit: -1 }));
@@ -1808,7 +1825,9 @@ module.exports = {
     for await (const phase of phases) {
       const { incomes, expenses, ...item } = phase;
       if (!phase.id) {
-        const resp = await strapi.query(entity).create({ project: id, name: item.name });
+        const resp = await strapi
+          .query(entity)
+          .create({ project: id, name: item.name });
         phase.id = resp.id;
       } else if (phase.dirty) {
         await strapi
@@ -1822,7 +1841,6 @@ module.exports = {
           if (!income.id) {
             const { estimated_hours, ...item } = income;
             if (entity === "project-original-phases") {
-              
               const newIncome = await strapi.query("phase-income").create({
                 ...item,
                 project_original_phase: phase.id,
@@ -1863,7 +1881,7 @@ module.exports = {
         for await (const expense of expenses) {
           expense.total_amount = expense.quantity * expense.amount;
           if (!expense.id) {
-            if (entity === "project-original-phases") {              
+            if (entity === "project-original-phases") {
               await strapi.query("phase-expense").create({
                 ...expense,
                 project_original_phase: phase.id,
