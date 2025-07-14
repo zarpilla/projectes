@@ -1900,7 +1900,6 @@ module.exports = {
         }
       }
     }
-    console.log("phases updated!!");
   },
   createPhasesForAllProjects: async (ctx) => {
     return;
