@@ -1,0 +1,26 @@
+{
+  "collectionName": "components_orders_lines",
+  "info": {
+    "name": "lines",
+    "icon": "bars",
+    "description": ""
+  },
+  "options": {},
+  "attributes": {
+    "units": {
+      "type": "integer"
+    },
+    "kilograms": {
+      "type": "decimal"
+    },
+    "name": {
+      "type": "string"
+    },
+    "nif": {
+      "type": "string"
+    },
+    "picked_up": {
+      "type": "boolean"
+    }
+  }
+}

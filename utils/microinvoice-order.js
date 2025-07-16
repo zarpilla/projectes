@@ -75,7 +75,7 @@ module.exports = class MicroinvoiceOrder {
           secondaryColor : "#000100",
           headingSize    : 18,
           regularSize    : 12,
-          bigSize        : 18,
+          bigSize        : 16,
           smallSize    : 8,
         },        
       },
@@ -349,7 +349,7 @@ module.exports = class MicroinvoiceOrder {
    * @return void
    */
   generateDetails(type) {
-    let _maxWidth   = 250;
+    let _maxWidth   = 290;
     let _fontMargin = 4;
 
     let _fontSize = "regular"
@@ -526,62 +526,31 @@ module.exports = class MicroinvoiceOrder {
 
     this.setText("\n");
 
-    // if (this.options.data.invoice.details.header) {
-    //   this.generateTableRow("header", this.options.data.invoice.details.header);
-
-    //   (this.options.data.invoice.details.parts || []).forEach(part => {
-    //     this.generateTableRow("row", part);
-    //   });
-    // } else {
-    //   this.storage.cursor.y = this.document.y;
-    // }
-    
-
     this.storage.cursor.y += -25;
 
-    // (this.options.data.invoice.details.total || []).forEach((total, index) => {
-    //   let _mainRatio   = 0.6, _secondaryRatio = 0.3;
-    //   let _margin      = 30;
-    //   let _value       = total.value;
+  }
 
-    //   this.setCursor("x", this.options.style.table.quantity.position);
-    //   this.setText(total.label, {
-    //     colorCode  : "primary",
-    //     fontWeight : "bold",
-    //     marginTop  : 6,
-    //     maxWidth   : this.options.style.table.quantity.maxWidth,
-    //     skipDown   : true
-    //   });
+  /**
+   * Generates invoice parts
+   *
+   * @private
+   * @return void
+   */
+  generatePartsLines(pageNumber) {
+    
+    
+    // get details.parts and show only the index of details.parts[pageNumber]
+    const part = this.options.data.invoice.details.parts[pageNumber] || [];
+    console.log('part', part)
+    if (part) {
+      this.setText(part.value, {
+          colorCode : "secondary",          
+        })
+      // this.storage.cursor.y += 10 * parts.length;
+    } else {
+      // this.storage.cursor.y = this.document.y;
+    }
 
-    //   this.setCursor("x", this.options.style.table.total.position);
-
-    //   if (total.price === true) {
-    //     _value = this.prettyPrice(total.value);
-    //   }
-
-    //   if (this.options.data.invoice.details.total.length - 1 === index) {
-    //     this.setText(_value, {
-    //       colorCode  : "primary",
-    //       fontWeight : "bold",
-    //       maxWidth  : this.options.style.table.total.maxWidth - 4,
-    //       fontWeight : "bold",
-    //       align: "right"
-    //     });
-    //   } else {
-    //     this.setText(_value, {
-    //       colorCode : "secondary",
-    //       maxWidth  : this.options.style.table.total.maxWidth - 4,
-    //       fontWeight : "normal",
-    //       align: "right"
-    //     });
-    //   }
-
-    //   // this.setText(_value, {
-    //   //   colorCode : "secondary",
-    //   //   maxWidth  : this.options.style.table.total.maxWidth,
-    //   //   fontWeight : "bold",
-    //   // });
-    // });
   }
 
   /**
@@ -591,11 +560,11 @@ module.exports = class MicroinvoiceOrder {
    * @return void
    */
   generateLegal() {
-    this.storage.cursor.y += 20;    
+    this.storage.cursor.y += 40;    
 
     (this.options.data.invoice.legal || []).forEach(legal => {
         // this.generateLine();    
-        this.storage.cursor.y += 10;
+        this.storage.cursor.y += 8;
       this.setCursor("x", this.options.style.document.marginLeft);
 
       this.setText(legal.value, {
@@ -603,7 +572,7 @@ module.exports = class MicroinvoiceOrder {
         colorCode  : legal.color || "primary",
         align      : "left",
         marginTop  : 0,
-        maxWidth   : 250
+        maxWidth   : 290
       });
     });
   }
@@ -621,11 +590,11 @@ module.exports = class MicroinvoiceOrder {
 
   generateFooter() {
 
-    this.storage.cursor.y = 356;
+    this.storage.cursor.y = 366;
     this.generateLine();
     let _fontMargin = 0;
 
-    this.storage.cursor.y = 366;
+    this.storage.cursor.y = 376;
     this.setCursor("x", this.options.style.document.marginLeft);
     this.setCursor("y", this.storage.cursor.y);
 
@@ -638,42 +607,6 @@ module.exports = class MicroinvoiceOrder {
     });
 
     
-
-    // this.options.data.invoice['seller'].forEach(line => {
-    //   this.setText(`${line.label}:`, {
-    //     colorCode  : "primary",
-    //     fontWeight : "bold",
-    //     marginTop  : 8,
-    //     maxWidth   : _maxWidth
-    //   });
-
-    //   let _values = [];
-
-    //   if (Array.isArray(line.value)) {
-    //     _values = line.value;
-    //   } else {
-    //     _values = [line.value];
-    //   }
-
-    //   _values.forEach((value) => {
-        
-    //   });
-    // });
-
-    // this.storage[type].height = this.storage.cursor.y;
-
-    // (this.options.data.invoice.legal || []).forEach(legal => {
-    //     this.generateLine();    
-    //     this.storage.cursor.y += 10;
-    //   this.setCursor("x", this.options.style.document.marginLeft);
-
-    //   this.setText(legal.value, {
-    //     fontWeight : legal.weight,
-    //     colorCode  : legal.color || "primary",
-    //     align      : "left",
-    //     marginTop  : 0
-    //   });
-    // });
   }
 
   /**
@@ -801,20 +734,12 @@ module.exports = class MicroinvoiceOrder {
     });
 
     this.loadCustomFonts();
-    // this.generateHeader();
-    // this.generateDetails("customer");
-    // this.generateDetails("seller");    
-    // this.generateDetails("provider");    
-    // this.generateParts();    
-    // this.generateLegal();
-    // this.document.addPage( { size : "A5", layout : "landscape" } );
     for (let i = 0; i < this.options.data.pages; i++) {
       this.generateHeader(i);      
       this.generateDetails("customer");
-      //this.generateDetails("seller");    
       this.generateDetails("provider");    
-      this.generateParts();          
       this.generateLegal();    
+      this.generatePartsLines(i);
       this.generateRectangle(330, 260, 222, 80, this.options.style.text.primaryColor);  
       this.generateFooter();
       if (i < this.options.data.pages - 1) {

@@ -154,7 +154,8 @@ module.exports = {
 
     const verifactu = await strapi.query("verifactu").findOne();
 
-    const verifactuEnabled = verifactu.mode === "test" || verifactu.mode === "real";
+    const verifactuEnabled =
+      verifactu.mode === "test" || verifactu.mode === "real";
 
     const ordersEntities = await strapi
       .query("orders")
@@ -235,7 +236,7 @@ module.exports = {
             },
             500
           );
-          return
+          return;
         } else {
           const phase =
             project.project_phases[project.project_phases.length - 1];
@@ -248,7 +249,7 @@ module.exports = {
               },
               500
             );
-            return
+            return;
           }
         }
       }
@@ -415,7 +416,7 @@ module.exports = {
     //     value: moment(invoice.paid_date, "YYYY-MM-DD").format("DD-MM-YYYY"),
     //   });
     // }
-
+    /*
     const showDate = false;
     const showQuantity = false;
     const showVat = true; //invoice.lines.find((l) => l.vat > 0) !== undefined;
@@ -585,6 +586,7 @@ module.exports = {
       value: invoice.price * 1.21,
       price: true,
     });
+    */
 
     const legal = [];
 
@@ -626,6 +628,10 @@ module.exports = {
         invoice.contact_time_slot_2_end +
         "h";
     }
+
+    if (more.endsWith(" - ")) {
+      more = more.substring(0, more.length - 3);
+    }
     invoice.comments = more + "\n" + (invoice.comments ? invoice.comments : "");
 
     legal.push({
@@ -651,6 +657,35 @@ module.exports = {
       value: concept,
       color: "secondary",
     });
+    const parts = [];
+    if (invoice.lines && invoice.lines.length > 0) {
+      legal.push({
+        value: "RECOLLIDA:",
+        color: "primary",
+        weight: "bold",
+      });
+      // each lines can contain N boxes, ie. lines = [{units: 3, name: "name of the person 1", nif: "NIF of the person 1"}, {units: 1, name: "name of the person 2", nif: "NIF of the person 2"}]
+      // In the first page, the order will show:
+      // CAIXA 1/3 - name of the person 1 - NIF of the person 1
+      // In the 2nd page, the order will show:
+      // CAIXA 2/3 - name of the person 1 - NIF of the person 1
+      // In the 3rd page, the order will show:
+      // CAIXA 3/3 - name of the person 1 - NIF of the person 1
+      // In the 4th page, the order will show:
+      // CAIXA 1/1 - name of the person 2 - NIF of the person 2
+      for (const line of invoice.lines) {
+        if (line.units && line.units > 0) {
+          for (let i = 0; i < line.units; i++) {
+            parts.push({
+              value: `CAIXA ${i + 1}/${line.units} - ${line.name} - ${
+                line.nif
+              }`,
+              color: "secondary",
+            });
+          }
+        }
+      }
+    }
 
     const urls = [];
 
@@ -723,7 +758,7 @@ module.exports = {
 
           details: {
             // header: detailsHeader,
-            // parts: parts,
+            parts: parts,
             // total: total,
           },
         },
@@ -806,168 +841,6 @@ module.exports = {
         },
       ];
 
-      const showDate = false;
-      const showQuantity = false;
-      const showVat = true;
-      const showIrpf = false;
-
-      const detailsHeader = [];
-
-      let columnsWidth =
-        0.35 +
-        (showDate ? 0.1 : 0) +
-        (showQuantity ? 0.08 * 2 : 0) +
-        0.19 +
-        (showVat ? 0.1 : 0) +
-        (showIrpf ? 0.1 : 0) +
-        0.1;
-
-      let columnsRatio = 1 / columnsWidth;
-
-      detailsHeader.push({
-        value: "Concepte",
-        width: 0.35 * columnsRatio,
-      });
-      if (showDate) {
-        detailsHeader.push({
-          value: "Data",
-          width: 0.12 * columnsRatio,
-        });
-      }
-      if (showQuantity) {
-        detailsHeader.push({
-          value: "Q.",
-          width: 0.07 * columnsRatio,
-        });
-      }
-      if (showQuantity) {
-        detailsHeader.push({
-          value: "Base",
-          width: 0.09 * columnsRatio,
-        });
-      }
-      detailsHeader.push({
-        value: "Base imposable",
-        width: 0.18 * columnsRatio,
-      });
-      if (showVat) {
-        detailsHeader.push({
-          value: "IVA",
-          width: 0.1 * columnsRatio,
-        });
-      }
-      if (showIrpf) {
-        detailsHeader.push({
-          value: "IRPF",
-          width: 0.1 * columnsRatio,
-        });
-      }
-      detailsHeader.push({
-        value: "TOTAL",
-        width: 0.1 * columnsRatio,
-      });
-
-      const parts = [];
-
-      const line = order;
-      line.quantity = 1;
-      line.vat = 21;
-      line.base = line.price;
-      line.irpf = 0;
-      const part = [];
-
-      if (line.quantity && line.price) {
-        var concept = `${order.route.name.trim()}${
-          order.estimated_delivery_date
-            ? " - " + order.estimated_delivery_date
-            : ""
-        } - ${order.pickup.name} ${order.refrigerated ? "Refrigerada" : ""} - ${
-          order.units
-        } ${order.units > 1 ? "caixes" : "caixa"} - ${order.kilograms} kg`;
-        part.push({
-          value: concept,
-          width: 0.31 * columnsRatio,
-        });
-        if (showDate) {
-          part.push({
-            value: line.date,
-            width: 0.12 * columnsRatio,
-          });
-        }
-        if (showQuantity) {
-          part.push({
-            value: line.quantity,
-            width: 0.07 * columnsRatio,
-          });
-        }
-
-        if (showQuantity) {
-          part.push({
-            value: line.price,
-            width: 0.09 * columnsRatio,
-            price: true,
-          });
-        }
-
-        part.push({
-          value: line.quantity * line.price,
-          price: true,
-          width: 0.18 * columnsRatio,
-        });
-        if (showVat) {
-          part.push({
-            value:
-              formatCurrency((line.quantity * line.price * line.vat) / 100) +
-              ` EUR (${line.vat}%)`,
-            width: 0.14 * columnsRatio,
-          });
-        }
-        if (showIrpf) {
-          part.push({
-            value:
-              formatCurrency(
-                (-1 * line.quantity * line.base * line.irpf) / 100
-              ) + ` EUR (${line.irpf}%)`,
-            width: 0.1 * columnsRatio,
-          });
-        }
-        part.push({
-          value:
-            line.quantity * line.price -
-            (line.quantity * line.price * line.irpf) / 100 +
-            (line.quantity * line.price * line.vat) / 100,
-          price: true,
-          width: 0.1 * columnsRatio,
-        });
-        parts.push(part);
-      }
-
-      const total = [];
-      total.push({
-        label: "Base imposable",
-        value: order.price,
-        price: true,
-      });
-      if (showVat) {
-        total.push({
-          label: "IVA",
-          value: order.price * 0.21,
-          price: true,
-        });
-      }
-      if (showIrpf) {
-        total.push({
-          label: "IRPF",
-          value: -1 * 0,
-          price: true,
-        });
-      }
-      total.push({
-        label: "TOTAL",
-        value: order.price * 1.21,
-        price: true,
-      });
-
       const legal = [];
 
       legal.push({
@@ -1008,6 +881,11 @@ module.exports = {
           order.contact_time_slot_2_end +
           "h";
       }
+
+      if (more.endsWith(" - ")) {
+        more = more.substring(0, more.length - 3);
+      }
+
       order.comments = more + "\n" + (order.comments ? order.comments : "");
 
       legal.push({
@@ -1033,6 +911,36 @@ module.exports = {
         value: concept,
         color: "secondary",
       });
+
+      const parts = [];
+      if (order.lines && order.lines.length > 0) {
+        legal.push({
+          value: "RECOLLIDA:",
+          color: "primary",
+          weight: "bold",
+        });
+        // each lines can contain N boxes, ie. lines = [{units: 3, name: "name of the person 1", nif: "NIF of the person 1"}, {units: 1, name: "name of the person 2", nif: "NIF of the person 2"}]
+        // In the first page, the order will show:
+        // CAIXA 1/3 - name of the person 1 - NIF of the person 1
+        // In the 2nd page, the order will show:
+        // CAIXA 2/3 - name of the person 1 - NIF of the person 1
+        // In the 3rd page, the order will show:
+        // CAIXA 3/3 - name of the person 1 - NIF of the person 1
+        // In the 4th page, the order will show:
+        // CAIXA 1/1 - name of the person 2 - NIF of the person 2
+        for (const line of order.lines) {
+          if (line.units && line.units > 0) {
+            for (let i = 0; i < line.units; i++) {
+              parts.push({
+                value: `CAIXA ${i + 1}/${line.units} - ${line.name} - ${
+                  line.nif
+                }`,
+                color: "secondary",
+              });
+            }
+          }
+        }
+      }
 
       const invoiceHeaderBoxes = [...invoiceHeader];
 
@@ -1109,7 +1017,7 @@ module.exports = {
 
             details: {
               // header: detailsHeader,
-              // parts: parts,
+              parts: parts,
               // total: total,
             },
           },

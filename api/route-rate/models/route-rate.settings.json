@@ -61,6 +61,9 @@
     },
     "more10": {
       "type": "decimal"
+    },
+    "pickup_point": {
+      "type": "decimal"
     }
   }
 }

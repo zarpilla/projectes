@@ -40,6 +40,7 @@
       "type": "enumeration",
       "enum": [
         "pending",
+        "deposited",
         "processed",
         "delivered",
         "invoiced",
@@ -139,6 +140,17 @@
     },
     "contact_pickup_discount": {
       "type": "decimal"
+    },
+    "pickup_point": {
+      "type": "boolean"
+    },
+    "lines": {
+      "type": "component",
+      "repeatable": true,
+      "component": "orders.lines"
+    },
+    "picked_up": {
+      "type": "boolean"
     }
   }
 }

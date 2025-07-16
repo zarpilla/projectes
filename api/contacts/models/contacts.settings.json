@@ -123,6 +123,9 @@
     },
     "pickup_discount": {
       "type": "decimal"
+    },
+    "pickup_point": {
+      "type": "boolean"
     }
   }
 }
