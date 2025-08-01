@@ -25,6 +25,18 @@ const formatCurrency = (val) => {
 module.exports = {
   infoAll: async (ctx) => {
     const { year, month, ...query } = ctx.query;
+
+    if (year && !isNaN(year)) {
+      query['estimated_delivery_date_gte'] = `${year}-01-01`;
+      query['estimated_delivery_date_lte'] = `${year}-12-31`;
+    }
+
+    if (month && !isNaN(month)) {
+      query['estimated_delivery_date_gte'] = `${year}-${String(month).padStart(2, '0')}-01`;
+      const lastDayNumberOfMonth = moment(`${year}-${month}`, "YYYY-MM").daysInMonth();
+      query['estimated_delivery_date_lte'] = `${year}-${String(month).padStart(2, '0')}-${String(lastDayNumberOfMonth).padStart(2, '0')}`;
+    }
+
     const orders = await strapi.query("orders").find(query);
     const ordersInfo = orders
       .filter((o) => o.status !== "cancelled")
