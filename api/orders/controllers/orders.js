@@ -69,6 +69,8 @@ module.exports = {
           date: date,
           month: moment(date).format("MM"),
           year: moment(date).format("YYYY"),
+          multidelivery: o.multidelivery_discount ? "Sí" : "No",
+          pickup_discount: o.contact_pickup_discount ? "Sí" : "No"
         };
       });
 
