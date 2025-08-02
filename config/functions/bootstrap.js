@@ -405,7 +405,23 @@ async function importSeedData() {
       url: "https://github.com/zarpilla/projectes/tree/master/public/verifactu"
     });
   }
-  
+
+  // update software_version
+  await strapi.query("verifactu").update(
+    { id: verifactu.id },
+    { software_version: "2025.08.02" }
+  );
+
+  // insert verifactu-declarations
+  const verifactuDeclaration = await strapi.query("verifactu-declaration").findOne({ version: "2025.08.02" });
+  if (!verifactuDeclaration) {
+    await strapi.query("verifactu-declaration").create({
+      version: "2025.08.02",
+      url: "https://github.com/zarpilla/projectes/tree/master/public/verifactu"
+    });
+  }
+
+
 }
 
 module.exports = async () => {
