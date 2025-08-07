@@ -476,7 +476,7 @@ module.exports = {
     }-${invoice.contact.name}-${invoice.code}-H${hash.substring(16)}.pdf`;
     await myInvoice.generate(docName);
 
-    strapi
+    await strapi
       .query(doc)
       .update(
         { id: invoice.id },
