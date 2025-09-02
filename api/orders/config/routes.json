@@ -25,7 +25,7 @@
       }
     },
     {
-      "method": "GET",
+      "method": "POST",
       "path": "/orders/check-multidelivery/",
       "handler": "orders.checkMultidelivery",
       "config": {

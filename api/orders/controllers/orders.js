@@ -27,14 +27,23 @@ module.exports = {
     const { year, month, ...query } = ctx.query;
 
     if (year && !isNaN(year)) {
-      query['estimated_delivery_date_gte'] = `${year}-01-01`;
-      query['estimated_delivery_date_lte'] = `${year}-12-31`;
+      query["estimated_delivery_date_gte"] = `${year}-01-01`;
+      query["estimated_delivery_date_lte"] = `${year}-12-31`;
     }
 
     if (month && !isNaN(month)) {
-      query['estimated_delivery_date_gte'] = `${year}-${String(month).padStart(2, '0')}-01`;
-      const lastDayNumberOfMonth = moment(`${year}-${month}`, "YYYY-MM").daysInMonth();
-      query['estimated_delivery_date_lte'] = `${year}-${String(month).padStart(2, '0')}-${String(lastDayNumberOfMonth).padStart(2, '0')}`;
+      query["estimated_delivery_date_gte"] = `${year}-${String(month).padStart(
+        2,
+        "0"
+      )}-01`;
+      const lastDayNumberOfMonth = moment(
+        `${year}-${month}`,
+        "YYYY-MM"
+      ).daysInMonth();
+      query["estimated_delivery_date_lte"] = `${year}-${String(month).padStart(
+        2,
+        "0"
+      )}-${String(lastDayNumberOfMonth).padStart(2, "0")}`;
     }
 
     const orders = await strapi.query("orders").find(query);
@@ -70,7 +79,7 @@ module.exports = {
           month: moment(date).format("MM"),
           year: moment(date).format("YYYY"),
           multidelivery: o.multidelivery_discount ? "Sí" : "No",
-          pickup_discount: o.contact_pickup_discount ? "Sí" : "No"
+          pickup_discount: o.contact_pickup_discount ? "Sí" : "No",
         };
       });
 
@@ -1067,8 +1076,37 @@ module.exports = {
 
     ctx.send({ urls: mergedPdfPath.substring("./public".length) });
   },
-
   checkMultidelivery: async (ctx) => {
+    const { id, date, contactId, ownerId } = ctx.request.body;
+
+    console.log("checkMultidelivery", id, date, contactId, ownerId, moment(date).format("YYYY-MM-DD"))
+
+    const owner = await strapi
+      .query("user", "users-permissions")
+      .findOne({ id: ownerId });
+
+    const ownerFactor = owner.multidelivery_discount === false ? 0 : 1;
+
+    const me = await strapi.query("me").findOne();
+
+    const ordersOfDateAndContact = await strapi.query("orders").find({
+      estimated_delivery_date: moment(date).format("YYYY-MM-DD"),
+      contact: contactId,
+      _limit: -1,
+    });
+
+    const others = id
+      ? ordersOfDateAndContact.filter(
+          (o) => o.id.toString() !== id.toString() && o.status !== "cancelled"
+        )
+      : ordersOfDateAndContact;
+
+    return {
+      multidelivery_discount:
+        others.length > 0 ? ownerFactor * me.orders_options.multidelivery_discount : 0,
+    };
+  },
+  zcheckMultidelivery: async (ctx) => {
     const firstDateOfMonth = moment().startOf("month").format("YYYY-MM-DD");
     const date1 = moment().format("YYYY-MM-DD");
     const ordersOfDate = await strapi.query("orders").find({

@@ -153,6 +153,7 @@ async function importSeedData() {
       "pdf",
       "infoall",
       "pdfmultiple",
+      "checkmultidelivery"
     ],
     "orders-imports": ["create", "find", "findone", "update"],
     "delivery-type": ["find"],
