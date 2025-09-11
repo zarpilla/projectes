@@ -1079,8 +1079,6 @@ module.exports = {
   checkMultidelivery: async (ctx) => {
     const { id, date, contactId, ownerId } = ctx.request.body;
 
-    console.log("checkMultidelivery", id, date, contactId, ownerId, moment(date).format("YYYY-MM-DD"))
-
     const owner = await strapi
       .query("user", "users-permissions")
       .findOne({ id: ownerId });
@@ -1104,50 +1102,6 @@ module.exports = {
     return {
       multidelivery_discount:
         others.length > 0 ? ownerFactor * me.orders_options.multidelivery_discount : 0,
-    };
-  },
-  zcheckMultidelivery: async (ctx) => {
-    const firstDateOfMonth = moment().startOf("month").format("YYYY-MM-DD");
-    const date1 = moment().format("YYYY-MM-DD");
-    const ordersOfDate = await strapi.query("orders").find({
-      created_at_gte: firstDateOfMonth + "T00:00:00.000Z",
-      created_at_lte: date1 + "T23:59:59.999Z",
-      _limit: -1,
-    });
-
-    const distinctOrdersData = ordersOfDate.map((o) => ({
-      estimated_delivery_date: o.estimated_delivery_date,
-      contact: o.contact ? o.contact.id : "-",
-    }));
-
-    const groupedOrders = distinctOrdersData.reduce((acc, curr) => {
-      const key = `${curr.estimated_delivery_date}-${curr.contact}`;
-      if (!acc[key]) {
-        acc[key] = { ...curr, count: 0 };
-      }
-      acc[key].count++;
-      return acc;
-    }, {});
-    const distinctOrdersDataCount = Object.values(groupedOrders)
-      .map((item) => ({
-        estimated_delivery_date: item.estimated_delivery_date,
-        contact: item.contact,
-        count: item.count,
-        items: ordersOfDate.filter(
-          (o) =>
-            o.estimated_delivery_date === item.estimated_delivery_date &&
-            o.contact.id === item.contact
-        ),
-      }))
-      .filter((item) => item.count > 1);
-
-    return {
-      distinctOrdersDataCount: distinctOrdersDataCount,
-      // distinctOrdersData: distinctOrdersData,
-      // orders: ordersOfDate,
-      meta: {
-        count: ordersOfDate.length,
-      },
     };
   },
 };

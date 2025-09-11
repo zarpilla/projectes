@@ -54,6 +54,12 @@
     },
     "pickup": {
       "model": "pickups"
+    },
+    "volume_discount_number_of_orders": {
+      "type": "integer"
+    },
+    "volume_discount_price": {
+      "type": "decimal"
     }
   }
 }

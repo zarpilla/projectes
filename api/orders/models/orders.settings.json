@@ -151,6 +151,9 @@
     },
     "picked_up": {
       "type": "boolean"
+    },
+    "volume_discount": {
+      "type": "decimal"
     }
   }
 }
