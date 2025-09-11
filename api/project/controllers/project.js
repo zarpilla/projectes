@@ -402,6 +402,51 @@ const calculateEstimatedTotals = async (
   const totalsByDay = [];
   const rowsByYear = [];
 
+  // Pre-create Maps for O(1) lookups instead of O(n) array.find()
+  const festivesByDate = new Map();
+  const festivesByUserAndDate = new Map();
+  festives.forEach(f => {
+    const key = f.date;
+    if (!festivesByDate.has(key)) {
+      festivesByDate.set(key, []);
+    }
+    festivesByDate.get(key).push(f);
+    
+    if (f.users_permissions_user) {
+      const userKey = `${f.users_permissions_user.id}_${f.date}`;
+      festivesByUserAndDate.set(userKey, f);
+    }
+  });
+
+  // Pre-create Map for daily dedications lookup
+  const dedicationsByUser = new Map();
+  dailyDedications.forEach(d => {
+    const userId = d.users_permissions_user.id;
+    if (!dedicationsByUser.has(userId)) {
+      dedicationsByUser.set(userId, []);
+    }
+    dedicationsByUser.get(userId).push(d);
+  });
+
+  // Cache moment objects to avoid recreating them
+  const momentCache = new Map();
+  const getMoment = (dateStr) => {
+    if (!momentCache.has(dateStr)) {
+      momentCache.set(dateStr, moment(dateStr, "YYYY-MM-DD"));
+    }
+    return momentCache.get(dateStr);
+  };
+
+  // Cache formatted dates to avoid repeated formatting
+  const formatCache = new Map();
+  const getFormattedDate = (momentObj, format) => {
+    const key = `${momentObj.format("YYYY-MM-DD")}_${format}`;
+    if (!formatCache.has(key)) {
+      formatCache.set(key, momentObj.format(format));
+    }
+    return formatCache.get(key);
+  };
+
   if (phases && phases.length) {
     for (var i = 0; i < phases.length; i++) {
       const phase = phases[i];
@@ -435,43 +480,40 @@ const calculateEstimatedTotals = async (
                 hours.users_permissions_user.id
               ) {
                 let mdiff = 1;
+                const userId = hours.users_permissions_user.id;
+                
+                // Get user's daily dedications once
+                const userDedications = dedicationsByUser.get(userId) || [];
 
                 if (hours.quantity_type && hours.quantity_type === "month") {
+                  const fromMoment = getMoment(hours.from);
+                  const toMoment = getMoment(hours.to);
                   mdiff = Math.round(
-                    moment
-                      .duration(
-                        moment(hours.to, "YYYY-MM-DD").diff(
-                          moment(hours.from, "YYYY-MM-DD")
-                        )
-                      )
-                      .asDays()
+                    moment.duration(toMoment.diff(fromMoment)).asDays()
                   );
+                  
                   for (let i = 0; i < mdiff; i++) {
-                    const day = moment(hours.from, "YYYY-MM-DD").add(i, "days");
+                    const day = fromMoment.clone().add(i, "days");
+                    const dayStr = getFormattedDate(day, "YYYY-MM-DD");
 
-                    const festive = festives.find(
-                      (f) =>
-                        f.date === day.format("YYYY-MM-DD") &&
-                        ((f.users_permissions_user &&
-                          f.users_permissions_user.id ==
-                            hours.users_permissions_user.id) ||
-                          !f.users_permissions_user)
-                    );
+                    // Fast festive lookup using Maps
+                    const userFestiveKey = `${userId}_${dayStr}`;
+                    const festive = festivesByUserAndDate.has(userFestiveKey) 
+                      ? festivesByUserAndDate.get(userFestiveKey)
+                      : (festivesByDate.get(dayStr) || []).find(f => !f.users_permissions_user);
 
                     if (![0, 6].includes(day.day()) && !festive) {
                       const q = hours.quantity / 5 / 4.3;
                       subphase_estimated_hours += q;
                       total_estimated_hours += q;
 
-                      const dd = dailyDedications.find(
+                      // Fast daily dedication lookup
+                      const dd = userDedications.find(
                         (d) =>
-                          d.users_permissions_user.id ===
-                            hours.users_permissions_user.id &&
-                          d.from <= day.format("YYYY-MM-DD") &&
-                          d.to >= day.format("YYYY-MM-DD")
+                          d.from <= dayStr &&
+                          d.to >= dayStr
                       );
-                      const costByHour =
-                        dd && dd.costByHour ? dd.costByHour : 0;
+                      const costByHour = dd && dd.costByHour ? dd.costByHour : 0;
                       hours.total_amount += q * costByHour;
                       total_estimated_hours_price += q * costByHour;
 
@@ -479,18 +521,19 @@ const calculateEstimatedTotals = async (
                         day,
                         q,
                         costByHour,
-                        userId: hours.users_permissions_user.id,
+                        userId: userId,
                         project: data.id,
                         project_name: data.name,
                       });
 
                       if (!real) {
+                        const yearStr = getFormattedDate(day, "YYYY");
                         rowsByYear.push({
-                          year: day.format("YYYY"),
+                          year: yearStr,
                           total_estimated_hours: q,
                         });
                         rowsByYear.push({
-                          year: day.format("YYYY"),
+                          year: yearStr,
                           total_estimated_hours_price: q * costByHour,
                         });
                       }
@@ -500,41 +543,34 @@ const calculateEstimatedTotals = async (
                   hours.quantity_type &&
                   hours.quantity_type === "week"
                 ) {
+                  const fromMoment = getMoment(hours.from);
+                  const toMoment = getMoment(hours.to);
                   mdiff = Math.round(
-                    moment
-                      .duration(
-                        moment(hours.to, "YYYY-MM-DD").diff(
-                          moment(hours.from, "YYYY-MM-DD")
-                        )
-                      )
-                      .asDays()
+                    moment.duration(toMoment.diff(fromMoment)).asDays()
                   );
+                  
                   for (let i = 0; i < mdiff; i++) {
-                    const day = moment(hours.from, "YYYY-MM-DD").add(i, "days");
+                    const day = fromMoment.clone().add(i, "days");
+                    const dayStr = getFormattedDate(day, "YYYY-MM-DD");
 
-                    const festive = festives.find(
-                      (f) =>
-                        f.date === day.format("YYYY-MM-DD") &&
-                        ((f.users_permissions_user &&
-                          f.users_permissions_user.id ==
-                            hours.users_permissions_user.id) ||
-                          !f.users_permissions_user)
-                    );
+                    // Fast festive lookup using Maps
+                    const userFestiveKey = `${userId}_${dayStr}`;
+                    const festive = festivesByUserAndDate.has(userFestiveKey) 
+                      ? festivesByUserAndDate.get(userFestiveKey)
+                      : (festivesByDate.get(dayStr) || []).find(f => !f.users_permissions_user);
 
                     if (![0, 6].includes(day.day()) && !festive) {
                       const q = hours.quantity / 5;
                       subphase_estimated_hours += q;
                       total_estimated_hours += q;
 
-                      const dd = dailyDedications.find(
+                      // Fast daily dedication lookup
+                      const dd = userDedications.find(
                         (d) =>
-                          d.users_permissions_user.id ===
-                            hours.users_permissions_user.id &&
-                          d.from <= day.format("YYYY-MM-DD") &&
-                          d.to >= day.format("YYYY-MM-DD")
+                          d.from <= dayStr &&
+                          d.to >= dayStr
                       );
-                      const costByHour =
-                        dd && dd.costByHour ? dd.costByHour : 0;
+                      const costByHour = dd && dd.costByHour ? dd.costByHour : 0;
                       hours.total_amount += q * costByHour;
                       total_estimated_hours_price += q * costByHour;
 
@@ -542,18 +578,19 @@ const calculateEstimatedTotals = async (
                         day,
                         q,
                         costByHour,
-                        userId: hours.users_permissions_user.id,
+                        userId: userId,
                         project: data.id,
                         project_name: data.name,
                       });
 
                       if (!real) {
+                        const yearStr = getFormattedDate(day, "YYYY");
                         rowsByYear.push({
-                          year: day.format("YYYY"),
+                          year: yearStr,
                           total_estimated_hours: q,
                         });
                         rowsByYear.push({
-                          year: day.format("YYYY"),
+                          year: yearStr,
                           total_estimated_hours_price: q * costByHour,
                         });
                       }
@@ -563,10 +600,9 @@ const calculateEstimatedTotals = async (
                   subphase_estimated_hours += hours.quantity * mdiff;
                   total_estimated_hours += hours.quantity * mdiff;
 
-                  const dd = dailyDedications.find(
+                  // Fast daily dedication lookup using pre-filtered array
+                  const dd = userDedications.find(
                     (d) =>
-                      d.users_permissions_user.id ===
-                        hours.users_permissions_user.id &&
                       d.from <= hours.from &&
                       d.to >= hours.from
                   );
@@ -577,38 +613,32 @@ const calculateEstimatedTotals = async (
                   total_estimated_hours_price +=
                     (hours.quantity ? hours.quantity : 0) * mdiff * costByHour;
 
+                  const fromMoment = getMoment(hours.from);
+                  const toMoment = getMoment(hours.to);
                   mdiff = Math.round(
-                    moment
-                      .duration(
-                        moment(hours.to, "YYYY-MM-DD").diff(
-                          moment(hours.from, "YYYY-MM-DD")
-                        )
-                      )
-                      .asMonths()
+                    moment.duration(toMoment.diff(fromMoment)).asMonths()
                   );
 
                   for (let i = 0; i < mdiff; i++) {
-                    const day = moment(hours.from, "YYYY-MM-DD").add(
-                      i,
-                      "month"
-                    );
+                    const day = fromMoment.clone().add(i, "month");
 
                     totalsByDay.push({
                       day: day,
                       q: hours.quantity / mdiff,
                       costByHour,
-                      userId: hours.users_permissions_user.id,
+                      userId: userId,
                       project: data.id,
                       project_name: data.name,
                     });
 
                     if (!real) {
+                      const yearStr = getFormattedDate(day, "YYYY");
                       rowsByYear.push({
-                        year: day.format("YYYY"),
+                        year: yearStr,
                         total_estimated_hours: hours.quantity / mdiff,
                       });
                       rowsByYear.push({
-                        year: day.format("YYYY"),
+                        year: yearStr,
                         total_estimated_hours_price:
                           (hours.quantity / mdiff) * costByHour,
                       });
@@ -1057,10 +1087,23 @@ module.exports = {
     if (ctx.query._q) {
       promises.push(strapi.query("project").search(ctx.query));
     } else {
+
+      const projectQuery = { _limit: -1, 
+        project_state_eq: ctx.query && ctx.query._where && ctx.query._where.project_state_eq ? ctx.query._where.project_state_eq : null,
+        project_state_in: ctx.query && ctx.query._where && ctx.query._where.project_state_in ? ctx.query._where.project_state_in : null
+       };
+
+      
+      if (year) {
+        projectQuery.activities = { date: { gte: `${year}-01-01`, lte: `${year}-12-31` } };
+      }
+
+      projectQuery.published_at_null = false;
+
       promises.push(
         strapi
           .query("project")
-          .find({ _limit: -1 }, [
+          .find({ ...projectQuery }, [
             "project_state",
             "activities",
             "project_phases",
@@ -1100,36 +1143,18 @@ module.exports = {
     const dailyDedications = results[1];
     const festives = results[2];
 
-    projects = projects.filter((p) => p.published_at !== null);
-    if (ctx.query && ctx.query._where && ctx.query._where.project_state_eq) {
-      projects = projects.filter(
-        (p) =>
-          p.project_state &&
-          p.project_state.id == ctx.query._where.project_state_eq
-      );
-    } else if (
-      ctx.query &&
-      ctx.query._where &&
-      ctx.query._where.project_state_in
-    ) {
-      projects = projects.filter(
-        (p) =>
-          p.project_state &&
-          ctx.query._where.project_state_in
-            .split(",")
-            .includes(p.project_state.id.toString())
-      );
-    }
+    //projects = projects.filter((p) => p.published_at !== null);
 
     // console.log('projects', projects[0].activities ? projects[0].activities[0] : 0)
-    const activities = [];
-    projects.forEach((p) => {
-      p.activities.forEach((a) => {
-        if (!year || (a.date && a.date.substring(0, 4) === year.toString())) {
-          activities.push(a);
-        }
-      });
-    });
+    const activities = _.flatten(projects.map((p) => { return p.activities ? p.activities : [] }));
+
+    // projects.forEach((p) => {
+    //   p.activities.forEach((a) => {
+    //     if (!year || (a.date && a.date.substring(0, 4) === year.toString())) {
+    //       activities.push(a);
+    //     }
+    //   });
+    // });
 
     var response = [];
 
@@ -1157,6 +1182,16 @@ module.exports = {
       });
 
     const groupedActivitiesObj = JSON.parse(JSON.stringify(groupedActivities));
+    
+    // Create a Map for faster activity lookup by projectId
+    const activitiesByProject = new Map();
+    groupedActivitiesObj.forEach(activity => {
+      if (!activitiesByProject.has(activity.projectId)) {
+        activitiesByProject.set(activity.projectId, []);
+      }
+      activitiesByProject.get(activity.projectId).push(activity);
+    });
+    
     // console.log('activities', activities.length)
     // console.log('grouped', grouped)
 
@@ -1170,8 +1205,9 @@ module.exports = {
         : 100.0;
     const deductible_ratio = (100.0 - deductible_vat_pct) / 100.0;
 
-    for (var i = 0; i < projects.length; i++) {
-      const p = projects[i];
+    
+    // Parallelize project processing instead of sequential for loop
+    const projectResponses = await Promise.all(projects.map(async (p) => {
       const projectInfo = {
         id: p.id,
         project_name: p.name,
@@ -1187,6 +1223,8 @@ module.exports = {
         grantable: p.grantable ? 1 : 0,
       };
 
+      const projectResponse = [];
+
       for (var j = 0; j < p.project_phases.length; j++) {
         const ph = p.project_phases[j];
         for (var k = 0; k < ph.incomes.length; k++) {
@@ -1199,7 +1237,7 @@ module.exports = {
               sph.paid && document
                 ? document.emitted
                 : sph.date_estimate_document;
-            response.push({
+            projectResponse.push({
               ...projectInfo,
               ...phaseInfo,
               type: "income",
@@ -1227,7 +1265,7 @@ module.exports = {
               sph.paid && document
                 ? document.emitted
                 : sph.date_estimate_document;
-            response.push({
+            projectResponse.push({
               ...projectInfo,
               ...phaseInfo,
               type: "expense",
@@ -1259,7 +1297,7 @@ module.exports = {
           if (sph.quantity && sph.amount) {
             const document = sph.income || sph.invoice;
             const date = sph.date_estimate_document || sph.date;
-            response.push({
+            projectResponse.push({
               ...projectInfo,
               ...phaseInfo,
               type: "income",
@@ -1283,7 +1321,7 @@ module.exports = {
           if (sph.quantity && sph.amount) {
             const document = sph.expense || sph.invoice;
             const date = sph.date_estimate_document || sph.date;
-            response.push({
+            projectResponse.push({
               ...projectInfo,
               ...phaseInfo,
               type: "expense",
@@ -1315,7 +1353,7 @@ module.exports = {
         for (var j = 0; j < p.periodification.length; j++) {
           const pp = p.periodification[j];
 
-          response.push({
+          projectResponse.push({
             ...projectInfo,
             ...noPhaseInfo,
             type: "income",
@@ -1327,7 +1365,7 @@ module.exports = {
             row_type: "Periodificació",
           });
 
-          response.push({
+          projectResponse.push({
             ...projectInfo,
             ...noPhaseInfo,
             type: "expense",
@@ -1341,13 +1379,11 @@ module.exports = {
         }
       }
 
-      const projectActivities = groupedActivitiesObj.filter(
-        (a) => a.projectId === projectInfo.id
-      );
+      const projectActivities = activitiesByProject.get(projectInfo.id) || [];
 
       for (var j = 0; j < projectActivities.length; j++) {
         const pa = projectActivities[j];
-        response.push({
+        projectResponse.push({
           ...projectInfo,
           ...noPhaseInfo,
           type: "real_hours",
@@ -1395,7 +1431,7 @@ module.exports = {
       for (var j = 0; j < groupedTotalsByDayObj.length; j++) {
         const g = groupedTotalsByDayObj[j];
 
-        response.push({
+        projectResponse.push({
           ...projectInfo,
           ...noPhaseInfo,
           type: "estimated_hours",
@@ -1409,7 +1445,12 @@ module.exports = {
           // document: "0",
         });
       }
-    }
+
+      return projectResponse;
+    }));
+
+    // Flatten all project responses into a single array
+    response = _.flatten(projectResponses);
 
     if (year) {
       response = response.filter((r) => r.year === year);
@@ -1425,9 +1466,11 @@ module.exports = {
       response = response.filter((r) => r.paid === (paid === "true"));
     }
 
+    const returnData = _.sortBy(response, ["year", "month", "name"]);
+
     // Removing some info
     // const newArray = projects.map(({ phases, activities, emitted_invoices, received_invoices, tickets, diets, emitted_grants, received_grants, quotes, original_phases, incomes, expenses, strategies, estimated_hours, intercooperations, clients, received_expenses, received_incomes, ...item }) => item)
-    return _.sortBy(response, ["year", "month", "name"]);
+    return returnData;
   },
 
   async findEstimatedTotalsByDay(ctx) {
