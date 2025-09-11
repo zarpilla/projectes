@@ -133,7 +133,11 @@ module.exports = class Microinvoice {
           loaded : false
         }
       },
-      document : null
+      document : null,
+      table : {
+        inTableSection : false,
+        headerHeight : 0
+      }
     };
   }
 
@@ -365,6 +369,45 @@ module.exports = class Microinvoice {
   }
 
   /**
+   * Generates table headers only
+   *
+   * @private
+   * @return void
+   */
+  generateTableHeader() {
+    // Add some spacing before the header
+    this.setText("\n");
+    this.generateTableRow("header", this.options.data.invoice.details.header);
+    this.storage.table.headerHeight = this.storage.cursor.y;
+  }
+
+  /**
+   * Check if we need to add a new page and headers
+   *
+   * @private
+   * @param  {number} requiredSpace - Space needed for the next content
+   * @return void
+   */
+  checkPageBreakAndAddHeaders(requiredSpace = 50) {
+    const currentY = this.storage.cursor.y;
+    const pageHeight = this.document.page.height;
+    const marginBottom = 50; // Leave some margin at the bottom
+    
+    // Check if we need a new page
+    if (currentY + requiredSpace > pageHeight - marginBottom) {
+      // Add new page
+      this.document.addPage();
+      
+      // Reset cursor to top of new page
+      this.setCursor("y", this.options.style.document.marginTop);
+      
+      // Add table headers on the new page
+      if (this.storage.table.inTableSection) {
+        this.generateTableHeader();
+      }
+    }
+  }
+  /**
    * Generates a row
    *
    * @private
@@ -374,6 +417,11 @@ module.exports = class Microinvoice {
    */
   generateTableRow(type, columns) {
     let _fontWeight = "normal", _colorCode = "secondary";
+
+    // Check for page break before adding row (except for headers)
+    if (type !== "header") {
+      this.checkPageBreakAndAddHeaders(40); // Estimate row height
+    }
 
     this.storage.cursor.y = this.document.y;
 
@@ -493,13 +541,22 @@ module.exports = class Microinvoice {
 
     this.setCursor("y", _startY);
 
-    this.setText("\n");
+    // Mark that we're entering the table section
+    this.storage.table.inTableSection = true;
 
-    this.generateTableRow("header", this.options.data.invoice.details.header);
+    // Generate the initial table header
+    this.generateTableHeader();
 
     (this.options.data.invoice.details.parts || []).forEach(part => {
       this.generateTableRow("row", part);
     });
+
+    // Mark that we're leaving the table section
+    this.storage.table.inTableSection = false;
+
+    // Check if we have enough space for the totals section
+    const totalsSectionHeight = (this.options.data.invoice.details.total || []).length * 20 + 50;
+    this.checkPageBreakAndAddHeaders(totalsSectionHeight);
 
     this.storage.cursor.y += 50;
 
@@ -555,6 +612,10 @@ module.exports = class Microinvoice {
    * @return void
    */
   generateLegal() {
+    // Check if we have enough space for the legal section
+    const legalSectionHeight = (this.options.data.invoice.legal || []).length * 25 + 60;
+    this.checkPageBreakAndAddHeaders(legalSectionHeight);
+    
     this.storage.cursor.y += 40;    
 
     (this.options.data.invoice.legal || []).forEach(legal => {
