@@ -337,6 +337,20 @@ module.exports = {
     }
 
     const total = [];
+    const hasDiscount = invoice.lines.some(line => line.discount > 0);
+
+    if (hasDiscount) {
+      total.push({
+        label: "Base sense descompte",
+        value: invoice.lines.reduce((sum, line) => sum + (line.quantity * line.base), 0),
+        price: true,
+      });
+      total.push({
+        label: "Descompte",
+        value: invoice.lines.reduce((sum, line) => sum + (line.quantity * line.base * line.discount) / 100, 0),
+        price: true,
+      });
+    }
     total.push({
       label: "Base imposable",
       value: invoice.total_base,

@@ -1,6 +1,188 @@
-"use strict";
+("use strict");
 const _ = require("lodash");
 const moment = require("moment");
+
+// --- VOLUME DISCOUNT LOGIC ---
+const checkVolumeDiscount = async (
+  id,
+  date,
+  routeId,
+  ownerId,
+  currentStatus
+) => {
+  // Find all orders for the same route, date, and owner (excluding cancelled and this order)
+  const ordersOfDateRouteOwner = await strapi.query("orders").find({
+    estimated_delivery_date: moment(date).format("YYYY-MM-DD"),
+    route: routeId,
+    owner: ownerId,
+    _limit: -1,
+  });
+
+  const others = ordersOfDateRouteOwner.filter(
+    (o) => o.id.toString() !== id.toString() && o.status !== "cancelled"
+  );
+
+  // Get the route entity for discount config
+  let route = null;
+  if (routeId) {
+    route = await strapi.query("route").findOne({ id: routeId });
+  }
+
+  let discount = 0;
+  let eligible = false;
+  if (
+    route &&
+    route.volume_discount_number_of_orders > 0 &&
+    route.volume_discount_price > 0
+  ) {
+    // Count current + others (if not cancelled)
+    const count =
+      (currentStatus !== "cancelled" ? 1 : 0) +
+      others.filter((o) => o.status !== "cancelled").length;
+    if (count >= route.volume_discount_number_of_orders) {
+      discount = route.volume_discount_price;
+      eligible = true;
+    }
+  }
+  return {
+    others,
+    eligible,
+    discount,
+  };
+};
+
+const updateVolumeDiscountForOrders = async (orders, discount) => {
+  for await (const order of orders) {
+    if (order.volume_discount !== discount) {
+      await strapi
+        .query("orders")
+        .update(
+          { id: order.id },
+          { volume_discount: discount, _internal: true }
+        );
+    }
+  }
+};
+
+const processVolumeDiscountForCurrentOrder = async (orderId, data) => {
+  if (data._internal) return;
+  // Only if route, owner, and date are present
+  if (!data.route || !data.owner || !data.estimated_delivery_date) return;
+  const routeId = data.route.id ? data.route.id : data.route;
+  const ownerId = data.owner.id ? data.owner.id : data.owner;
+  const { eligible, discount } = await checkVolumeDiscount(
+    orderId,
+    data.estimated_delivery_date,
+    routeId,
+    ownerId,
+    data.status
+  );
+  if (eligible) {
+    data.volume_discount = discount;
+  } else {
+    data.volume_discount = 0;
+  }
+};
+
+const processVolumeDiscountForOtherOrders = async (
+  orderId,
+  currentData,
+  previousOrder = null
+) => {
+  if (currentData._internal) return;
+  if (
+    !currentData.route ||
+    !currentData.owner ||
+    !currentData.estimated_delivery_date
+  )
+    return;
+  const routeId = currentData.route.id
+    ? currentData.route.id
+    : currentData.route;
+  const ownerId = currentData.owner.id
+    ? currentData.owner.id
+    : currentData.owner;
+  const { eligible, discount, others } = await checkVolumeDiscount(
+    orderId,
+    currentData.estimated_delivery_date,
+    routeId,
+    ownerId,
+    currentData.status
+  );
+  if (eligible && others.length > 0) {
+    await updateVolumeDiscountForOrders(others, discount);
+  } else if (!eligible && others.length > 0) {
+    // Remove discount from others if not eligible
+    for await (const order of others) {
+      if (order.volume_discount > 0) {
+        await strapi
+          .query("orders")
+          .update({ id: order.id }, { volume_discount: 0, _internal: true });
+      }
+    }
+  }
+  // If previousOrder exists and key fields changed, update previous group
+  if (previousOrder && orderId !== 0) {
+    const dateChanged =
+      previousOrder.estimated_delivery_date !==
+      currentData.estimated_delivery_date;
+    const routeChanged =
+      (previousOrder.route?.id || previousOrder.route) !==
+      (currentData.route?.id || currentData.route);
+    const ownerChanged =
+      (previousOrder.owner?.id || previousOrder.owner) !==
+      (currentData.owner?.id || currentData.owner);
+    const statusChanged = previousOrder.status !== currentData.status;
+    if (dateChanged || routeChanged || ownerChanged || statusChanged) {
+      if (dateChanged || routeChanged || ownerChanged) {
+        // Check previous group
+        const prevRouteId = previousOrder.route?.id || previousOrder.route;
+        const prevOwnerId = previousOrder.owner?.id || previousOrder.owner;
+        const prevGroup = await checkVolumeDiscount(
+          orderId,
+          previousOrder.estimated_delivery_date,
+          prevRouteId,
+          prevOwnerId,
+          "active"
+        );
+        if (prevGroup.others.length > 0) {
+          const count = prevGroup.others.length;
+          const prevRoute = await strapi
+            .query("route")
+            .findOne({ id: prevRouteId });
+          if (
+            prevRoute &&
+            prevRoute.volume_discount_number_of_orders > 0 &&
+            prevRoute.volume_discount_price > 0 &&
+            count < prevRoute.volume_discount_number_of_orders
+          ) {
+            // Remove discount from previous group
+            for await (const order of prevGroup.others) {
+              if (order.volume_discount > 0) {
+                await strapi
+                  .query("orders")
+                  .update(
+                    { id: order.id },
+                    { volume_discount: 0, _internal: true }
+                  );
+              }
+            }
+          } else if (
+            prevRoute &&
+            prevRoute.volume_discount_number_of_orders > 0 &&
+            prevRoute.volume_discount_price > 0 &&
+            count >= prevRoute.volume_discount_number_of_orders
+          ) {
+            await updateVolumeDiscountForOrders(
+              prevGroup.others,
+              prevRoute.volume_discount_price
+            );
+          }
+        }
+      }
+    }
+  }
+};
 
 const checkMultidelivery = async (id, date, contactId, currentStatus) => {
   const ordersOfDateAndContact = await strapi.query("orders").find({
@@ -149,7 +331,9 @@ const processMultideliveryDiscountForOtherOrders = async (
   const { multidelivery, others } = await checkMultidelivery(
     orderId,
     currentData.estimated_delivery_date,
-    currentData.contact && currentData.contact.id ? currentData.contact.id : currentData.contact,
+    currentData.contact && currentData.contact.id
+      ? currentData.contact.id
+      : currentData.contact,
     currentData.status
   );
 
@@ -162,15 +346,22 @@ const processMultideliveryDiscountForOtherOrders = async (
       if (order.multidelivery_discount > 0) {
         await strapi
           .query("orders")
-          .update({ id: order.id }, { multidelivery_discount: 0, _internal: true });
+          .update(
+            { id: order.id },
+            { multidelivery_discount: 0, _internal: true }
+          );
       }
     }
   }
 
   // For updates, handle changes in estimated_delivery_date, contact, or status
   if (previousOrder && orderId !== 0) {
-    const dateChanged = previousOrder.estimated_delivery_date !== currentData.estimated_delivery_date;
-    const contactChanged = (previousOrder.contact?.id || previousOrder.contact) !== (currentData.contact?.id || currentData.contact);
+    const dateChanged =
+      previousOrder.estimated_delivery_date !==
+      currentData.estimated_delivery_date;
+    const contactChanged =
+      (previousOrder.contact?.id || previousOrder.contact) !==
+      (currentData.contact?.id || currentData.contact);
     const statusChanged = previousOrder.status !== currentData.status;
 
     // Special handling for status changes from/to cancelled
@@ -201,12 +392,19 @@ const processMultideliveryDiscountForOtherOrders = async (
               if (order.multidelivery_discount > 0) {
                 await strapi
                   .query("orders")
-                  .update({ id: order.id }, { multidelivery_discount: 0, _internal: true });
+                  .update(
+                    { id: order.id },
+                    { multidelivery_discount: 0, _internal: true }
+                  );
               }
             }
           } else {
             // Previous group still has multidelivery, make sure they have the discount
-            await updateMultideliveryDiscountForOrders(previousGroup.others, me, ownerFactor);
+            await updateMultideliveryDiscountForOrders(
+              previousGroup.others,
+              me,
+              ownerFactor
+            );
           }
         }
       } else if (statusChangeToCancelled) {
@@ -220,14 +418,17 @@ const processMultideliveryDiscountForOtherOrders = async (
 
         if (remainingGroup.others.length > 0) {
           const stillHasMultidelivery = remainingGroup.others.length > 1;
-          
+
           if (!stillHasMultidelivery) {
             // Remove multidelivery discount from remaining orders
             for await (const order of remainingGroup.others) {
               if (order.multidelivery_discount > 0) {
                 await strapi
                   .query("orders")
-                  .update({ id: order.id }, { multidelivery_discount: 0, _internal: true });
+                  .update(
+                    { id: order.id },
+                    { multidelivery_discount: 0, _internal: true }
+                  );
               }
             }
           }
@@ -253,6 +454,7 @@ module.exports = {
       }
 
       await processMultideliveryDiscountForCurrentOrder(0, data);
+      await processVolumeDiscountForCurrentOrder(0, data);
     },
 
     async beforeUpdate(params, data) {
@@ -263,10 +465,10 @@ module.exports = {
       const previousOrder = await strapi
         .query("orders")
         .findOne({ id: params.id });
-      
+
       // Store previous order data for afterUpdate
       data._previousOrderData = previousOrder;
-      
+
       if (data.status === "delivered" && !data.delivery_date) {
         data.delivery_date = data.estimated_delivery_date
           ? data.estimated_delivery_date
@@ -327,11 +529,15 @@ module.exports = {
         status: data.status || previousOrder.status,
         owner: data.owner || previousOrder.owner,
       };
+      route: data.route || previousOrder.route,
+        await processMultideliveryDiscountForCurrentOrder(
+          params.id,
+          mergedData
+        );
 
-      await processMultideliveryDiscountForCurrentOrder(params.id, mergedData);
-      
-      // Copy the calculated multidelivery_discount back to data
       data.multidelivery_discount = mergedData.multidelivery_discount;
+      await processVolumeDiscountForCurrentOrder(params.id, mergedData);
+      data.volume_discount = mergedData.volume_discount;
     },
     async afterCreate(result, data) {
       // Skip if this is an internal update
@@ -347,6 +553,7 @@ module.exports = {
         result.id,
         previousOrder
       );
+      await processVolumeDiscountForOtherOrders(result.id, previousOrder);
     },
 
     async afterUpdate(result, params, data) {
@@ -370,15 +577,22 @@ module.exports = {
           currentOrder,
           previousOrder
         );
+        await processVolumeDiscountForOtherOrders(
+          params.id,
+          currentOrder,
+          previousOrder
+        );
       }
     },
 
     afterFind: async (results, params, populate) => {
       results.forEach((res, i) => {
-        res.finalPrice =
-          res.price *
-          (1 - (res.multidelivery_discount || 0) / 100) *
-          (1 - (res.contact_pickup_discount || 0) / 100);
+        // Apply both discounts: multidelivery (percentage) and volume (fixed value)
+        let price = res.price || 0;
+        price = price * (1 - (res.multidelivery_discount || 0) / 100);
+        price = price * (1 - (res.contact_pickup_discount || 0) / 100);
+        price = price - (res.volume_discount || 0);
+        res.finalPrice = price;
       });
     },
   },

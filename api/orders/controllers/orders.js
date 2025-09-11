@@ -68,7 +68,7 @@ module.exports = {
           fragile: o.fragile,
           route_rate: o.route_rate ? o.route_rate.name : "-",
           price:
-            (o.price || 0) *
+            ((o.price || 0) - (o.volume_discount || 0)) *
             (1 - (o.multidelivery_discount || 0) / 100) *
             (1 - (o.contact_pickup_discount || 0) / 100),
           pickup: o.pickup ? o.pickup.name : "-",
@@ -227,7 +227,7 @@ module.exports = {
             concept: `Comanda ${o.estimated_delivery_date} | ${o.id
               .toString()
               .padStart(4, "0")} | ${o.route.name}`,
-            base: o.price,
+            base: o.price - (o.volume_discount || 0),
             quantity: 1,
             price: o.price,
             vat: 21,
@@ -310,7 +310,7 @@ module.exports = {
         let price = 0;
         for (const o of contactOrders) {
           price +=
-            o.price *
+            (o.price || 0) - (o.volume_discount || 0) *
             (1 - (o.multidelivery_discount || 0) / 100) *
             (1 - (o.contact_pickup_discount || 0) / 100);
         }
