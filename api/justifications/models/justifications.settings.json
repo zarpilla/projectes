@@ -29,6 +29,9 @@
     },
     "quantity": {
       "type": "decimal"
+    },
+    "emitted_invoice": {
+      "model": "emitted-invoice"
     }
   }
 }
