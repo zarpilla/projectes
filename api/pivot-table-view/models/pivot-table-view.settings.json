@@ -1,0 +1,23 @@
+{
+  "kind": "collectionType",
+  "collectionName": "pivot_table_views",
+  "info": {
+    "name": "PivotTableView"
+  },
+  "options": {
+    "increments": true,
+    "timestamps": true,
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "identifier": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    },
+    "config": {
+      "type": "text"
+    }
+  }
+}

@@ -1,0 +1,52 @@
+{
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/pivot-table-views",
+      "handler": "pivot-table-view.find",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/pivot-table-views/count",
+      "handler": "pivot-table-view.count",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/pivot-table-views/:id",
+      "handler": "pivot-table-view.findOne",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/pivot-table-views",
+      "handler": "pivot-table-view.create",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "PUT",
+      "path": "/pivot-table-views/:id",
+      "handler": "pivot-table-view.update",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "DELETE",
+      "path": "/pivot-table-views/:id",
+      "handler": "pivot-table-view.delete",
+      "config": {
+        "policies": []
+      }
+    }
+  ]
+}

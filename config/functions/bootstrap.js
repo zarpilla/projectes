@@ -178,6 +178,7 @@ async function importSeedData() {
     "phase-expense": ["find", "findassigned"],
     "verifactu": ["find", "findone"],
     "verifactu-declaration": ["find", "findone", "create"],
+    "pivot-table-view": ["find", "findone", "create", "update", "delete"]
   });
 
   await setPermissions("authenticated", "upload", {
