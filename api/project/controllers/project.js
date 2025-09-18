@@ -251,7 +251,26 @@ const doProjectInfoCalculations = async (data, id) => {
     }
   );
 
-  data.allByYear = JSON.parse(JSON.stringify(allByYearPeriodificated));
+  data.allByYear = JSON.parse(JSON.stringify(allByYearPeriodificated)).filter(yearData => {
+    // Keep all non-9999 years
+    if (yearData.year !== "9999") {
+      return true;
+    }
+    
+    // For 9999 years, only keep if at least one numeric value is non-zero
+    return yearData.total_incomes !== 0 ||
+           yearData.total_expenses !== 0 ||
+           yearData.total_expenses_vat !== 0 ||
+           yearData.total_real_incomes !== 0 ||
+           yearData.total_real_expenses !== 0 ||
+           yearData.total_real_expenses_vat !== 0 ||
+           yearData.total_estimated_hours !== 0 ||
+           yearData.total_estimated_hours_price !== 0 ||
+           yearData.total_real_hours !== 0 ||
+           yearData.total_real_hours_price !== 0 ||
+           yearData.total_real_incomes_expenses !== 0 ||
+           yearData.incomes_expenses !== 0;
+  });
 
   data.total_real_incomes_expenses =
     data.total_real_incomes -
@@ -1106,6 +1125,9 @@ module.exports = {
           .find({ ...projectQuery }, [
             "project_state",
             "activities",
+            "project_scope",
+            "project_type",
+            "leader",
             "project_phases",
             "project_phases.incomes",
             "project_phases.incomes.estimated_hours",
@@ -1691,6 +1713,7 @@ module.exports = {
         "mother",
         "region",
         "documents",
+        "project_type",
         "strategies",
         "intercooperations",
         "emmited_invoices",
@@ -1716,6 +1739,7 @@ module.exports = {
         "leader",
         "project_scope",
         "project_state",
+        "project_type",
         "clients",
         "default_dedication_type",
         "mother",
