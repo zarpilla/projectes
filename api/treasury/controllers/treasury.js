@@ -36,6 +36,8 @@ module.exports = {
     const projectExpenses = [];
     const projectIncomes = [];
 
+    console.time("forecast")
+
     const treasuries = 
     await strapi.query("treasury").find({ _limit: -1 })
     
@@ -67,6 +69,12 @@ module.exports = {
 
     const years = 
     await strapi.query("year").find({ _limit: -1 })
+
+    const me = await strapi.query("me").findOne();
+
+    console.timeEnd("forecast")
+
+    console.time("process")
 
     // vat
     const vat = { paid: 0, received: 0, deductible_vat_pct: 0, deductible_vat_pct_sum: 0, deductible_vat_pct_n: 0, deductible_vat: 0 };
@@ -618,23 +626,6 @@ module.exports = {
       }
     }
 
-    const me = await strapi.query("me").findOne();
-    
-    // if (-1*(vat.received - (vat.paid * me.options.deductible_vat_pct / 100)) !== 0) {
-    //   treasury.push({
-    //     project_name: "",
-    //       project_id: 0,
-    //       type: "IVA pendent de saldar",
-    //       concept: `IVA pendent de saldar`,
-    //       total_amount: -1*(vat.received - (vat.paid * me.options.deductible_vat_pct / 100)),
-    //       date: moment().endOf("year"),
-    //       date_error: false,
-    //       paid: false,
-    //       contact:
-    //         "",
-    //       to: null,
-    //   })
-    // }
 
     if (-1*(vat_expected.received - (vat_expected.paid * me.options.deductible_vat_pct / 100)) !== 0) {
       treasury.push({
@@ -651,6 +642,10 @@ module.exports = {
           to: null,
       })
     }
+
+    console.timeEnd("process")
+
+    console.time("sort")
 
 
     // sort and show
@@ -675,6 +670,8 @@ module.exports = {
     // console.log("vat_expected", vat_expected);
     vat.deductible_vat_pct = vat.deductible_vat_pct_sum / vat.deductible_vat_pct_n * 100
     vat.deductible_vat_pct = parseFloat(vat.deductible_vat_pct.toFixed(2))
+
+    console.timeEnd("sort")
     return { treasury: treasuryDataX, projects, vat, vat_expected };
   },
 };

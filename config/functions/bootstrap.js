@@ -409,10 +409,12 @@ async function importSeedData() {
   }
 
   // update software_version
-  await strapi.query("verifactu").update(
-    { id: verifactu.id },
-    { software_version: "2025.08.02", software_date: "2 de agosto de 2025" }
-  );
+  if (verifactu && verifactu.software_version !== "2025.08.02") {
+    await strapi.query("verifactu").update(
+      { id: verifactu.id },
+      { software_version: "2025.08.02", software_date: "2 de agosto de 2025" }
+    );
+  }
 
   // insert verifactu-declarations
   const verifactuDeclaration = await strapi.query("verifactu-declaration").findOne({ version: "2025.08.02" });

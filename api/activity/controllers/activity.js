@@ -3,6 +3,7 @@ const { sanitizeEntity } = require("strapi-utils");
 const _ = require("lodash");
 const moment = require("moment");
 const ical = require("node-ical");
+const { RRule } = require("rrule");
 const projectController = require("../../project/controllers/project");
 
 /**
@@ -64,38 +65,149 @@ module.exports = {
 
   importCalendar: async (ctx) => {
     const { id } = ctx.params;
+    const { from, to } = ctx.query;
     const user = await strapi
       .query("user", "users-permissions")
       .findOne({ id });
 
-    const events = [];
+    // Set default date range if not provided (e.g., current month)
+    const fromDate = from ? moment(from) : moment().startOf('month');
+    const toDate = to ? moment(to) : moment().endOf('month');
 
+    // Validate date format
+    if (from && !moment(from, 'YYYY-MM-DD', true).isValid()) {
+      return ctx.badRequest('Invalid from date format. Use YYYY-MM-DD');
+    }
+    if (to && !moment(to, 'YYYY-MM-DD', true).isValid()) {
+      return ctx.badRequest('Invalid to date format. Use YYYY-MM-DD');
+    }
+
+    const allEvents = [];
+
+    // Helper function to expand recurring events
+    const expandRecurringEvents = (event, fromDate, toDate) => {
+      const expandedEvents = [];
+      
+      // If it's not a recurring event, check if it falls within the date range
+      if (!event.rrule) {
+        const eventStart = moment(event.start);
+        if (eventStart.isBetween(fromDate, toDate, 'day', '[]')) {
+          expandedEvents.push(event);
+        }
+        return expandedEvents;
+      }
+
+      try {
+        // Parse the RRULE
+        const rruleOptions = RRule.parseString(event.rrule.toString());
+        
+        // Set the dtstart from the event
+        if (event.start) {
+          rruleOptions.dtstart = new Date(event.start);
+        }
+
+        // Create RRule instance
+        const rule = new RRule(rruleOptions);
+        
+        // Generate occurrences within the date range
+        const occurrences = rule.between(
+          fromDate.toDate(),
+          toDate.toDate(),
+          true // include start date
+        );
+
+        // Create an event instance for each occurrence
+        occurrences.forEach(occurrence => {
+          const eventInstance = { ...event };
+          
+          // Calculate the duration of the original event
+          const originalStart = moment(event.start);
+          const originalEnd = moment(event.end);
+          const duration = originalEnd.diff(originalStart);
+          
+          // Set new start and end times for this occurrence
+          eventInstance.start = occurrence;
+          eventInstance.end = new Date(occurrence.getTime() + duration);
+          
+          // Add a flag to indicate this is a recurring instance
+          eventInstance.isRecurring = true;
+          eventInstance.recurringDate = moment(occurrence).format('YYYY-MM-DD');
+          
+          expandedEvents.push(eventInstance);
+        });
+        
+      } catch (error) {
+        console.error('Error parsing RRULE:', error);
+        // If we can't parse the RRULE, include the original event if it's in range
+        const eventStart = moment(event.start);
+        if (eventStart.isBetween(fromDate, toDate, 'day', '[]')) {
+          expandedEvents.push(event);
+        }
+      }
+
+      return expandedEvents;
+    };
+
+    // Process user's personal calendar
     if (user && user.ical && user.ical.startsWith("http")) {
-      const resp = await ical.async.fromURL(user.ical);
+      try {
+        const resp = await ical.async.fromURL(user.ical);
 
-      for (let k in resp) {
-        if (resp[k].type === "VEVENT") events.push(resp[k]);
+        for (let k in resp) {
+          if (resp[k].type === "VEVENT") {
+            const expandedEvents = expandRecurringEvents(resp[k], fromDate, toDate);
+            allEvents.push(...expandedEvents);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching user calendar:', error);
       }
     }
 
+    // Process shared/me calendar
     const me = await strapi.query("me").findOne();
 
     if (me && me.ical && me.ical.startsWith("http")) {
-      const resp = await ical.async.fromURL(me.ical);
-      for (let k in resp) {
-        if (resp[k].type === "VEVENT") {
-          if (resp[k].attendee && resp[k].attendee) {
-            for (var key in resp[k].attendee) {
-              if (resp[k].attendee[key].params && resp[k].attendee[key].params.CN === user.email) {
-                events.push(resp[k]);
+      try {
+        const resp = await ical.async.fromURL(me.ical);
+        
+        for (let k in resp) {
+          if (resp[k].type === "VEVENT") {
+            // Check if user is an attendee
+            let isAttendee = false;
+            
+            if (resp[k].attendee) {
+              for (var key in resp[k].attendee) {
+                if (resp[k].attendee[key].params && 
+                    resp[k].attendee[key].params.CN === user.email) {
+                  isAttendee = true;
+                  break;
+                }
               }
+            }
+            
+            if (isAttendee) {
+              const expandedEvents = expandRecurringEvents(resp[k], fromDate, toDate);
+              allEvents.push(...expandedEvents);
             }
           }
         }
+      } catch (error) {
+        console.error('Error fetching shared calendar:', error);
       }
     }
 
-    ctx.send({ ical: events });
+    // Sort events by start date
+    allEvents.sort((a, b) => moment(a.start).diff(moment(b.start)));
+
+    ctx.send({ 
+      ical: allEvents,
+      dateRange: {
+        from: fromDate.format('YYYY-MM-DD'),
+        to: toDate.format('YYYY-MM-DD')
+      },
+      totalEvents: allEvents.length
+    });
   },
 
   move: async (ctx) => {
