@@ -261,6 +261,9 @@
     "project_phases": {
       "collection": "project-phases",
       "via": "project"
+    },
+    "grantable_structural_expenses_justify_invoices": {
+      "type": "decimal"
     }
   }
 }
