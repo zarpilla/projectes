@@ -126,6 +126,9 @@
     },
     "pickup_point": {
       "type": "boolean"
+    },
+    "notes_delivery": {
+      "type": "text"
     }
   }
 }
