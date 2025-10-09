@@ -66,6 +66,12 @@ const updateVolumeDiscountForOrders = async (orders, discount) => {
 
 const processVolumeDiscountForCurrentOrder = async (orderId, data) => {
   if (data._internal) return;
+  
+  // Skip if order is invoiced or delivered
+  if (data.status === "invoiced" || data.status === "delivered") {
+    return;
+  }
+  
   // Only if route, owner, and date are present
   if (!data.route || !data.owner || !data.estimated_delivery_date) return;
   const routeId = data.route.id ? data.route.id : data.route;
@@ -90,6 +96,12 @@ const processVolumeDiscountForOtherOrders = async (
   previousOrder = null
 ) => {
   if (currentData._internal) return;
+  
+  // Skip if order is invoiced or delivered
+  if (currentData.status === "invoiced" || currentData.status === "delivered") {
+    return;
+  }
+  
   if (
     !currentData.route ||
     !currentData.owner ||
@@ -254,7 +266,7 @@ const processMultideliveryDiscountForCurrentOrder = async (orderId, data) => {
   }
 
   // Skip if order is invoiced
-  if (data.status === "invoiced") {
+  if (data.status === "invoiced" || data.status === "delivered") {
     return;
   }
 
@@ -306,7 +318,7 @@ const processMultideliveryDiscountForOtherOrders = async (
   }
 
   // Skip if order is invoiced
-  if (currentData.status === "invoiced") {
+  if (currentData.status === "invoiced" || currentData.status === "delivered") {
     return;
   }
 
@@ -529,11 +541,11 @@ module.exports = {
         status: data.status || previousOrder.status,
         owner: data.owner || previousOrder.owner,
       };
-      route: data.route || previousOrder.route,
-        await processMultideliveryDiscountForCurrentOrder(
-          params.id,
-          mergedData
-        );
+      
+      await processMultideliveryDiscountForCurrentOrder(
+        params.id,
+        mergedData
+      );
 
       data.multidelivery_discount = mergedData.multidelivery_discount;
       await processVolumeDiscountForCurrentOrder(params.id, mergedData);
