@@ -1113,9 +1113,10 @@ module.exports = {
        };
 
       
-      if (year) {
-        projectQuery.activities = { date: { gte: `${year}-01-01`, lte: `${year}-12-31` } };
-      }
+      // TODO check why this filter removes some projects that have activities in the given year
+      // if (year) {
+      //   projectQuery.activities = { date: { gte: `${year}-01-01`, lte: `${year}-12-31` } };
+      // }
 
       projectQuery.published_at_null = false;
 
@@ -1409,13 +1410,13 @@ module.exports = {
           ...projectInfo,
           ...noPhaseInfo,
           type: "real_hours",
-          date: "",
+          date: pa.year.toString() + "-" + pa.month.toString().padStart(2, "0") + "-01",
           total_estimated_hours_price: 0,
           total_real_hours_price: -1 * (pa.cost || 0),
           total_real_hours: pa.hours || 0,
           year: pa.year.toString().padStart(4, "0"),
           month: pa.month.toString().padStart(2, "0"),
-          row_type: "",
+          row_type: "Hores reals",
           // document: "0",
         });
       }
@@ -1457,13 +1458,13 @@ module.exports = {
           ...projectInfo,
           ...noPhaseInfo,
           type: "estimated_hours",
-          date: "",
+          date: g.year.toString() + "-" + g.month.toString().padStart(2, "0") + "-01",
           total_estimated_hours_price: -1 * (g.cost || 0),
           total_estimated_hours: g.q || 0,
           total_real_hours_price: 0,
           year: g.year.toString(),
           month: g.month.toString().padStart(2, "0"),
-          row_type: "",
+          row_type: "Hores estimades",
           // document: "0",
         });
       }
@@ -1474,9 +1475,16 @@ module.exports = {
     // Flatten all project responses into a single array
     response = _.flatten(projectResponses);
 
+    
+
+    const distinct_project = _.uniq(response.map((r) => r.project_name));
+    console.log('distinct_project', distinct_project)
+
     if (year) {
       response = response.filter((r) => r.year === year);
     }
+
+    console.log('ctx.query._where.year_eq', ctx.query && ctx.query._where && ctx.query._where.year_eq ? ctx.query._where.year_eq : 'no year filter')
 
     if (ctx.query && ctx.query._where && ctx.query._where.year_eq) {
       response = response.filter(
