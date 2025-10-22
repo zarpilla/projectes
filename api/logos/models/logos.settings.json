@@ -1,0 +1,31 @@
+{
+  "kind": "collectionType",
+  "collectionName": "logos",
+  "info": {
+    "name": "Logos"
+  },
+  "options": {
+    "increments": true,
+    "timestamps": true,
+    "draftAndPublish": true
+  },
+  "attributes": {
+    "url": {
+      "type": "string"
+    },
+    "logo": {
+      "model": "file",
+      "via": "related",
+      "allowedTypes": [
+        "images"
+      ],
+      "plugin": "upload",
+      "required": false,
+      "pluginOptions": {}
+    },
+    "order": {
+      "type": "integer",
+      "default": 10
+    }
+  }
+}

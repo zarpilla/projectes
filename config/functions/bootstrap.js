@@ -50,6 +50,9 @@ async function setPermissions(role, type, newPermissions) {
 
 async function importSeedData() {
   // Permissions
+  await setPermissions("public", "application", {
+    "logos": ["find"]
+  });
   await setPermissions("authenticated", "application", {
     activity: [
       "create",
