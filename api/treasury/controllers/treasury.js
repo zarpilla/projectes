@@ -77,7 +77,7 @@ module.exports = {
     console.time("process")
 
     // vat
-    const vat = { paid: 0, received: 0, deductible_vat_pct: 0, deductible_vat_pct_sum: 0, deductible_vat_pct_n: 0, deductible_vat: 0 };
+    const vat = { paid: 0, received: 0, deductible_vat_pct: 0, deductible_vat_pct_sum: 0, deductible_vat_pct_n: 0, deductible_vat: 0, documents: [] };
     const vat_expected = { paid: 0, received: 0 };    
 
     for (let p of projects) {
@@ -274,6 +274,7 @@ module.exports = {
         if (!i.vat_paid_date) {
           vat.received += i.total_vat;
           vat.deductible_vat += -1 * i.total_vat;
+          vat.documents.push({ id: i.id, code: i.code, type: 'emitted-invoices', total_vat: i.total_vat, total: i.total, date: i.emitted });
         }
       }
     }
@@ -318,6 +319,7 @@ module.exports = {
         if (!i.vat_paid_date) {
           vat.received += i.total_vat;
           vat.deductible_vat += -1 * i.total_vat;
+          vat.documents.push({ id: i.id, code: i.code, type: 'received-incomes', total_vat: i.total_vat, total: i.total, date: i.emitted });
         }
       }
     }
@@ -395,6 +397,7 @@ module.exports = {
           vat.deductible_vat += getDeductiblePct(years, e.emitted) * e.total_vat;          
           vat.deductible_vat_pct_sum += getDeductiblePct(years, e.emitted)
           vat.deductible_vat_pct_n++
+          vat.documents.push({ id: e.id, code: e.code, type: 'received-invoices', total_vat: e.total_vat, total: e.total, date: e.emitted });
         }
       }
     }
@@ -470,6 +473,7 @@ module.exports = {
           vat.deductible_vat += getDeductiblePct(years, e.emitted) * e.total_vat;
           vat.deductible_vat_pct_sum += getDeductiblePct(years, e.emitted)
           vat.deductible_vat_pct_n++
+          vat.documents.push({ id: e.id, code: e.code, type: 'received-expenses', total_vat: e.total_vat, total: e.total, date: e.emitted });
         }
       }
     }
@@ -670,6 +674,12 @@ module.exports = {
     // console.log("vat_expected", vat_expected);
     vat.deductible_vat_pct = vat.deductible_vat_pct_sum / vat.deductible_vat_pct_n * 100
     vat.deductible_vat_pct = parseFloat(vat.deductible_vat_pct.toFixed(2))
+
+    vat.documents = vat.documents.sort((a, b) => {
+      if (a.date < b.date) return -1;
+      if (a.date > b.date) return 1;
+      return 0;
+    });
 
     console.timeEnd("sort")
     return { treasury: treasuryDataX, projects, vat, vat_expected };

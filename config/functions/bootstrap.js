@@ -73,6 +73,7 @@ async function importSeedData() {
       "update",
       "delete",
       "payvat",
+      "payvatids",
       "pdf",
       "sendinvoicebyemail",
       "pendingprovider",

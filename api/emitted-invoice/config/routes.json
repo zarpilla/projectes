@@ -34,6 +34,14 @@
     },
     {
       "method": "POST",
+      "path": "/emitted-invoices/pay-vat-ids",
+      "handler": "emitted-invoice.payVatIds",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "POST",
       "path": "/emitted-invoices/send-email/:id",
       "handler": "emitted-invoice.sendInvoiceByEmail",
       "config": {

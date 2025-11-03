@@ -53,13 +53,7 @@ const payEntity = async (
           ?.deductible_vat_pct || deductible_vat_pct
       : 100;
 
-    const sql = `UPDATE ${table} SET vat_paid_date = '${vat_paid_date
-      .toISOString()
-      .substring(0, 19)
-      .replace(
-        "T",
-        " "
-      )}', deductible_vat_pct = ${deductible_vat_pct_year}  WHERE id = ${
+    const sql = `UPDATE ${table} SET vat_paid_date = '${vat_paid_date}', deductible_vat_pct = ${deductible_vat_pct_year}  WHERE id = ${
       documents[i].id
     }`;
 
@@ -573,6 +567,74 @@ module.exports = {
     }
   },
 
+  payVatIds: async (ctx) => {
+    const { emittedInvoices, receivedIncomes, receivedInvoices, receivedExpenses, vat_paid_date } = ctx.request.body;
+
+    const eInvoiceInfo = await getEntityInfo("emitted-invoice");
+    const incomeInfo = await getEntityInfo("received-income");
+    const rInvoiceInfo = await getEntityInfo("received-invoice");
+    const expenseInfo = await getEntityInfo("received-expense");
+    const me = await strapi.query("me").findOne();
+
+    const years = await getYearsInfo();
+
+    if (me.options.deductible_vat_pct) {
+      // const vat_paid_date = new Date();
+      let total_vat = 0;
+
+      total_vat += await payEntity(
+        eInvoiceInfo.documents.filter((d) => emittedInvoices.includes(d.id)),
+        "emitted-invoice",
+        vat_paid_date,
+        100,
+        years
+      );
+      // console.log('total_vat', total_vat)
+      total_vat += await payEntity(
+        incomeInfo.documents.filter((d) => receivedIncomes.includes(d.id)),
+        "received-income",
+        vat_paid_date,
+        me.options.deductible_vat_pct,
+        years
+      );
+      total_vat -= await payEntity(
+        rInvoiceInfo.documents.filter((d) => receivedInvoices.includes(d.id)),
+        "received-invoice",
+        vat_paid_date,
+        me.options.deductible_vat_pct,
+        years
+      );
+      total_vat -= await payEntity(
+        expenseInfo.documents.filter((d) => receivedExpenses.includes(d.id)),
+        "received-expense",
+        vat_paid_date,
+        me.options.deductible_vat_pct,
+        years
+      );
+
+      // const total_vat =
+      //   -1*((rInvoiceInfo.total_vat +
+      //     expenseInfo.total_vat -
+      //     (eInvoiceInfo.total_vat * me.options.deductible_vat_pct / 100.0) -
+      //     ( incomeInfo.total_vat * me.options.deductible_vat_pct / 100.0) )
+      //   );
+
+      if (total_vat !== 0) {
+        await strapi.query("treasury").create({
+          comment: "IVA Saldat",
+          total: -1 * total_vat,
+          date: vat_paid_date,
+        });
+      }
+    }
+    return {
+      done: true,
+      emittedInvoices: eInvoiceInfo.documents,
+      receivedIncomes: incomeInfo.documents,
+      receivedInvoices: rInvoiceInfo.documents,
+      receivedExpenses: expenseInfo.documents,
+    };
+  },
   payVat: async (ctx) => {
     const eInvoiceInfo = await getEntityInfo("emitted-invoice");
     const incomeInfo = await getEntityInfo("received-income");

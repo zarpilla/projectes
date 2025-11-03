@@ -19,6 +19,9 @@
     },
     "invoice_text": {
       "type": "text"
+    },
+    "nameTreasury": {
+      "type": "string"
     }
   }
 }
