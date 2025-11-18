@@ -188,6 +188,9 @@ module.exports = {
       .map((o) => o.owner.id)
       .filter((value, index, self) => self.indexOf(value) === index);
 
+    const payment_methods = await strapi.query("payment-method").find({});
+    const payment_method = payment_methods.length > 0 ? payment_methods[0].id : null;
+
     const allContacts = [];
     for await (const owner of uniqueOwners) {
       const contacts = await strapi
@@ -222,6 +225,7 @@ module.exports = {
         serial: serial[0].id,
         contact: contact.id,
         verifactu: verifactuEnabled,
+        payment_method: payment_method,
         lines: contactOrders.map((o) => {
           return {
             concept: `Comanda ${o.estimated_delivery_date} | ${o.id
