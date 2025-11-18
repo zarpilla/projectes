@@ -98,7 +98,7 @@ const sendVerifactu = async () => {
         vatLines: (() => {
           // First, create all individual VAT lines with precise calculations
           const allVatLines = invoice.emitted_invoice.lines.map((line) => {
-            const baseAmount = line.base * line.quantity;
+            const baseAmount = line.base * line.quantity * (1 - (line.discount || 0) / 100);
             // Use the original line's VAT calculation method to maintain consistency
             const vatAmount =
               line.vat_amount || baseAmount * (line.vat ? line.vat / 100 : 0);

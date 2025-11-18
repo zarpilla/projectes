@@ -394,7 +394,7 @@ async function importSeedData() {
       software_developerIrsId: "",
       software_name: "ESSTRAPIS",
       software_version: "2025.06.28",
-      software_id: "ESSTRAPIS",
+      software_id: "01",
       software_number: me.nif,
       software_useOnlyVerifactu: true,
       software_useMulti: true,
@@ -413,18 +413,26 @@ async function importSeedData() {
   }
 
   // update software_version
-  if (verifactu && verifactu.software_version !== "2025.08.02") {
+  if (verifactu && verifactu.software_version !== "2025.11.18") {
     await strapi.query("verifactu").update(
       { id: verifactu.id },
-      { software_version: "2025.08.02", software_date: "2 de agosto de 2025" }
+      { software_version: "2025.11.18", software_date: "18 de noviembre de 2025" }
     );
   }
 
   // insert verifactu-declarations
-  const verifactuDeclaration = await strapi.query("verifactu-declaration").findOne({ version: "2025.08.02" });
-  if (!verifactuDeclaration) {
+  const verifactuDeclaration1 = await strapi.query("verifactu-declaration").findOne({ version: "2025.08.02" });
+  if (!verifactuDeclaration1) {
     await strapi.query("verifactu-declaration").create({
       version: "2025.08.02",
+      url: "https://github.com/zarpilla/projectes/tree/master/public/verifactu"
+    });
+  }
+
+  const verifactuDeclaration2 = await strapi.query("verifactu-declaration").findOne({ version: "2025.11.18" });
+  if (!verifactuDeclaration2) {
+    await strapi.query("verifactu-declaration").create({
+      version: "2025.11.18",
       url: "https://github.com/zarpilla/projectes/tree/master/public/verifactu"
     });
   }
