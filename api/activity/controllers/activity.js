@@ -173,20 +173,26 @@ module.exports = {
         
         for (let k in resp) {
           if (resp[k].type === "VEVENT") {
-            // Check if user is an attendee
+            // Check if user is an attendee and hasn't declined
             let isAttendee = false;
+            let hasDeclined = false;
             
             if (resp[k].attendee) {
               for (var key in resp[k].attendee) {
                 if (resp[k].attendee[key].params && 
                     resp[k].attendee[key].params.CN === user.email) {
                   isAttendee = true;
+                  // Check if the user has declined the event
+                  if (resp[k].attendee[key].params.PARTSTAT === 'DECLINED') {
+                    hasDeclined = true;
+                  }
                   break;
                 }
               }
             }
             
-            if (isAttendee) {
+            // Only include events where user is an attendee and hasn't declined
+            if (isAttendee && !hasDeclined) {
               const expandedEvents = expandRecurringEvents(resp[k], fromDate, toDate);
               allEvents.push(...expandedEvents);
             }
