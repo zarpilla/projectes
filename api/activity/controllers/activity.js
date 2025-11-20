@@ -178,12 +178,14 @@ module.exports = {
             let hasDeclined = false;
             
             if (resp[k].attendee) {
-              for (var key in resp[k].attendee) {
-                if (resp[k].attendee[key].params && 
-                    resp[k].attendee[key].params.CN === user.email) {
+              // Handle both single attendee and array of attendees
+              const attendees = Array.isArray(resp[k].attendee) ? resp[k].attendee : [resp[k].attendee];
+              
+              for (let attendee of attendees) {
+                if (attendee.params && attendee.params.CN === user.email) {
                   isAttendee = true;
                   // Check if the user has declined the event
-                  if (resp[k].attendee[key].params.PARTSTAT === 'DECLINED') {
+                  if (attendee.params.PARTSTAT === 'DECLINED') {
                     hasDeclined = true;
                   }
                   break;
