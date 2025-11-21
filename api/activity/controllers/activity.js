@@ -155,8 +155,29 @@ module.exports = {
 
         for (let k in resp) {
           if (resp[k].type === "VEVENT") {
-            const expandedEvents = expandRecurringEvents(resp[k], fromDate, toDate);
-            allEvents.push(...expandedEvents);
+            // Check if user has declined the event (even in personal calendar)
+            let hasDeclined = false;
+            
+            if (resp[k].attendee) {
+              // Handle both single attendee and array of attendees
+              const attendees = Array.isArray(resp[k].attendee) ? resp[k].attendee : [resp[k].attendee];
+              
+              for (let attendee of attendees) {
+                if (attendee.params && attendee.params.CN === user.email) {
+                  // Check if the user has declined the event
+                  if (attendee.params.PARTSTAT === 'DECLINED') {
+                    hasDeclined = true;
+                  }
+                  break;
+                }
+              }
+            }
+            
+            // Only include events that user hasn't declined
+            if (!hasDeclined) {
+              const expandedEvents = expandRecurringEvents(resp[k], fromDate, toDate);
+              allEvents.push(...expandedEvents);
+            }
           }
         }
       } catch (error) {
