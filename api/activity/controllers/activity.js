@@ -157,6 +157,7 @@ module.exports = {
           if (resp[k].type === "VEVENT") {
             // Check if user has declined the event (even in personal calendar)
             let hasDeclined = false;
+            let userIsAttendee = false;
             
             if (resp[k].attendee) {
               // Handle both single attendee and array of attendees
@@ -164,6 +165,7 @@ module.exports = {
               
               for (let attendee of attendees) {
                 if (attendee.params && attendee.params.CN === user.email) {
+                  userIsAttendee = true;
                   // Check if the user has declined the event
                   if (attendee.params.PARTSTAT === 'DECLINED') {
                     hasDeclined = true;
@@ -173,8 +175,13 @@ module.exports = {
               }
             }
             
-            // Only include events that user hasn't declined
-            if (!hasDeclined) {
+            // For personal calendar, only include events where:
+            // 1. User has no attendee list (they're the organizer/owner), OR
+            // 2. User is an attendee and hasn't declined
+            const hasAttendees = resp[k].attendee && resp[k].attendee.length > 0;
+            const shouldInclude = hasAttendees ? (userIsAttendee && !hasDeclined) : true;
+            
+            if (shouldInclude) {
               const expandedEvents = expandRecurringEvents(resp[k], fromDate, toDate);
               allEvents.push(...expandedEvents);
             }
