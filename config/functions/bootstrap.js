@@ -182,7 +182,8 @@ async function importSeedData() {
     "phase-expense": ["find", "findassigned"],
     "verifactu": ["find", "findone"],
     "verifactu-declaration": ["find", "findone", "create"],
-    "pivot-table-view": ["find", "findone", "create", "update", "delete"]
+    "pivot-table-view": ["find", "findone", "create", "update", "delete"],
+    "bank-accounts": ["find", "findone"],
   });
 
   await setPermissions("authenticated", "upload", {
@@ -437,9 +438,168 @@ async function importSeedData() {
     });
   }
 
+  // Create default bank account if no bank accounts exist
+  const bankAccounts = await strapi.query("bank-accounts").find({ _limit: 1 });
+  if (bankAccounts.length === 0) {
+    console.log("No bank accounts found. Creating default bank account...");
+    
+    // Create default bank account
+    const defaultBankAccount = await strapi.query("bank-accounts").create({
+      name: "-",
+    });
+    
+    console.log("Default bank account created:", defaultBankAccount.id);
+    
+    // Update me record with default bank account
+    if (me) {
+      await strapi.query("me").update(
+        { id: me.id },
+        {
+          bank_account_payroll: defaultBankAccount.id,
+          bank_account_ss: defaultBankAccount.id,
+          bank_account_irpf: defaultBankAccount.id,
+          bank_account_default: defaultBankAccount.id,
+          bank_account_vat: defaultBankAccount.id,
+        }
+      );
+      console.log("Updated me record with default bank account references");
+    }
+    /*
+    await strapi.connections.default.raw("UPDATE phase_expenses SET bank_account = ?;", [defaultBankAccount.id]);
+    
+    await strapi.connections.default.raw("UPDATE phase_incomes SET bank_account = ?;", [defaultBankAccount.id]);
+    
+    await strapi.connections.default.raw("UPDATE payrolls SET bank_account = ?;", [defaultBankAccount.id]);
 
+    await strapi.connections.default.raw("UPDATE payment_methods SET bank_account = ?;", [defaultBankAccount.id]);
+
+    await strapi.connections.default.raw("UPDATE emitted_invoices SET bank_account = ?;", [defaultBankAccount.id]);
+
+    await strapi.connections.default.raw("UPDATE received_invoices SET bank_account = ?;", [defaultBankAccount.id]);
+    
+    await strapi.connections.default.raw("UPDATE received_expenses SET bank_account = ?;", [defaultBankAccount.id]);
+    
+    await strapi.connections.default.raw("UPDATE received_incomes SET bank_account = ?;", [defaultBankAccount.id]);
+    
+    await strapi.connections.default.raw("UPDATE treasuries SET bank_account = ?;", [defaultBankAccount.id]);
+    */
+
+    // update first payment method with default 
+    const paymentMethods = await strapi.query("payment-method").find({ _limit: 1 });
+    if (paymentMethods.length > 0) {
+      await strapi.query("payment-method").update(
+        { id: paymentMethods[0].id },
+        { default: true }
+      );
+      console.log("Updated first payment method with default bank account");
+    }
+
+    console.log("Default bank account setup completed");
+  }
+}
+
+async function migrateGrantableDataToYears() {
+  try {
+    console.log("Starting grantable data migration...");
+    
+    // Check if migration has already been performed by looking for a simple marker
+    // We'll check if any project has both old and new data structure inconsistency
+    const projects = await strapi.query("project").find({
+      _limit: 10,
+      grantable: true
+    });
+    
+    // If no grantable projects found, skip migration
+    if (projects.length === 0) {
+      console.log("No grantable projects found - skipping migration");
+      return;
+    }
+    
+    // Simple check: if we can't query grantable_years, the component doesn't exist yet
+    try {
+      // Try a simple query to see if grantable_years exists
+      await strapi.query("project").findOne({ id: projects[0].id }, ["grantable_years"]);
+    } catch (err) {
+      if (err.message.includes('grantable_years')) {
+        console.log("grantable_years component not yet available in database - migration will run later when admin panel has created the component");
+        return;
+      }
+    }
+    
+    // Get all years
+    const years = await strapi.query("year").find({ _limit: -1 });
+    console.log(`Found ${years.length} years`);
+    
+    // Get all projects with grantable data
+    const allGrantableProjects = await strapi.query("project").find({
+      _limit: -1,
+      grantable: true
+    }, ["grantable_years"]);
+    
+    let migratedCount = 0;
+    let skippedCount = 0;
+    
+    for (const project of allGrantableProjects) {
+      // Skip if project already has grantable_years data
+      if (project.grantable_years && project.grantable_years.length > 0) {
+        skippedCount++;
+        continue;
+      }
+      
+      // Check if project has any non-zero grantable data
+      const hasGrantableData = 
+        (project.grantable_amount_total && project.grantable_amount_total !== 0) ||
+        (project.grantable_amount && project.grantable_amount !== 0) ||
+        (project.grantable_structural_expenses_justify_invoices && project.grantable_structural_expenses_justify_invoices !== 0) ||
+        (project.grantable_structural_expenses && project.grantable_structural_expenses !== 0) ||
+        (project.grantable_cofinancing && project.grantable_cofinancing !== 0);
+      
+      if (!hasGrantableData || !project.date_end) {
+        continue;
+      }
+      
+      // Extract year from date_end
+      const projectEndYear = project.date_end.substring(0, 4);
+      
+      // Find matching year record
+      const yearRecord = years.find(y => y.year.toString() === projectEndYear) || years[years.length - 1];
+      
+      if (!yearRecord) {
+        console.log(`Warning: No year record found for ${projectEndYear} (project: ${project.name})`);
+        continue;
+      }
+      
+      // Create grantable_year component data
+      const grantableYearData = {
+        year: yearRecord.id,
+        grantable_amount_total: project.grantable_amount_total || 0,
+        grantable_amount: project.grantable_amount || 0,
+        grantable_structural_expenses_justify_invoices: project.grantable_structural_expenses_justify_invoices || 0,
+        grantable_structural_expenses: project.grantable_structural_expenses || 0,
+        grantable_cofinancing: project.grantable_cofinancing || 0
+      };
+      
+      // Update project with grantable_years component
+      await strapi.query("project").update(
+        { id: project.id },
+        {
+          grantable_years: [grantableYearData]
+        }
+      );
+      
+      migratedCount++;
+      console.log(`Migrated project "${project.name}" (${projectEndYear})`);
+    }
+    
+    console.log(`Migration completed: ${migratedCount} projects migrated, ${skippedCount} projects skipped (already had grantable_years data)`);
+    
+  } catch (error) {
+    console.error("Error during grantable data migration:", error);
+    console.log("Migration will be retried next time the server starts");
+  }
 }
 
 module.exports = async () => {
   await importSeedData();
+  await migrateGrantableDataToYears();
 };

@@ -58,6 +58,9 @@
     "project_original_phase": {
       "via": "incomes",
       "model": "project-original-phases"
+    },
+    "bank_account": {
+      "model": "bank-accounts"
     }
   }
 }

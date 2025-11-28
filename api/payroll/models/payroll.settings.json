@@ -65,6 +65,9 @@
     },
     "other_date": {
       "type": "date"
+    },
+    "bank_account": {
+      "model": "bank-accounts"
     }
   }
 }

@@ -26,6 +26,9 @@
     },
     "balance": {
       "type": "decimal"
+    },
+    "bank_account": {
+      "model": "bank-accounts"
     }
   }
 }

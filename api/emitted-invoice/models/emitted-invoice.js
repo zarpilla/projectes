@@ -21,6 +21,27 @@ module.exports = {
     async beforeCreate(data) {
       data.state = "draft";
       data.code = `ESBORRANY`;
+      
+      // Handle payment_method and bank_account
+      if (!data.payment_method) {
+        // Get the first payment method from the database
+        const firstPaymentMethod = await strapi.query("payment-method").findOne({}, ["bank_account"]);
+        if (firstPaymentMethod) {
+          data.payment_method = firstPaymentMethod.id;
+        }
+      }
+      
+      // If payment_method is set, get its bank_account
+      if (data.payment_method) {
+        const paymentMethod = await strapi.query("payment-method").findOne(
+          { id: data.payment_method },
+          ["bank_account"]
+        );
+        if (paymentMethod && paymentMethod.bank_account) {
+          data.bank_account = paymentMethod.bank_account.id || paymentMethod.bank_account;
+        }
+      }
+      
       data = await calculateTotals(data);
     },
     async afterCreate(result) {
@@ -31,6 +52,17 @@ module.exports = {
       const invoice = await strapi.query(entity).findOne(params);
       if (invoice.updatable === false && !(data.updatable_admin === true)) {
         throw new Error("received-expense NOT updatable");
+      }
+      
+      // Handle payment_method and bank_account changes
+      if (data.payment_method && data.payment_method !== invoice.payment_method) {
+        const paymentMethod = await strapi.query("payment-method").findOne(
+          { id: data.payment_method },
+          ["bank_account"]
+        );
+        if (paymentMethod && paymentMethod.bank_account) {
+          data.bank_account = paymentMethod.bank_account.id || paymentMethod.bank_account;
+        }
       }
       
       if (invoice.state === "real") {

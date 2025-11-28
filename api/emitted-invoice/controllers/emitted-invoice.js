@@ -575,6 +575,7 @@ module.exports = {
     const rInvoiceInfo = await getEntityInfo("received-invoice");
     const expenseInfo = await getEntityInfo("received-expense");
     const me = await strapi.query("me").findOne();
+    const bank_account_vat = me.bank_account_vat;
 
     const years = await getYearsInfo();
 
@@ -624,6 +625,7 @@ module.exports = {
           comment: "IVA Saldat",
           total: -1 * total_vat,
           date: vat_paid_date,
+          bank_account: bank_account_vat,
         });
       }
     }
@@ -641,6 +643,7 @@ module.exports = {
     const rInvoiceInfo = await getEntityInfo("received-invoice");
     const expenseInfo = await getEntityInfo("received-expense");
     const me = await strapi.query("me").findOne();
+    const bank_account_vat = me.bank_account_vat;
 
     const years = await getYearsInfo();
 
@@ -690,6 +693,7 @@ module.exports = {
           comment: "IVA Saldat",
           total: -1 * total_vat,
           date: vat_paid_date,
+          bank_account: bank_account_vat,
         });
       }
     }

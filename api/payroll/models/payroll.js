@@ -5,4 +5,13 @@
  * to customize this model
  */
 
-module.exports = {};
+module.exports = {
+    lifecycles: {
+        async beforeCreate(data) {
+            const me = await strapi.query('me').findOne();
+            if (me && me.bank_account_payroll && !data.bank_account) {
+                data.bank_account = me.bank_account_payroll;
+            }
+        }
+    }
+};

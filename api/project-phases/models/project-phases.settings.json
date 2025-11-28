@@ -18,8 +18,8 @@
       "collection": "phase-income"
     },
     "expenses": {
-      "collection": "phase-expense",
-      "via": "project_phase"
+      "via": "project_phase",
+      "collection": "phase-expense"
     },
     "project": {
       "via": "project_phases",

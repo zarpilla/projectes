@@ -440,7 +440,10 @@ const calculateEstimatedTotals = async (
   // Pre-create Map for daily dedications lookup
   const dedicationsByUser = new Map();
   dailyDedications.forEach(d => {
-    const userId = d.users_permissions_user.id;
+    const userId = d.users_permissions_user ? d.users_permissions_user.id : null;
+    if (!userId) {
+      return;
+    }
     if (!dedicationsByUser.has(userId)) {
       dedicationsByUser.set(userId, []);
     }

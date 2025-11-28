@@ -14,6 +14,16 @@ const getDeductiblePct = (years, emitted) => {
   return year ? year.deductible_vat_pct / 100.0: 1.0;
 }
 
+const getBankAccountName = (bankAccount, defaultBankAccount) => {
+  if (bankAccount && bankAccount.name) {
+    return bankAccount.name;
+  }
+  if (defaultBankAccount && defaultBankAccount.name) {
+    return defaultBankAccount.name;
+  }
+  return null;
+}
+
 module.exports = {
   async forecast(ctx) {
 
@@ -24,6 +34,7 @@ module.exports = {
     }
 
     const year = ctx.query.year;
+    const bankAccountFilterIds = ctx.query.bank_account_id;
 
     if (ctx.query && ctx.query.filter && ctx.query.filter === "approved") {
       where = { _limit: -1, project_state_in: [1, 2] };
@@ -39,38 +50,35 @@ module.exports = {
     console.time("forecast")
 
     const treasuries = 
-    await strapi.query("treasury").find({ _limit: -1 })
+    await strapi.query("treasury").find({ _limit: -1 }, ["bank_account"])
     
     const emitted = 
-    await strapi.query("emitted-invoice").find({ _limit: -1 })
+    await strapi.query("emitted-invoice").find({ _limit: -1 }, ["bank_account"])
     
     const received = 
-    await strapi.query("received-invoice").find({ _limit: -1 })
-    
-    const tickets = 
-    await strapi.query("ticket").find({ _limit: -1 })
-      
-    const diets = 
-    await strapi.query("diet").find({ _limit: -1 })
+    await strapi.query("received-invoice").find({ _limit: -1 }, ["bank_account"])
     
     const receivedIncomes = 
-    await strapi.query("received-income").find({ _limit: -1 })
+    await strapi.query("received-income").find({ _limit: -1 }, ["bank_account"])
     
     const receivedExpenses = 
-    await strapi.query("received-expense").find({ _limit: -1 })
+    await strapi.query("received-expense").find({ _limit: -1 }, ["bank_account"])
 
     const payrolls = 
-    await strapi.query("payroll").find({ _limit: -1 })
+    await strapi.query("payroll").find({ _limit: -1 }, ["bank_account", "year", "month", "users_permissions_user"])
     
     const projects = 
     await strapi.query("project").find(where,
-      ["project_phases", "project_phases.expenses", "project_phases.expenses.provider", "project_phases.expenses.expense_type", "project_phases.expenses.invoice", "project_phases.expenses.grant", "project_phases.expenses.ticket", "project_phases.expenses.diet", "project_phases.incomes", "project_phases.incomes.client", "project_phases.incomes.income_type", "project_phases.incomes.invoice", "project_phases.incomes.income"]
+      ["project_phases", "project_phases.expenses", "project_phases.expenses.provider", "project_phases.expenses.expense_type", "project_phases.expenses.invoice", "project_phases.expenses.grant", "project_phases.expenses.ticket", "project_phases.expenses.diet", "project_phases.expenses.expense", "project_phases.expenses.bank_account", "project_phases.incomes", "project_phases.incomes.client", "project_phases.incomes.income_type", "project_phases.incomes.invoice", "project_phases.incomes.income", "project_phases.incomes.bank_account"]
     )
 
     const years = 
     await strapi.query("year").find({ _limit: -1 })
 
-    const me = await strapi.query("me").findOne();
+    const bankAccounts = 
+    await strapi.query("bank-accounts").find({ _limit: -1 })
+
+    const me = await strapi.query("me").findOne({}, ["bank_account_payroll", "bank_account_ss", "bank_account_irpf", "bank_account_default", "bank_account_vat"]);
 
     console.timeEnd("forecast")
 
@@ -95,6 +103,7 @@ module.exports = {
               date_error: e.date === null,
               paid: false,
               contact: e.provider && e.provider.name ? e.provider.name : "-",
+              bank_account: getBankAccountName(e.bank_account, me.bank_account_default),
             };
             treasury.push(expense);
 
@@ -152,6 +161,7 @@ module.exports = {
               date_error: i.date === null,
               paid: false,
               contact: i.client && i.client.name ? i.client.name : "-",
+              bank_account: getBankAccountName(i.bank_account, me.bank_account_default),
             };
             treasury.push(income);            
             
@@ -187,49 +197,77 @@ module.exports = {
     }
 
     treasuries.forEach((e) => {
-      const expense = {
-        project_name: e.project?.name,
-        project_id: e.project?.id,
-        treasury_id: e.id,
-        type: e.comment === "IVA Saldat" ? e.comment : "Operació de tresoreria",
-        concept: e.comment,
-        total_amount: e.total,
-        date: moment(e.date, "YYYY-MM-DD") || moment(),
-        date_error: e.date === null,
-        paid: true,
-        contact: "-",
-      };
+      let expense;
+      
+      // Special case: treasury with total=0 but balance>0 indicates real money in account for that day
+      if (e.total === 0 && e.balance && parseFloat(e.balance) > 0) {
+        expense = {
+          project_name: e.project?.name,
+          project_id: e.project?.id,
+          treasury_id: e.id,
+          type: "Saldo bancari",
+          concept: e.comment || "Saldo real del compte",
+          total_amount: 0,
+          account_balance: parseFloat(e.balance),
+          date: moment(e.date, "YYYY-MM-DD") || moment(),
+          date_error: e.date === null,
+          paid: true,
+          contact: "-",
+          bank_account: getBankAccountName(e.bank_account, me.bank_account_default),
+          is_balance_annotation: true,
+        };
+      } else {
+        expense = {
+          project_name: e.project?.name,
+          project_id: e.project?.id,
+          treasury_id: e.id,
+          type: e.comment === "IVA Saldat" ? e.comment : "Operació de tresoreria",
+          concept: e.comment,
+          total_amount: e.total,
+          date: moment(e.date, "YYYY-MM-DD") || moment(),
+          date_error: e.date === null,
+          paid: true,
+          contact: "-",
+          bank_account: getBankAccountName(e.bank_account, me.bank_account_default),
+        };
+      }
+      
       treasury.push(expense);
     });
-    // today
-    const today = {
-      project_name: "-",
-      project_id: 0,
-      type: "Avui",
-      concept: "-",
-      total_amount: 0,
-      date: moment(),
-      date_error: false,
-      paid: null,
-      contact: "-",
-    };
+    
+    // Create "Today" entries for each bank account
+    bankAccounts.forEach((bankAccount) => {
+      const today = {
+        project_name: "-",
+        project_id: 0,
+        type: "Avui",
+        concept: `-`,
+        total_amount: 0,
+        date: moment(),
+        date_error: false,
+        paid: null,
+        contact: "-",
+        bank_account: bankAccount.name,
+      };
+      treasury.push(today);
+    });
 
-    treasury.push(today);
-
-    // today
-    const startOfYear = {
-      project_name: "-",
-      project_id: 0,
-      type: "Inici Any",
-      concept: "-",
-      total_amount: 0,
-      date: moment(year, 'YYYY').startOf("year"),
-      date_error: false,
-      paid: null,
-      contact: "-",
-    };
-
-    treasury.push(startOfYear);
+    // Create "Start of Year" entries for each bank account  
+    bankAccounts.forEach((bankAccount) => {
+      const startOfYear = {
+        project_name: "-",
+        project_id: 0,
+        type: "Inici Any",
+        concept: `-`,
+        total_amount: 0,
+        date: moment(year, 'YYYY').startOf("year"),
+        date_error: false,
+        paid: null,
+        contact: "-",
+        bank_account: bankAccount.name,
+      };
+      treasury.push(startOfYear);
+    });
 
     
     
@@ -267,6 +305,7 @@ module.exports = {
         paid: i.paid,
         contact: i.contact && i.contact.name ? i.contact.name : "?",
         to: `/document/${i.id}/emitted-invoices`,
+        bank_account: getBankAccountName(i.bank_account, me.bank_account_default),
       };
 
       treasury.push(income);
@@ -313,6 +352,7 @@ module.exports = {
         paid: i.paid,
         contact: i.contact && i.contact.name ? i.contact.name : "?",
         to: `/document/${i.id}/received-incomes`,
+        bank_account: getBankAccountName(i.bank_account, me.bank_account_default),
       };
       treasury.push(income);
       if (i.total_vat) {
@@ -355,6 +395,7 @@ module.exports = {
         pdf: e.pdf,
         contact: e.contact && e.contact.name ? e.contact.name : "-",
         to: `/document/${e.id}/received-invoices`,
+        bank_account: getBankAccountName(e.bank_account, me.bank_account_default),
       };
       treasury.push(expense);
       if (e.total_irpf) {
@@ -388,6 +429,7 @@ module.exports = {
               .format("YYYY-MM-DD") < moment().format("YYYY-MM-DD"),
           contact: e.contact && e.contact.name ? e.contact.name : "-",
           to: `/document/${e.id}/received-invoices`,
+          bank_account: me.bank_account_irpf && me.bank_account_irpf.name ? me.bank_account_irpf.name : null,
         };
         treasury.push(expense2);
       }
@@ -434,6 +476,7 @@ module.exports = {
         pdf: e.pdf,
         contact: e.contact && e.contact.name ? e.contact.name : "-",
         to: `/document/${e.id}/received-expenses`,
+        bank_account: getBankAccountName(e.bank_account, me.bank_account_default),
       };
       treasury.push(expense);
       if (e.total_irpf) {
@@ -463,6 +506,7 @@ module.exports = {
           paid: false,
           contact: e.contact && e.contact.name ? e.contact.name : "-",
           to: `/document/${e.id}/received-expenses`,
+          bank_account: me.bank_account_irpf && me.bank_account_irpf.name ? me.bank_account_irpf.name : null,
         };
         treasury.push(expense2);
       }
@@ -476,68 +520,6 @@ module.exports = {
           vat.documents.push({ id: e.id, code: e.code, type: 'received-expenses', total_vat: e.total_vat, total: e.total, date: e.emitted });
         }
       }
-    }
-    for (let e of diets) {
-      const date = e.paid_date
-        ? moment(e.paid_date, "YYYY-MM-DD")
-        : e.paybefore
-        ? moment(e.paybefore, "YYYY-MM-DD")
-        : moment(e.emitted, "YYYY-MM-DD");
-      const expense = {
-        project_name:
-          e.project && e.project.name
-            ? e.project.name
-            : e.projects &&
-              e.projects.length &&
-              e.projects[0] &&
-              e.projects[0].name
-            ? e.projects[0].name
-            : "",
-        project_id: e.project
-          ? e.project.id
-          : e.projects && e.projects.length && e.projects[0] && e.projects[0].id
-          ? e.projects[0].id
-          : 0,
-        type: "Dieta",
-        concept: e.code,
-        total_amount: e.total ? -1 * e.total : 0,
-        date: date,
-        date_error: (e.paid_date || e.paybefore || e.emitted) === null,
-        paid: e.paid,
-        contact: e.contact && e.contact.name ? e.contact.name : "-",
-      };
-      treasury.push(expense);
-    }
-    for (let e of tickets) {
-      const date = e.paid_date
-        ? moment(e.paid_date, "YYYY-MM-DD")
-        : e.paybefore
-        ? moment(e.paybefore, "YYYY-MM-DD")
-        : moment(e.emitted, "YYYY-MM-DD");
-      const expense = {
-        project_name:
-          e.project && e.project.name
-            ? e.project.name
-            : e.projects &&
-              e.projects.length &&
-              e.projects[0] &&
-              e.projects[0].name
-            ? e.projects[0].name
-            : "",
-        project_id: e.project
-          ? e.project.id
-          : e.projects && e.projects.length && e.projects[0] && e.projects[0].id
-          ? e.projects[0].id
-          : 0,
-        type: "Ticket",
-        concept: e.code,
-        total_amount: e.total ? -1 * e.total : 0,
-        date: date,
-        date_error: (e.paid_date || e.emitted) === null,
-        paid: e.paid,
-        contact: e.provider && e.provider.name ? e.provider.name : "-",
-      };
-      treasury.push(expense);
     }
 
     for (let e of payrolls) {
@@ -563,6 +545,7 @@ module.exports = {
             ? e.users_permissions_user.username
             : "",
         to: `/document/${e.id}/payrolls`,
+        bank_account: getBankAccountName(e.bank_account, me.bank_account_default),
       };
       treasury.push(expense);
 
@@ -583,6 +566,7 @@ module.exports = {
               ? e.users_permissions_user.username
               : "",
           to: `/document/${e.id}/payrolls`,
+          bank_account: me.bank_account_irpf && me.bank_account_irpf.name ? me.bank_account_irpf.name : null,
         };
         treasury.push(expense2);
       }
@@ -604,6 +588,7 @@ module.exports = {
               ? e.users_permissions_user.username
               : "",
           to: `/document/${e.id}/payrolls`,
+          bank_account: me.bank_account_payroll && me.bank_account_payroll.name ? me.bank_account_payroll.name : null,
         };
         treasury.push(expense4);
       }
@@ -625,6 +610,7 @@ module.exports = {
               ? e.users_permissions_user.username
               : "",
           to: `/document/${e.id}/payrolls`,
+          bank_account: me.bank_account_ss && me.bank_account_ss.name ? me.bank_account_ss.name : null,
         };
         treasury.push(expense3);
       }
@@ -644,6 +630,7 @@ module.exports = {
           contact:
             "",
           to: null,
+          bank_account: me.bank_account_vat && me.bank_account_vat.name ? me.bank_account_vat.name : null,
       })
     }
 
@@ -663,7 +650,14 @@ module.exports = {
     let subtotal = 0;
     for (let i = 0; i < treasuryData.length; i++) {
       const t = treasuryData[i];
-      subtotal += t.total_amount;
+      
+      // For balance annotations, set the subtotal to the account balance
+      if (t.is_balance_annotation && t.account_balance !== undefined) {
+        subtotal = t.account_balance;
+      } else {
+        subtotal += t.total_amount;
+      }
+      
       treasuryDataX.push({
         ...t,
         datex: moment(treasuryData[i].datef, "YYYYMMDD").format("DD-MM-YYYY"),
@@ -681,7 +675,41 @@ module.exports = {
       return 0;
     });
 
+    // Apply bank account filter if specified
+    let filteredTreasuryDataX = treasuryDataX;
+    if (bankAccountFilterIds && bankAccountFilterIds.trim() !== '') {
+      // Parse bank account IDs (can be comma-separated for multiple selection)
+      const bankAccountIdArray = bankAccountFilterIds.split(',').map(id => id.trim()).filter(id => id !== '');
+      
+      if (bankAccountIdArray.length > 0) {
+        // Find the bank account names by IDs for filtering
+        const selectedBankAccountNames = bankAccounts
+          .filter(ba => bankAccountIdArray.includes(ba.id.toString()))
+          .map(ba => ba.name);
+        
+        if (selectedBankAccountNames.length > 0) {
+          filteredTreasuryDataX = treasuryDataX.filter(t => selectedBankAccountNames.includes(t.bank_account));
+          
+          // Recalculate subtotals for the filtered account-specific data
+          let accountSubtotal = 0;
+          filteredTreasuryDataX = filteredTreasuryDataX.map(t => {
+            // For balance annotations, set the subtotal to the account balance
+            if (t.is_balance_annotation && t.account_balance !== undefined) {
+              accountSubtotal = t.account_balance;
+            } else {
+              accountSubtotal += t.total_amount;
+            }
+            
+            return {
+              ...t,
+              subtotal: accountSubtotal,
+            };
+          });
+        }
+      }
+    }
+
     console.timeEnd("sort")
-    return { treasury: treasuryDataX, projects, vat, vat_expected };
+    return { treasury: filteredTreasuryDataX, projects, vat, vat_expected };
   },
 };

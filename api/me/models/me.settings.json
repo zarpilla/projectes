@@ -104,6 +104,21 @@
     },
     "certificate_pwd": {
       "type": "password"
+    },
+    "bank_account_payroll": {
+      "model": "bank-accounts"
+    },
+    "bank_account_ss": {
+      "model": "bank-accounts"
+    },
+    "bank_account_irpf": {
+      "model": "bank-accounts"
+    },
+    "bank_account_default": {
+      "model": "bank-accounts"
+    },
+    "bank_account_vat": {
+      "model": "bank-accounts"
     }
   }
 }

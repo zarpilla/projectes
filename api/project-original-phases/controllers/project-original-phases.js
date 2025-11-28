@@ -16,11 +16,13 @@ module.exports = {
         "incomes.income_type",
         "incomes.invoice",
         "incomes.income",
+        "incomes.bank_account",
         "incomes.estimated_hours.users_permissions_user",
         "expenses",
         "expenses.invoice",
         "expenses.expense",
         "expenses.expense_type",
+        "expenses.bank_account",
       ]);
 
     return projectOriginalPhases;

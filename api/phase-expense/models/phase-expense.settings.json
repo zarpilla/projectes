@@ -2,7 +2,8 @@
   "kind": "collectionType",
   "collectionName": "phase_expenses",
   "info": {
-    "name": "PhaseExpense"
+    "name": "PhaseExpense",
+    "description": ""
   },
   "options": {
     "increments": true,
@@ -50,6 +51,9 @@
     "project_original_phase": {
       "via": "expenses",
       "model": "project-original-phases"
+    },
+    "bank_account": {
+      "model": "bank-accounts"
     }
   }
 }

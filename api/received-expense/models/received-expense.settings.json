@@ -110,6 +110,9 @@
     },
     "comments_internal": {
       "type": "richtext"
+    },
+    "bank_account": {
+      "model": "bank-accounts"
     }
   }
 }

@@ -264,6 +264,11 @@
     },
     "grantable_structural_expenses_justify_invoices": {
       "type": "decimal"
+    },
+    "grantable_years": {
+      "type": "component",
+      "repeatable": true,
+      "component": "grantable.grantable-year"
     }
   }
 }

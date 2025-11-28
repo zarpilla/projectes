@@ -22,6 +22,12 @@
     },
     "nameTreasury": {
       "type": "string"
+    },
+    "bank_account": {
+      "model": "bank-accounts"
+    },
+    "default": {
+      "type": "boolean"
     }
   }
 }
