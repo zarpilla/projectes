@@ -300,22 +300,39 @@ async function importSeedData() {
     .query("festive")
     .find({ users_permissions_user_null: true, _limit: -1 });
 
-  const festives2025 = [
-    { date: "2025-01-01", festive_type: 1 },
-    { date: "2025-01-06", festive_type: 1 },
-    { date: "2025-04-18", festive_type: 1 },
-    { date: "2025-04-21", festive_type: 2 },
-    { date: "2025-05-01", festive_type: 1 },
-    { date: "2025-06-24", festive_type: 2 },
-    { date: "2025-08-15", festive_type: 1 },
-    { date: "2025-09-11", festive_type: 2 },
-    { date: "2025-12-08", festive_type: 1 },
-    { date: "2025-12-25", festive_type: 1 },
-    { date: "2025-12-26", festive_type: 2 },
+  /*
+
+    1 de gener, dijous
+    6 de gener, dimarts
+    3 d'abril, divendres
+    6 d'abril, dilluns
+    1 de maig, divendres
+    24 de juny, dimecres
+    15 d'agost, dissabte
+    11 de setembre, divendres
+    12 d'octubre, dilluns
+    8 de desembre, dimarts
+    25 de desembre, divendres
+    26 de desembre, dissabte
+  */
+
+  const festives2026 = [
+    { date: "2026-01-01", festive_type: 1 },
+    { date: "2026-01-06", festive_type: 1 },
+    { date: "2026-04-03", festive_type: 1 },
+    { date: "2026-04-06", festive_type: 2 },
+    { date: "2026-05-01", festive_type: 1 },
+    { date: "2026-06-24", festive_type: 2 },
+    { date: "2026-08-15", festive_type: 1 },
+    { date: "2026-09-11", festive_type: 2 },
+    { date: "2026-10-12", festive_type: 1 },
+    { date: "2026-12-08", festive_type: 1 },
+    { date: "2026-12-25", festive_type: 1 },
+    { date: "2026-12-26", festive_type: 2 },
   ];
 
   // if festives2025 is not in festives, add them
-  for (const festive of festives2025) {
+  for (const festive of festives2026) {
     const festiveExists =
       festives.filter((f) => f.date === festive.date).length > 0;
     if (!festiveExists) {
@@ -326,25 +343,25 @@ async function importSeedData() {
     }
   }
 
-  // const years = await strapi.query("year").find({ _limit: -1 });
-  // // if 2025 is not in years, add it
-  // const year2025 = years.filter((y) => y.year === 2025);
-  // if (year2025.length === 0) {
-  //   await strapi
-  //     .query("year")
-  //     .create({ year: 2025, working_hours: 1760, deductible_vat_pct: 100 });
+  const years = await strapi.query("year").find({ _limit: -1 });
+  // if 2026 is not in years, add it
+  const year2026 = years.filter((y) => y.year === 2026);
+  if (year2026.length === 0) {
+    await strapi
+      .query("year")
+      .create({ year: 2026, working_hours: 1760, deductible_vat_pct: 100 });
 
-  //   console.log("year added", 2025);
-  // }
+    console.log("year added", 2026);
+  }
 
-  // const series = await strapi.query("serie").find({ _limit: -1 });
-  // // if 2025 is not in years, add it
-  // const serie2025 = series.filter((s) => s.name === "2025");
-  // if (serie2025.length === 0) {
-  //   await strapi
-  //     .query("serie")
-  //     .create({ name: "2025", leadingZeros: 3, emitted_invoice_number: 0 });
-  // }
+  const series = await strapi.query("serie").find({ _limit: -1 });
+  // if 2026 is not in years, add it
+  const serie2026 = series.filter((s) => s.name === "2026");
+  if (serie2026.length === 0) {
+    await strapi
+      .query("serie")
+      .create({ name: "2026", leadingZeros: 3, emitted_invoice_number: 0 });
+  }
 
   // await projectController.createPhasesForAllProjects();
 
