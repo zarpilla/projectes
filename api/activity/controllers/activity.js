@@ -5,6 +5,8 @@ const moment = require("moment");
 const ical = require("node-ical");
 const { RRule } = require("rrule");
 const projectController = require("../../project/controllers/project");
+const { google } = require("googleapis");
+const fs = require("fs");
 
 /**
  * Read the documentation (https://strapi.io/documentation/developer-docs/latest/development/backend-customization.html#core-controllers)
@@ -66,6 +68,9 @@ module.exports = {
   importCalendar: async (ctx) => {
     const { id } = ctx.params;
     const { from, to } = ctx.query;
+
+    const me = await strapi.query("me").findOne();
+    
     const user = await strapi
       .query("user", "users-permissions")
       .findOne({ id });
@@ -82,7 +87,118 @@ module.exports = {
       return ctx.badRequest('Invalid to date format. Use YYYY-MM-DD');
     }
 
+    const google_credentials = me ? me.google_credentials : null;
     const allEvents = [];
+
+    // Helper function to fetch Google Calendar events
+    const fetchGoogleCalendarEvents = async (calendarId, userEmail) => {
+      try {
+        const jsonCredentialsPath = "./public" + google_credentials.url;
+        
+        if (!fs.existsSync(jsonCredentialsPath)) {
+          console.error('Google credentials file not found:', jsonCredentialsPath);
+          return [];
+        }
+
+        const credentialsContent = fs.readFileSync(jsonCredentialsPath, 'utf8');
+        const credentials = JSON.parse(credentialsContent);
+        
+        // Validate that it's a service account credentials file
+        if (!credentials.client_email) {
+          console.error('Invalid Google credentials file: missing client_email field');
+          console.error('Expected service account credentials file. Got:', Object.keys(credentials));
+          return [];
+        }
+
+        console.log('Using service account:', credentials.client_email);
+        
+        const auth = new google.auth.GoogleAuth({
+          credentials: credentials,
+          scopes: ['https://www.googleapis.com/auth/calendar.readonly'],
+        });
+
+        const calendar = google.calendar({ version: 'v3', auth });
+
+        const response = await calendar.events.list({
+          calendarId: calendarId,
+          timeMin: fromDate.toISOString(),
+          timeMax: toDate.toISOString(),
+          singleEvents: true,
+          orderBy: 'startTime',
+        });
+
+        console.log('Fetched Google Calendar events for calendarId:', calendarId);
+
+        const events = response.data.items || [];
+        const formattedEvents = [];
+
+        for (const event of events) {
+          // Check if user has declined the event
+          let hasDeclined = false;
+          let userIsAttendee = false;
+
+          if (event.attendees) {
+            for (const attendee of event.attendees) {
+              if (attendee.email === userEmail) {
+                userIsAttendee = true;
+                if (attendee.responseStatus === 'declined') {
+                  hasDeclined = true;
+                }
+                break;
+              }
+            }
+          }
+
+          // Skip declined events
+          if (hasDeclined) {
+            continue;
+          }
+
+          // Convert Google Calendar event to iCal-like format
+          const icalEvent = {
+            type: 'VEVENT',
+            uid: event.id,
+            summary: event.summary || '(No title)',
+            description: event.description || '',
+            start: event.start.dateTime ? new Date(event.start.dateTime) : new Date(event.start.date),
+            end: event.end.dateTime ? new Date(event.end.dateTime) : new Date(event.end.date),
+            location: event.location || '',
+            organizer: event.organizer ? {
+              params: { CN: event.organizer.email },
+              val: 'mailto:' + event.organizer.email
+            } : null,
+            attendee: event.attendees ? event.attendees.map(att => ({
+              params: {
+                CN: att.email,
+                PARTSTAT: att.responseStatus === 'accepted' ? 'ACCEPTED' :
+                          att.responseStatus === 'declined' ? 'DECLINED' :
+                          att.responseStatus === 'tentative' ? 'TENTATIVE' : 'NEEDS-ACTION'
+              },
+              val: 'mailto:' + att.email
+            })) : [],
+            status: event.status ? event.status.toUpperCase() : 'CONFIRMED',
+            created: event.created ? new Date(event.created) : null,
+            lastmodified: event.updated ? new Date(event.updated) : null,
+            url: event.htmlLink || '',
+            isGoogleCalendar: true,
+          };
+
+          // Handle recurring events
+          if (event.recurrence) {
+            // Google Calendar already expands recurring events when singleEvents=true
+            // So we just add the instance
+            icalEvent.isRecurring = true;
+          }
+
+          formattedEvents.push(icalEvent);
+        }
+
+        return formattedEvents;
+      } catch (error) {
+        console.error('Error fetching Google Calendar events:', error);
+        return [];
+      }
+    };
 
     // Helper function to expand recurring events
     const expandRecurringEvents = (event, fromDate, toDate) => {
@@ -148,88 +264,103 @@ module.exports = {
       return expandedEvents;
     };
 
-    // Process user's personal calendar
-    if (user && user.ical && user.ical.startsWith("http")) {
-      try {
-        const resp = await ical.async.fromURL(user.ical);
+    // Check if we should use Google Calendar integration
+    const useGoogleCalendar = google_credentials && google_credentials.url;
 
-        for (let k in resp) {
-          if (resp[k].type === "VEVENT") {
-            // Check if user has declined the event (even in personal calendar)
-            let hasDeclined = false;
-            let userIsAttendee = false;
-            
-            if (resp[k].attendee) {
-              // Handle both single attendee and array of attendees
-              const attendees = Array.isArray(resp[k].attendee) ? resp[k].attendee : [resp[k].attendee];
+    // Process user's personal calendar
+    if (user) {
+      if (useGoogleCalendar && user.email) {
+        // Use Google Calendar API - user's email is their primary calendar ID
+        try {
+          const googleEvents = await fetchGoogleCalendarEvents(user.email, user.email);
+          allEvents.push(...googleEvents);
+        } catch (error) {
+          console.error('Error fetching user Google Calendar:', error);
+        }
+      } else if (user.ical && user.ical.startsWith("http")) {
+        // Use iCal (fallback or default)
+        try {
+          const resp = await ical.async.fromURL(user.ical);
+
+          for (let k in resp) {
+            if (resp[k].type === "VEVENT") {
+              // Check if user has declined the event (even in personal calendar)
+              let hasDeclined = false;
+              let userIsAttendee = false;
               
-              for (let attendee of attendees) {
-                if (attendee.params && attendee.params.CN === user.email) {
-                  userIsAttendee = true;
-                  // Check if the user has declined the event
-                  if (attendee.params.PARTSTAT === 'DECLINED') {
-                    hasDeclined = true;
+              if (resp[k].attendee) {
+                // Handle both single attendee and array of attendees
+                const attendees = Array.isArray(resp[k].attendee) ? resp[k].attendee : [resp[k].attendee];
+                
+                for (let attendee of attendees) {
+                  if (attendee.params && attendee.params.CN === user.email) {
+                    userIsAttendee = true;
+                    // Check if the user has declined the event
+                    if (attendee.params.PARTSTAT === 'DECLINED') {
+                      hasDeclined = true;
+                    }
+                    break;
                   }
-                  break;
                 }
               }
-            }
-            
-            // For personal calendar, only include events where:
-            // 1. User has no attendee list (they're the organizer/owner), OR
-            // 2. User is an attendee and hasn't declined
-            const hasAttendees = resp[k].attendee && resp[k].attendee.length > 0;
-            const shouldInclude = hasAttendees ? (userIsAttendee && !hasDeclined) : true;
-            
-            if (shouldInclude) {
-              const expandedEvents = expandRecurringEvents(resp[k], fromDate, toDate);
-              allEvents.push(...expandedEvents);
+              
+              // For personal calendar, only include events where:
+              // 1. User has no attendee list (they're the organizer/owner), OR
+              // 2. User is an attendee and hasn't declined
+              const hasAttendees = resp[k].attendee && resp[k].attendee.length > 0;
+              const shouldInclude = hasAttendees ? (userIsAttendee && !hasDeclined) : true;
+              
+              if (shouldInclude) {
+                const expandedEvents = expandRecurringEvents(resp[k], fromDate, toDate);
+                allEvents.push(...expandedEvents);
+              }
             }
           }
+        } catch (error) {
+          console.error('Error fetching user calendar:', error);
         }
-      } catch (error) {
-        console.error('Error fetching user calendar:', error);
       }
     }
 
-    // Process shared/me calendar
-    const me = await strapi.query("me").findOne();
-
-    if (me && me.ical && me.ical.startsWith("http")) {
-      try {
-        const resp = await ical.async.fromURL(me.ical);
-        
-        for (let k in resp) {
-          if (resp[k].type === "VEVENT") {
-            // Check if user is an attendee and hasn't declined
-            let isAttendee = false;
-            let hasDeclined = false;
-            
-            if (resp[k].attendee) {
-              // Handle both single attendee and array of attendees
-              const attendees = Array.isArray(resp[k].attendee) ? resp[k].attendee : [resp[k].attendee];
+    // Process shared/me calendar (only for iCal, not for Google Calendar)
+    if (me && !useGoogleCalendar) {
+      if (me.ical && me.ical.startsWith("http")) {
+        // Use iCal for shared calendar
+        try {
+          const resp = await ical.async.fromURL(me.ical);
+          
+          for (let k in resp) {
+            if (resp[k].type === "VEVENT") {
+              // Check if user is an attendee and hasn't declined
+              let isAttendee = false;
+              let hasDeclined = false;
               
-              for (let attendee of attendees) {
-                if (attendee.params && attendee.params.CN === user.email) {
-                  isAttendee = true;
-                  // Check if the user has declined the event
-                  if (attendee.params.PARTSTAT === 'DECLINED') {
-                    hasDeclined = true;
+              if (resp[k].attendee) {
+                // Handle both single attendee and array of attendees
+                const attendees = Array.isArray(resp[k].attendee) ? resp[k].attendee : [resp[k].attendee];
+                
+                for (let attendee of attendees) {
+                  if (attendee.params && attendee.params.CN === user.email) {
+                    isAttendee = true;
+                    // Check if the user has declined the event
+                    if (attendee.params.PARTSTAT === 'DECLINED') {
+                      hasDeclined = true;
+                    }
+                    break;
                   }
-                  break;
                 }
               }
-            }
-            
-            // Only include events where user is an attendee and hasn't declined
-            if (isAttendee && !hasDeclined) {
-              const expandedEvents = expandRecurringEvents(resp[k], fromDate, toDate);
-              allEvents.push(...expandedEvents);
+              
+              // Only include events where user is an attendee and hasn't declined
+              if (isAttendee && !hasDeclined) {
+                const expandedEvents = expandRecurringEvents(resp[k], fromDate, toDate);
+                allEvents.push(...expandedEvents);
+              }
             }
           }
+        } catch (error) {
+          console.error('Error fetching shared calendar:', error);
         }
-      } catch (error) {
-        console.error('Error fetching shared calendar:', error);
       }
     }
 

@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "crypto": "^1.0.1",
+    "googleapis": "^169.0.0",
     "knex": "0.21.18",
     "lodash": "^4.17.21",
     "lodash.merge": "^4.6.2",

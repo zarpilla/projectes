@@ -119,6 +119,16 @@
     },
     "bank_account_vat": {
       "model": "bank-accounts"
+    },
+    "google_credentials": {
+      "model": "file",
+      "via": "related",
+      "allowedTypes": [
+        "files"
+      ],
+      "plugin": "upload",
+      "required": false,
+      "pluginOptions": {}
     }
   }
 }
