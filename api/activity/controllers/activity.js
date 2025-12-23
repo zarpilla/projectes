@@ -8,6 +8,71 @@ const projectController = require("../../project/controllers/project");
 const { google } = require("googleapis");
 const fs = require("fs");
 
+// Polyfill for Headers in Node.js < 18
+if (typeof global.Headers === 'undefined') {
+  global.Headers = class Headers {
+    constructor(init) {
+      this.headers = {};
+      if (init) {
+        if (init instanceof Headers) {
+          this.headers = { ...init.headers };
+        } else if (typeof init === 'object') {
+          Object.entries(init).forEach(([key, value]) => {
+            this.headers[key.toLowerCase()] = String(value);
+          });
+        }
+      }
+    }
+    
+    append(name, value) {
+      const key = name.toLowerCase();
+      if (this.headers[key]) {
+        this.headers[key] += ', ' + value;
+      } else {
+        this.headers[key] = String(value);
+      }
+    }
+    
+    delete(name) {
+      delete this.headers[name.toLowerCase()];
+    }
+    
+    get(name) {
+      return this.headers[name.toLowerCase()] || null;
+    }
+    
+    has(name) {
+      return name.toLowerCase() in this.headers;
+    }
+    
+    set(name, value) {
+      this.headers[name.toLowerCase()] = String(value);
+    }
+    
+    entries() {
+      return Object.entries(this.headers)[Symbol.iterator]();
+    }
+    
+    keys() {
+      return Object.keys(this.headers)[Symbol.iterator]();
+    }
+    
+    values() {
+      return Object.values(this.headers)[Symbol.iterator]();
+    }
+    
+    forEach(callback, thisArg) {
+      Object.entries(this.headers).forEach(([key, value]) => {
+        callback.call(thisArg, value, key, this);
+      });
+    }
+    
+    [Symbol.iterator]() {
+      return this.entries();
+    }
+  };
+}
+
 /**
  * Read the documentation (https://strapi.io/documentation/developer-docs/latest/development/backend-customization.html#core-controllers)
  * to customize this controller
