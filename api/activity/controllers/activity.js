@@ -73,6 +73,77 @@ if (typeof global.Headers === 'undefined') {
   };
 }
 
+// Polyfill for Blob in Node.js < 18
+if (typeof global.Blob === 'undefined') {
+  global.Blob = class Blob {
+    constructor(parts = [], options = {}) {
+      this.parts = parts;
+      this.options = options;
+      this.type = options.type || '';
+      
+      // Calculate size
+      this.size = 0;
+      for (const part of parts) {
+        if (typeof part === 'string') {
+          this.size += Buffer.byteLength(part, 'utf8');
+        } else if (Buffer.isBuffer(part)) {
+          this.size += part.length;
+        } else if (part instanceof Blob) {
+          this.size += part.size;
+        } else if (ArrayBuffer.isView(part)) {
+          this.size += part.byteLength;
+        } else if (part instanceof ArrayBuffer) {
+          this.size += part.byteLength;
+        }
+      }
+    }
+    
+    async text() {
+      const buffers = [];
+      for (const part of this.parts) {
+        if (typeof part === 'string') {
+          buffers.push(Buffer.from(part, 'utf8'));
+        } else if (Buffer.isBuffer(part)) {
+          buffers.push(part);
+        } else if (part instanceof Blob) {
+          buffers.push(Buffer.from(await part.text(), 'utf8'));
+        } else if (ArrayBuffer.isView(part)) {
+          buffers.push(Buffer.from(part.buffer, part.byteOffset, part.byteLength));
+        } else if (part instanceof ArrayBuffer) {
+          buffers.push(Buffer.from(part));
+        }
+      }
+      return Buffer.concat(buffers).toString('utf8');
+    }
+    
+    async arrayBuffer() {
+      const text = await this.text();
+      const buffer = Buffer.from(text, 'utf8');
+      return buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength);
+    }
+    
+    slice(start = 0, end = this.size, contentType = '') {
+      // Simple implementation for basic slicing
+      return new Blob(this.parts, { type: contentType });
+    }
+    
+    stream() {
+      // Basic stream implementation
+      const { Readable } = require('stream');
+      const readable = new Readable();
+      
+      this.text().then(text => {
+        readable.push(text);
+        readable.push(null);
+      }).catch(err => {
+        readable.destroy(err);
+      });
+      
+      return readable;
+    }
+  };
+}
+
 /**
  * Read the documentation (https://strapi.io/documentation/developer-docs/latest/development/backend-customization.html#core-controllers)
  * to customize this controller
