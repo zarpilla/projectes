@@ -205,48 +205,58 @@ const doProjectInfoCalculations = async (data, id) => {
         incomes_expenses:
           (_.sumBy(rows, (r) =>
             r.total_incomes !== undefined ? parseFloat(r.total_incomes) : 0.0
-          ) |
+          ) ||
             0.0) -
           (_.sumBy(rows, (r) =>
             r.total_expenses !== undefined ? parseFloat(r.total_expenses) : 0.0
-          ) |
+          ) ||
             0.0) -
           (_.sumBy(rows, (r) =>
             r.total_estimated_hours_price !== undefined
               ? parseFloat(r.total_estimated_hours_price)
               : 0.0
-          ) |
+          ) ||
             0.0),
       };
     });
   const allByYearPeriodificated = JSON.parse(JSON.stringify(allByYear)).map(
     (y) => {
+      const periodificationData = data.periodification && data.periodification.find((p) => p.year === y.year);
+      
+      const periodified_real_incomes = periodificationData ? periodificationData.real_incomes : 0;
+      const periodified_real_expenses = periodificationData ? periodificationData.real_expenses : 0;
+      const periodified_incomes = periodificationData ? periodificationData.incomes : 0;
+      const periodified_expenses = periodificationData ? periodificationData.expenses : 0;
+      
+      const new_total_real_incomes = y.total_real_incomes + periodified_real_incomes;
+      const new_total_real_expenses = y.total_real_expenses + periodified_real_expenses;
+      const new_total_incomes = (y.total_incomes ?? 0) + periodified_incomes;
+      const new_total_expenses = (y.total_expenses ?? 0) + periodified_expenses;
+      
+      // // Debug logging for periodification
+      // if (periodificationData && id) {
+      //   console.log(`[Project ${id}] Periodification for year ${y.year}:`);
+      //   console.log(`  - Periodified incomes: ${periodified_incomes}, expenses: ${periodified_expenses}`);
+      //   console.log(`  - Periodified real_incomes: ${periodified_real_incomes}, real_expenses: ${periodified_real_expenses}`);
+      //   console.log(`  - BEFORE: total_incomes=${y.total_incomes}, total_expenses=${y.total_expenses}`);
+      //   console.log(`  - BEFORE: incomes_expenses=${y.incomes_expenses}`);
+      //   console.log(`  - AFTER: total_incomes=${new_total_incomes}, total_expenses=${new_total_expenses}`);
+      //   console.log(`  - AFTER: incomes_expenses=${new_total_incomes - new_total_expenses - (y.total_estimated_hours_price || 0)}`);
+      //   console.log(`  - BEFORE: total_real_incomes=${y.total_real_incomes}, total_real_expenses=${y.total_real_expenses}`);
+      //   console.log(`  - BEFORE: total_real_incomes_expenses=${y.total_real_incomes_expenses}`);
+      //   console.log(`  - AFTER: total_real_incomes=${new_total_real_incomes}, total_real_expenses=${new_total_real_expenses}`);
+      //   console.log(`  - AFTER: total_real_incomes_expenses=${new_total_real_incomes - new_total_real_expenses - (y.total_real_hours_price || 0)}`);
+      // }
+      
       return {
         ...y,
-        total_real_incomes:
-          y.total_real_incomes +
-          (data.periodification &&
-          data.periodification.find((p) => p.year === y.year)
-            ? data.periodification.find((p) => p.year === y.year).real_incomes
-            : 0),
-        total_real_expenses:
-          y.total_real_expenses +
-          (data.periodification &&
-          data.periodification.find((p) => p.year === y.year)
-            ? data.periodification.find((p) => p.year === y.year).real_expenses
-            : 0),
-        total_incomes:
-          (y.total_incomes ?? 0) +
-          (data.periodification &&
-          data.periodification.find((p) => p.year === y.year)
-            ? data.periodification.find((p) => p.year === y.year).incomes
-            : 0),
-        total_expenses:
-          (y.total_expenses ?? 0) +
-          (data.periodification &&
-          data.periodification.find((p) => p.year === y.year)
-            ? data.periodification.find((p) => p.year === y.year).expenses
-            : 0),
+        total_real_incomes: new_total_real_incomes,
+        total_real_expenses: new_total_real_expenses,
+        total_incomes: new_total_incomes,
+        total_expenses: new_total_expenses,
+        // Recalculate derived fields after applying periodification (base amounts only, no VAT)
+        total_real_incomes_expenses: new_total_real_incomes - new_total_real_expenses - (y.total_real_hours_price || 0),
+        incomes_expenses: new_total_incomes - new_total_expenses - (y.total_estimated_hours_price || 0),
       };
     }
   );
