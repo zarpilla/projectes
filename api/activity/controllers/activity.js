@@ -95,6 +95,8 @@ module.exports = {
 
     // Helper function to fetch Google Calendar events
     const fetchGoogleCalendarEvents = async (calendarId, userEmail) => {
+      let credentials = null;
+      
       try {
         const jsonCredentialsPath = "./public" + google_credentials.url;
         
@@ -104,7 +106,7 @@ module.exports = {
         }
 
         const credentialsContent = fs.readFileSync(jsonCredentialsPath, 'utf8');
-        const credentials = JSON.parse(credentialsContent);
+        credentials = JSON.parse(credentialsContent);
         
         // Validate that it's a service account credentials file
         if (!credentials.client_email) {
@@ -118,6 +120,10 @@ module.exports = {
         const auth = new google.auth.GoogleAuth({
           credentials: credentials,
           scopes: ['https://www.googleapis.com/auth/calendar.readonly'],
+          // Use domain-wide delegation to impersonate the user
+          clientOptions: {
+            subject: userEmail, // Impersonate this user
+          },
         });
 
         const calendar = google.calendar({ version: 'v3', auth });
@@ -131,6 +137,7 @@ module.exports = {
         });
 
         console.log('Fetched Google Calendar events for calendarId:', calendarId);
+        // console.log(`Found ${response.data.items?.length || 0} events`);
 
         const events = response.data.items || [];
         const formattedEvents = [];
@@ -140,21 +147,32 @@ module.exports = {
           let hasDeclined = false;
           let userIsAttendee = false;
 
+          // console.log(`Processing event: "${event.summary}" (${event.id})`);
+          
           if (event.attendees) {
+            // console.log(`  Attendees for "${event.summary}":`);
             for (const attendee of event.attendees) {
+              // console.log(`    - ${attendee.email}: ${attendee.responseStatus}`);
               if (attendee.email === userEmail) {
                 userIsAttendee = true;
+                // console.log(`    -> User ${userEmail} is an attendee with status: ${attendee.responseStatus}`);
                 if (attendee.responseStatus === 'declined') {
                   hasDeclined = true;
+                  // console.log(`    -> User has DECLINED this event`);
                 }
                 break;
               }
             }
+          } else {
+            // console.log(`  No attendees for "${event.summary}"`);
           }
 
           // Skip declined events
           if (hasDeclined) {
+            // console.log(`  SKIPPING event "${event.summary}" - user declined`);
             continue;
+          } else {
+            // console.log(`  INCLUDING event "${event.summary}"`);
           }
 
           // Convert Google Calendar event to iCal-like format
@@ -199,6 +217,25 @@ module.exports = {
         return formattedEvents;
       } catch (error) {
         console.error('Error fetching Google Calendar events:', error);
+        
+        // Provide specific error messages based on the error type
+        if (error.code === 404 || (error.response && error.response.status === 404)) {
+          console.error(`Calendar not found or not accessible for: ${calendarId}`);
+          if (credentials && credentials.client_email) {
+            console.error(`Make sure the calendar "${calendarId}" is shared with the service account: ${credentials.client_email}`);
+            console.error('To share the calendar:');
+            console.error('1. Open Google Calendar');
+            console.error(`2. Find the calendar for ${calendarId}`);
+            console.error('3. Go to Settings and sharing');
+            console.error(`4. Add the service account email (${credentials.client_email}) with "See all event details" permission`);
+          }
+        } else if (error.code === 403 || (error.response && error.response.status === 403)) {
+          console.error(`Access denied to calendar: ${calendarId}`);
+          if (credentials && credentials.client_email) {
+            console.error(`The service account ${credentials.client_email} does not have permission to access this calendar`);
+          }
+        }
+        
         return [];
       }
     };
