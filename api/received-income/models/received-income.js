@@ -136,7 +136,7 @@ let calculateTotals = async (data) => {
 
 let fillContactInfo = async (data) => {
   // Only fill contact_info if it's null or undefined
-  if (data.contact_info === null || data.contact_info === undefined) {
+  if (data.contact_info === null || data.contact_info === undefined || true) {
     if (data.contact) {
       // Get the contact ID (handle both object and ID cases)
       const contactId = typeof data.contact === 'object' ? data.contact.id : data.contact;
