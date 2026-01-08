@@ -73,6 +73,11 @@
     },
     "comments_internal": {
       "type": "richtext"
+    },
+    "contact_info": {
+      "type": "component",
+      "repeatable": false,
+      "component": "contact.contact-data"
     }
   }
 }

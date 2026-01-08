@@ -616,7 +616,168 @@ async function migrateGrantableDataToYears() {
   }
 }
 
+async function migrateContactInfo() {
+  try {
+    console.log("Starting contact_info migration...");
+    
+    // Helper function to fill contact_info from contact
+    const fillContactInfoFromContact = async (contact) => {
+      if (!contact) return null;
+      
+      // Get the contact ID (handle both object and ID cases)
+      const contactId = typeof contact === 'object' ? contact.id : contact;
+      
+      if (!contactId) return null;
+      
+      // Fetch the contact data
+      const contactData = await strapi.query("contacts").findOne({ id: contactId });
+      
+      if (!contactData) return null;
+      
+      // Map contact fields to contact_info structure
+      return {
+        name: contactData.name || null,
+        nif: contactData.nif || null,
+        address: contactData.address || null,
+        postcode: contactData.postcode || null,
+        city: contactData.city || null,
+        state: contactData.state || null,
+        country: contactData.country || null
+      };
+    };
+    
+    // Helper function to check if contact_info is null or undefined
+    const needsContactInfo = (record) => {
+      return !record.contact_info || 
+             (record.contact_info && Object.keys(record.contact_info).length === 0);
+    };
+    
+    // Migrate emitted-invoice (only non-draft invoices)
+    console.log("Migrating emitted-invoice contact_info...");
+    const allEmittedInvoices = await strapi.query("emitted-invoice").find({
+      _limit: -1,
+      state_ne: "draft"
+    }, ["contact"]);
+    
+    const emittedInvoicesToMigrate = allEmittedInvoices.filter(needsContactInfo);
+    
+    let emittedInvoicesMigrated = 0;
+    for (const invoice of emittedInvoicesToMigrate) {
+      if (invoice.contact) {
+        const contactInfo = await fillContactInfoFromContact(invoice.contact);
+        if (contactInfo) {
+          await strapi.query("emitted-invoice").update(
+            { id: invoice.id },
+            { contact_info: contactInfo, _internal: true, updatable_admin: true }
+          );
+          emittedInvoicesMigrated++;
+        }
+      }
+    }
+    console.log(`Migrated ${emittedInvoicesMigrated} emitted-invoice records`);
+    
+    // Migrate received-invoice
+    console.log("Migrating received-invoice contact_info...");
+    const allReceivedInvoices = await strapi.query("received-invoice").find({
+      _limit: -1
+    }, ["contact"]);
+    
+    const receivedInvoicesToMigrate = allReceivedInvoices.filter(needsContactInfo);
+    
+    let receivedInvoicesMigrated = 0;
+    for (const invoice of receivedInvoicesToMigrate) {
+      if (invoice.contact) {
+        const contactInfo = await fillContactInfoFromContact(invoice.contact);
+        if (contactInfo) {
+          await strapi.query("received-invoice").update(
+            { id: invoice.id },
+            { contact_info: contactInfo, _internal: true, updatable_admin: true }
+          );
+          receivedInvoicesMigrated++;
+        }
+      }
+    }
+    console.log(`Migrated ${receivedInvoicesMigrated} received-invoice records`);
+    
+    // Migrate received-income
+    console.log("Migrating received-income contact_info...");
+    const allReceivedIncomes = await strapi.query("received-income").find({
+      _limit: -1
+    }, ["contact"]);
+    
+    const receivedIncomesToMigrate = allReceivedIncomes.filter(needsContactInfo);
+    
+    let receivedIncomesMigrated = 0;
+    for (const income of receivedIncomesToMigrate) {
+      if (income.contact) {
+        const contactInfo = await fillContactInfoFromContact(income.contact);
+        if (contactInfo) {
+          await strapi.query("received-income").update(
+            { id: income.id },
+            { contact_info: contactInfo, _internal: true, updatable_admin: true }
+          );
+          receivedIncomesMigrated++;
+        }
+      }
+    }
+    console.log(`Migrated ${receivedIncomesMigrated} received-income records`);
+    
+    // Migrate received-expense
+    console.log("Migrating received-expense contact_info...");
+    const allReceivedExpenses = await strapi.query("received-expense").find({
+      _limit: -1
+    }, ["contact"]);
+    
+    const receivedExpensesToMigrate = allReceivedExpenses.filter(needsContactInfo);
+    
+    let receivedExpensesMigrated = 0;
+    for (const expense of receivedExpensesToMigrate) {
+      if (expense.contact) {
+        const contactInfo = await fillContactInfoFromContact(expense.contact);
+        if (contactInfo) {
+          await strapi.query("received-expense").update(
+            { id: expense.id },
+            { contact_info: contactInfo, _internal: true, updatable_admin: true }
+          );
+          receivedExpensesMigrated++;
+        }
+      }
+    }
+    console.log(`Migrated ${receivedExpensesMigrated} received-expense records`);
+    
+    // Migrate quote
+    console.log("Migrating quote contact_info...");
+    const allQuotes = await strapi.query("quote").find({
+      _limit: -1
+    }, ["contact"]);
+    
+    const quotesToMigrate = allQuotes.filter(needsContactInfo);
+    
+    let quotesMigrated = 0;
+    for (const quote of quotesToMigrate) {
+      if (quote.contact) {
+        const contactInfo = await fillContactInfoFromContact(quote.contact);
+        if (contactInfo) {
+          await strapi.query("quote").update(
+            { id: quote.id },
+            { contact_info: contactInfo, _internal: true, updatable_admin: true }
+          );
+          quotesMigrated++;
+        }
+      }
+    }
+    console.log(`Migrated ${quotesMigrated} quote records`);
+    
+    console.log(`Contact info migration completed. Total migrated: ${emittedInvoicesMigrated + receivedInvoicesMigrated + receivedIncomesMigrated + receivedExpensesMigrated + quotesMigrated} records`);
+    
+  } catch (error) {
+    console.error("Error during contact_info migration:", error);
+    console.log("Migration will be retried next time the server starts");
+  }
+}
+
 module.exports = async () => {
   await importSeedData();
   await migrateGrantableDataToYears();
+  await migrateContactInfo();
 };

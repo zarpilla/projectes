@@ -16,6 +16,7 @@ module.exports = {
             }            
         },
         async beforeCreate(data) {
+            data = await fillContactInfo(data);
             data = await calculateTotals(data)            
 
         },
@@ -26,6 +27,7 @@ module.exports = {
 
         },
         async beforeUpdate(params, data) {
+            data = await fillContactInfo(data);
             data = await calculateTotals(data)
         }
       },
@@ -86,3 +88,34 @@ let calculateTotals = async (data) => {
     return data;
 
 }
+
+let fillContactInfo = async (data) => {
+  // Only fill contact_info if it's null or undefined
+  if (data.contact_info === null || data.contact_info === undefined) {
+    if (data.contact) {
+      // Get the contact ID (handle both object and ID cases)
+      const contactId = typeof data.contact === 'object' ? data.contact.id : data.contact;
+      
+      if (contactId) {
+        // Fetch the contact data
+        const contact = await strapi.query("contacts").findOne({ id: contactId });
+        
+        if (contact) {
+          // Map contact fields to contact_info structure
+          data.contact_info = {
+            name: contact.name || null,
+            nif: contact.nif || null,
+            address: contact.address || null,
+            postcode: contact.postcode || null,
+            city: contact.city || null,
+            state: contact.state || null,
+            country: contact.country || null
+          };
+        }
+      }
+    }
+  }
+  
+  return data;
+};
+

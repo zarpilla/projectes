@@ -42,6 +42,9 @@ module.exports = {
         }
       }
       
+      // Fill contact_info from contact if contact_info is null or undefined
+      data = await fillContactInfo(data);
+      
       data = await calculateTotals(data);
     },
     async afterCreate(result) {
@@ -51,7 +54,20 @@ module.exports = {
     async beforeUpdate(params, data) {
       const invoice = await strapi.query(entity).findOne(params);
       if (invoice.updatable === false && !(data.updatable_admin === true)) {
-        throw new Error("received-expense NOT updatable");
+        throw new Error("emitted-invoice NOT updatable");
+      }
+      
+      // Clean up any undefined/null/empty user fields early to prevent SQL errors
+      // Use hasOwnProperty to check if the field exists and remove it if invalid
+      if ('user_real' in data) {
+        if (!data.user_real || data.user_real === '' || data.user_real === null || data.user_real === undefined) {
+          delete data.user_real;
+        }
+      }
+      if ('user_draft' in data) {
+        if (!data.user_draft || data.user_draft === '' || data.user_draft === null || data.user_draft === undefined) {
+          delete data.user_draft;
+        }
       }
       
       // Handle payment_method and bank_account changes
@@ -65,13 +81,21 @@ module.exports = {
         }
       }
       
+      // Fill contact_info from contact if contact_info is null or undefined
+      data = await fillContactInfo(data);
+      
       if (invoice.state === "real") {
         data.lines = invoice.lines;
         data.contact = invoice.contact;
         data.emitted = invoice.emitted;
         data.serial = invoice.serial;
-        data.user_real = invoice.user_real;
-        data.user_draft = invoice.user_draft;
+        // Only set user fields if they have valid values from the existing invoice
+        if (invoice.user_real && invoice.user_real !== '' && invoice.user_real !== null) {
+          data.user_real = invoice.user_real;
+        }
+        if (invoice.user_draft && invoice.user_draft !== '' && invoice.user_draft !== null) {
+          data.user_draft = invoice.user_draft;
+        }
         data.comments = invoice.comments;
         // data.number = invoice.number;
         data.code = invoice.code;
@@ -79,7 +103,21 @@ module.exports = {
       if (!data._internal) {
         data.updatable_admin = false;
         data = await handleState(data);
-        data = await calculateTotals(data);
+        data = await calculateTotals(data);        
+      } else {
+        delete data.user_real;
+      }
+      
+      // Final cleanup - remove any invalid user fields that may have been added
+      if ('user_real' in data) {
+        if (!data.user_real || data.user_real === '' || data.user_real === null || data.user_real === undefined) {
+          delete data.user_real;
+        }
+      }
+      if ('user_draft' in data) {
+        if (!data.user_draft || data.user_draft === '' || data.user_draft === null || data.user_draft === undefined) {
+          delete data.user_draft;
+        }
       }
     },
     async afterUpdate(result, params, data) {
@@ -212,5 +250,35 @@ let calculateTotals = async (data) => {
     data.total = data.total_base + data.total_vat - data.total_irpf;
   }
 
+  return data;
+};
+
+let fillContactInfo = async (data) => {
+  // Only fill contact_info if it's null or undefined
+  if (data.contact_info === null || data.contact_info === undefined) {
+    if (data.contact) {
+      // Get the contact ID (handle both object and ID cases)
+      const contactId = typeof data.contact === 'object' ? data.contact.id : data.contact;
+      
+      if (contactId) {
+        // Fetch the contact data
+        const contact = await strapi.query("contacts").findOne({ id: contactId });
+        
+        if (contact) {
+          // Map contact fields to contact_info structure
+          data.contact_info = {
+            name: contact.name || null,
+            nif: contact.nif || null,
+            address: contact.address || null,
+            postcode: contact.postcode || null,
+            city: contact.city || null,
+            state: contact.state || null,
+            country: contact.country || null
+          };
+        }
+      }
+    }
+  }
+  
   return data;
 };

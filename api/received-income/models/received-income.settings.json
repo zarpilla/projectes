@@ -116,6 +116,11 @@
     },
     "bank_account": {
       "model": "bank-accounts"
+    },
+    "contact_info": {
+      "type": "component",
+      "repeatable": false,
+      "component": "contact.contact-data"
     }
   }
 }

@@ -435,10 +435,18 @@ module.exports = {
                   ? "PROVEÏDOR/A"
                   : "CLIENT/A",
               value: [
-                invoice.contact.name,
-                invoice.contact.nif,
-                invoice.contact.address,
-                invoice.contact.postcode + " " + invoice.contact.city,
+                invoice.contact_info && invoice.contact_info.name
+                  ? invoice.contact_info.name
+                  : invoice.contact.name,
+                invoice.contact_info && invoice.contact_info.nif
+                  ? invoice.contact_info.nif
+                  : invoice.contact.nif,
+                invoice.contact_info && invoice.contact_info.address
+                  ? invoice.contact_info.address
+                  : invoice.contact.address,
+                invoice.contact_info && invoice.contact_info.postcode && invoice.contact_info.city
+                  ? invoice.contact_info.postcode + " " + invoice.contact_info.city
+                  : invoice.contact.postcode + " " + invoice.contact.city,
               ],
             },
           ],

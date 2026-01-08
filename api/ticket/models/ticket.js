@@ -19,7 +19,7 @@ module.exports = {
     async beforeUpdate(params, data) {
       const invoice = await strapi.query(entity).findOne(params);
       if (invoice.updatable === false && !(data.updatable_admin === true)) {
-        throw new Error("received-expense NOT updatable");
+        throw new Error("ticket NOT updatable");
       }
       data.updatable_admin = false;
       data = await calculateTotals(data);
@@ -39,7 +39,7 @@ module.exports = {
     async beforeDelete(params) {
       const invoice = await strapi.query(entity).findOne(params);
       if (invoice.updatable === false) {
-        throw new Error("received-expense NOT updatable");
+        throw new Error("ticket NOT updatable");
       }
       // if (invoice.project) {
       //   await projectController.setDirty(invoice.project.id);

@@ -1,0 +1,31 @@
+{
+  "collectionName": "components_contact_contact_data",
+  "info": {
+    "name": "ContactData",
+    "icon": "allergies"
+  },
+  "options": {},
+  "attributes": {
+    "name": {
+      "type": "string"
+    },
+    "nif": {
+      "type": "string"
+    },
+    "address": {
+      "type": "string"
+    },
+    "postcode": {
+      "type": "string"
+    },
+    "city": {
+      "type": "string"
+    },
+    "state": {
+      "type": "string"
+    },
+    "country": {
+      "type": "string"
+    }
+  }
+}
