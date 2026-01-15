@@ -314,7 +314,7 @@ module.exports = {
         let price = 0;
         for (const o of contactOrders) {
           price +=
-            (o.price || 0) - (o.volume_discount || 0) *
+            ((o.price || 0) - (o.volume_discount || 0)) *
             (1 - (o.multidelivery_discount || 0) / 100) *
             (1 - (o.contact_pickup_discount || 0) / 100);
         }
