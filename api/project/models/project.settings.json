@@ -269,6 +269,9 @@
       "type": "component",
       "repeatable": true,
       "component": "grantable.grantable-year"
+    },
+    "is_mother": {
+      "type": "boolean"
     }
   }
 }

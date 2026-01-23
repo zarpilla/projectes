@@ -351,6 +351,12 @@ const doProjectInfoCalculations = async (data, id) => {
     delete data.leader;
   }
 
+  // Calculate is_mother: true if there are any projects with this project as their mother
+  const childProjects = await strapi
+    .query("project")
+    .count({ mother: id });
+  data.is_mother = childProjects > 0;
+
   return data;
 };
 
@@ -1575,57 +1581,164 @@ module.exports = {
 
   async findChildren(ctx) {
     const { id, expense } = ctx.params;
-    const { mother } = await strapi.query("project").findOne({ id });
-    if (mother && mother.id == id) {
+    const project = await strapi.query("project").findOne({ id });
+    
+    // Check if this project is a mother (has children that reference it)
+    if (project && project.is_mother) {
       const childrenAll = await strapi
         .query("project")
-        .find({ mother: id, _limit: -1 });
-      const children = childrenAll.filter((c) => c.id != mother.id);
-
+        .find({ mother: id, _limit: -1 }, [
+          "project_phases",
+          "project_phases.incomes",
+          "project_phases.incomes.income_type",
+          "project_phases.expenses",
+          "project_phases.expenses.expense_type",
+          "project_original_phases",
+          "project_original_phases.incomes",
+          "project_original_phases.incomes.income_type",
+          "project_original_phases.expenses",
+          "project_original_phases.expenses.expense_type",
+        ]);
+      const children = childrenAll.filter((c) => c.id != id);
+      
       const flattenMap = (arrays, prop) =>
         _.flatten(arrays.map((a) => a[prop]));
 
+      // Store the children's values BEFORE calling doProjectInfoCalculations
+      // because that function might modify the child objects
+      // These values are stored because they might be project-level totals
+      // that aren't properly distributed across years in allByYear
+      const childrenStoredValues = children.map(c => ({
+        id: c.id,
+        total_estimated_hours_price: parseFloat(c.total_estimated_hours_price || 0),
+        total_estimated_hours: parseFloat(c.total_estimated_hours || 0),
+        total_real_expenses_vat: parseFloat(c.total_real_expenses_vat || 0),
+        total_incomes: parseFloat(c.total_incomes || 0),
+        total_expenses: parseFloat(c.total_expenses || 0),
+        total_expenses_vat: parseFloat(c.total_expenses_vat || 0),
+        total_real_hours: parseFloat(c.total_real_hours || 0),
+        total_real_incomes: parseFloat(c.total_real_incomes || 0),
+        total_real_expenses: parseFloat(c.total_real_expenses || 0),
+        total_real_hours_price: parseFloat(c.total_real_hours_price || 0),
+        incomes_expenses: parseFloat(c.incomes_expenses || 0),
+        total_real_incomes_expenses: parseFloat(c.total_real_incomes_expenses || 0)
+      }));
+
+      // Aggregate phases from all children
+      const aggregatedProjectPhases = flattenMap(children, "project_phases");
+      const aggregatedProjectOriginalPhases = flattenMap(children, "project_original_phases");
+
+      // Aggregate allByYear data from all children
+      const allChildrenByYear = [];
+      for (const child of children) {
+        const childCalculations = await doProjectInfoCalculations(child, child.id);
+        if (childCalculations && childCalculations.allByYear) {
+          allChildrenByYear.push(...childCalculations.allByYear);
+        }
+      }
+
+      // Group by year and sum all values
+      const aggregatedAllByYear = _(allChildrenByYear)
+        .groupBy("year")
+        .map((rows, year) => {
+          return {
+            year: year,
+            total_incomes: sumBy(rows, (r) => parseFloat(r.total_incomes || 0)),
+            total_expenses: sumBy(rows, (r) => parseFloat(r.total_expenses || 0)),
+            total_expenses_vat: sumBy(rows, (r) => parseFloat(r.total_expenses_vat || 0)),
+            total_real_incomes: sumBy(rows, (r) => parseFloat(r.total_real_incomes || 0)),
+            total_real_expenses: sumBy(rows, (r) => parseFloat(r.total_real_expenses || 0)),
+            total_real_expenses_vat: sumBy(rows, (r) => parseFloat(r.total_real_expenses_vat || 0)),
+            total_estimated_hours: sumBy(rows, (r) => parseFloat(r.total_estimated_hours || 0)),
+            total_estimated_hours_price: sumBy(rows, (r) => parseFloat(r.total_estimated_hours_price || 0)),
+            total_real_hours: sumBy(rows, (r) => parseFloat(r.total_real_hours || 0)),
+            total_real_hours_price: sumBy(rows, (r) => parseFloat(r.total_real_hours_price || 0)),
+            total_real_incomes_expenses: sumBy(rows, (r) => parseFloat(r.total_real_incomes_expenses || 0)),
+            incomes_expenses: sumBy(rows, (r) => parseFloat(r.incomes_expenses || 0)),
+          };
+        })
+        .value();
+
+      // Apply mother project's periodification on top of aggregated data
+      const aggregatedAllByYearWithPeriodification = aggregatedAllByYear.map((y) => {
+        const periodificationData = project.periodification && project.periodification.find((p) => p.year === y.year);
+        
+        if (!periodificationData) {
+          return y;
+        }
+
+        const periodified_real_incomes = periodificationData.real_incomes || 0;
+        const periodified_real_expenses = periodificationData.real_expenses || 0;
+        const periodified_incomes = periodificationData.incomes || 0;
+        const periodified_expenses = periodificationData.expenses || 0;
+        
+        const new_total_real_incomes = y.total_real_incomes + periodified_real_incomes;
+        const new_total_real_expenses = y.total_real_expenses + periodified_real_expenses;
+        const new_total_incomes = (y.total_incomes ?? 0) + periodified_incomes;
+        const new_total_expenses = (y.total_expenses ?? 0) + periodified_expenses;
+        
+        return {
+          ...y,
+          total_real_incomes: new_total_real_incomes,
+          total_real_expenses: new_total_real_expenses,
+          total_incomes: new_total_incomes,
+          total_expenses: new_total_expenses,
+          total_real_incomes_expenses: new_total_real_incomes - new_total_real_expenses - (y.total_real_hours_price || 0),
+          incomes_expenses: new_total_incomes - new_total_expenses - (y.total_estimated_hours_price || 0),
+        };
+      });
+
+      // Calculate totals from aggregated allByYear (which includes periodification)
+      // This ensures that the "TOTS" view reflects the periodified values
+      // However, some fields are not properly year-based so we need to sum them from stored values
+      
+      const summedEstimatedHoursPrice = _.sumBy(childrenStoredValues, 'total_estimated_hours_price');
+      const summedEstimatedHours = _.sumBy(childrenStoredValues, 'total_estimated_hours');
+      const summedRealExpensesVat = _.sumBy(childrenStoredValues, 'total_real_expenses_vat');
+      const summedIncomes = _.sumBy(childrenStoredValues, 'total_incomes');
+      const summedExpenses = _.sumBy(childrenStoredValues, 'total_expenses');
+      const summedExpensesVat = _.sumBy(childrenStoredValues, 'total_expenses_vat');
+      const summedRealHours = _.sumBy(childrenStoredValues, 'total_real_hours');
+      const summedRealIncomes = _.sumBy(childrenStoredValues, 'total_real_incomes');
+      const summedRealExpenses = _.sumBy(childrenStoredValues, 'total_real_expenses');
+      const summedRealHoursPrice = _.sumBy(childrenStoredValues, 'total_real_hours_price');
+      const summedIncomesExpenses = _.sumBy(childrenStoredValues, 'incomes_expenses');
+      const summedRealIncomesExpenses = _.sumBy(childrenStoredValues, 'total_real_incomes_expenses');
+      
       const totals = {
-        total_estimated_hours: _.sumBy(children, "total_estimated_hours"),
-        total_real_hours: _.sumBy(children, "total_real_hours"),
-        total_expenses: _.sumBy(children, "total_expenses"),
-        total_incomes: _.sumBy(children, "total_incomes"),
+        total_estimated_hours: summedEstimatedHours,
+        total_real_hours: summedRealHours, // Use stored value
+        total_expenses: summedExpenses, // Use stored value instead of aggregated
+        total_incomes: summedIncomes, // Use stored value instead of aggregated
         total_expenses_hours: _.sumBy(children, "total_expenses_hours"),
         balance: _.sumBy(children, "balance"),
         total_estimated_expenses: _.sumBy(children, "total_estimated_expenses"),
         estimated_balance: _.sumBy(children, "estimated_balance"),
-        incomes_expenses: _.sumBy(children, "incomes_expenses"),
+        incomes_expenses: summedIncomesExpenses, // Use stored value instead of aggregated
         dedicated_hours: _.sumBy(children, "dedicated_hours"),
         invoice_hours: _.sumBy(children, "invoice_hours"),
         invoice_hours_price: _.sumBy(children, "invoice_hours_price"),
         total_dedicated_hours: _.sumBy(children, "total_dedicated_hours"),
-        total_real_incomes: _.sumBy(children, "total_real_incomes"),
-        total_real_expenses: _.sumBy(children, "total_real_expenses"),
-        total_real_incomes_expenses: _.sumBy(
-          children,
-          "total_real_incomes_expenses"
-        ),
+        total_real_incomes: summedRealIncomes, // Use stored value
+        total_real_expenses: summedRealExpenses, // Use stored value
+        total_real_incomes_expenses: summedRealIncomesExpenses, // Use stored value instead of aggregated
         structural_expenses: _.sumBy(children, "structural_expenses"),
-        total_estimated_hours_price: _.sumBy(
-          children,
-          "total_estimated_hours_price"
-        ),
-        total_real_hours_price: _.sumBy(children, "total_real_hours_price"),
-        total_real_expenses: _.sumBy(children, "total_real_expenses"),
+        // These fields should be summed from stored values before doProjectInfoCalculations
+        total_estimated_hours_price: summedEstimatedHoursPrice,
+        total_real_hours_price: summedRealHoursPrice, // Use stored value
+        total_expenses_vat: summedExpensesVat, // Use stored value
+        total_real_expenses_vat: summedRealExpensesVat,
         grantable_amount: _.sumBy(children, "grantable_amount"),
         grantable_amount_total: _.sumBy(children, "grantable_amount_total"),
-        // phases: flattenMap(children, 'phases'),
-        // original_phases: flattenMap(children, 'original_phases'),
-        // emitted_invoices: flattenMap(children, 'emitted_invoices'),
-        // received_grants: flattenMap(children, 'received_grants'),
-        // received_invoices: flattenMap(children, 'received_invoices'),
-        // tickets: flattenMap(children, 'tickets'),
-        // diets: flattenMap(children, 'diets'),
-        // received_incomes: flattenMap(children, 'received_incomes'),
-        // received_expenses: flattenMap(children, 'received_expenses'),
       };
 
-      return { children, totals };
+      return { 
+        children, 
+        totals,
+        project_phases: aggregatedProjectPhases,
+        project_original_phases: aggregatedProjectOriginalPhases,
+        allByYear: aggregatedAllByYearWithPeriodification
+      };
     } else {
       return {};
     }

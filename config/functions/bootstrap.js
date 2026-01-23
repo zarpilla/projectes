@@ -776,8 +776,59 @@ async function migrateContactInfo() {
   }
 }
 
+async function calculateMotherProjects() {
+  try {
+    console.log("Starting mother projects calculation...");
+    
+    // Get all projects
+    const allProjects = await strapi.query("project").find({
+      _limit: -1
+    }, ["mother"]);
+    
+    console.log(`Found ${allProjects.length} total projects`);
+    
+    // Create a map to count children for each potential mother project
+    const motherChildCountMap = new Map();
+    
+    // Count children for each mother project
+    for (const project of allProjects) {
+      if (project.mother) {
+        const motherId = typeof project.mother === 'object' ? project.mother.id : project.mother;
+        if (motherId) {
+          motherChildCountMap.set(motherId, (motherChildCountMap.get(motherId) || 0) + 1);
+        }
+      }
+    }
+    
+    console.log(`Found ${motherChildCountMap.size} projects that are mothers`);
+    
+    let updatedCount = 0;
+    
+    // Only update projects that should be mothers (have children)
+    for (const [motherId, childCount] of motherChildCountMap.entries()) {
+      const motherProject = allProjects.find(p => p.id === motherId);
+      
+      if (motherProject && !motherProject.is_mother) {
+        await strapi.query("project").update(
+          { id: motherId },
+          { is_mother: true, _internal: true }
+        );
+        updatedCount++;
+        console.log(`Updated project "${motherProject.name}" to is_mother=true (has ${childCount} children)`);
+      }
+    }
+    
+    console.log(`Mother projects calculation completed: ${updatedCount} projects updated`);
+    
+  } catch (error) {
+    console.error("Error during mother projects calculation:", error);
+    console.log("Calculation will be retried next time the server starts");
+  }
+}
+
 module.exports = async () => {
   await importSeedData();
   await migrateGrantableDataToYears();
   await migrateContactInfo();
+  await calculateMotherProjects();
 };
