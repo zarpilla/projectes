@@ -30,16 +30,16 @@ module.exports = {
     let where = { _limit: -1 };
 
     if (ctx.query && ctx.query.project_states && ctx.query.project_states !== undefined) {
-      where = { _limit: -1, project_state_in: ctx.query.project_states.split(",").map((x) => parseInt(x)) };
+      where = { _limit: -1, is_mother: false, project_state_in: ctx.query.project_states.split(",").map((x) => parseInt(x)) };
     }
 
     const year = ctx.query.year;
     const bankAccountFilterIds = ctx.query.bank_account_id;
 
     if (ctx.query && ctx.query.filter && ctx.query.filter === "approved") {
-      where = { _limit: -1, project_state_in: [1, 2] };
+      where = { _limit: -1, is_mother: false, project_state_in: [1, 2] };
     } else if (ctx.query && ctx.query.filter && ctx.query.filter === "requested") {
-      where = { _limit: -1, project_state_eq: 3 };
+      where = { _limit: -1, is_mother: false, project_state_eq: 3 };
     }
 
     const treasury = [];

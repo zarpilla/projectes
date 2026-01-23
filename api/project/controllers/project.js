@@ -1186,6 +1186,9 @@ module.exports = {
     const festives = results[2];
 
     //projects = projects.filter((p) => p.published_at !== null);
+    
+    // Filter out mother projects to avoid double-counting (children are already included)
+    projects = projects.filter((p) => !p.is_mother);
 
     // console.log('projects', projects[0].activities ? projects[0].activities[0] : 0)
     const activities = _.flatten(projects.map((p) => { return p.activities ? p.activities : [] }));
