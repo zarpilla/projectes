@@ -1,0 +1,52 @@
+{
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/orders-trackings",
+      "handler": "orders-tracking.find",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/orders-trackings/count",
+      "handler": "orders-tracking.count",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/orders-trackings/:id",
+      "handler": "orders-tracking.findOne",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/orders-trackings",
+      "handler": "orders-tracking.create",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "PUT",
+      "path": "/orders-trackings/:id",
+      "handler": "orders-tracking.update",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "DELETE",
+      "path": "/orders-trackings/:id",
+      "handler": "orders-tracking.delete",
+      "config": {
+        "policies": []
+      }
+    }
+  ]
+}

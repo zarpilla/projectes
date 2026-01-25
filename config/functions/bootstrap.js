@@ -782,7 +782,8 @@ async function calculateMotherProjects() {
     
     // Get all projects
     const allProjects = await strapi.query("project").find({
-      _limit: -1
+      _limit: -1,
+      published_at_null: false
     }, ["mother"]);
     
     console.log(`Found ${allProjects.length} total projects`);

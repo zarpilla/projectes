@@ -1,0 +1,28 @@
+{
+  "kind": "collectionType",
+  "collectionName": "orders_trackings",
+  "info": {
+    "name": "OrdersTracking"
+  },
+  "options": {
+    "increments": true,
+    "timestamps": true,
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "order_id": {
+      "type": "integer"
+    },
+    "users_permissions_user": {
+      "plugin": "users-permissions",
+      "model": "user"
+    },
+    "admin_user": {
+      "plugin": "admin",
+      "model": "user"
+    },
+    "order_status": {
+      "type": "string"
+    }
+  }
+}

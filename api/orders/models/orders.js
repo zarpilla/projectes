@@ -259,6 +259,33 @@ const updateMultideliveryDiscountForOrders = async (
   }
 };
 
+// --- ORDER TRACKING LOGIC ---
+const createOrderTracking = async (orderId, status, user) => {
+  try {
+    const trackingData = {
+      order_id: orderId,
+      order_status: status,
+    };
+
+    // Determine if it's a user or admin user based on user object
+    if (user) {
+      // Check if it's an admin user by looking for roles array with content
+      if (user.roles && Array.isArray(user.roles) && user.roles.length > 0) {
+        // Admin user (has roles array with content)
+        trackingData.admin_user = user.id;
+      } else {
+        // Regular user (users-permissions)
+        trackingData.users_permissions_user = user.id;
+      }
+    }
+
+    await strapi.query("orders-tracking").create(trackingData);
+  } catch (error) {
+    // Log error but don't fail the order operation
+    console.error("Error creating order tracking:", error);
+  }
+};
+
 const processMultideliveryDiscountForCurrentOrder = async (orderId, data) => {
   // Skip if this is an internal update
   if (data._internal) {
@@ -557,6 +584,17 @@ module.exports = {
         return;
       }
 
+      // Get user from data or try to get from created_by field
+      let trackingUser = data._tracking_user;
+      
+      if (!trackingUser && result.created_by) {
+        // Get the admin user who created the order
+        trackingUser = await strapi.query("user", "admin").findOne({ id: result.created_by });
+      }
+
+      // Create tracking entry for order creation
+      // await createOrderTracking(result.id, result.status, trackingUser);
+
       // Process multidelivery discount for other orders after the current order is created
       const previousOrder = await strapi
         .query("orders")
@@ -583,6 +621,17 @@ module.exports = {
         .findOne({ id: params.id });
 
       if (currentOrder) {
+        // Get user from data or try to get from updated_by field
+        let trackingUser = data._tracking_user;
+        
+        if (!trackingUser && currentOrder.updated_by) {
+          // Get the admin user who made the update
+          trackingUser = await strapi.query("user", "admin").findOne({ id: currentOrder.updated_by });
+        }
+        
+        // Create tracking entry for every update
+        // await createOrderTracking(currentOrder.id, currentOrder.status, trackingUser);
+
         // Process multidelivery discount for other orders
         await processMultideliveryDiscountForOtherOrders(
           params.id,

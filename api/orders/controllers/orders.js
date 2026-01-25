@@ -1108,4 +1108,25 @@ module.exports = {
         others.length > 0 ? ownerFactor * me.orders_options.multidelivery_discount : 0,
     };
   },
+
+  async create(ctx) {
+    // If _tracking_user is not provided (e.g., from Strapi admin UI), get it from context
+    if (!ctx.request.body._tracking_user && ctx.state.user) {
+      ctx.request.body._tracking_user = ctx.state.user;
+    }
+    // Call the core create service
+    const entity = await strapi.services.orders.create(ctx.request.body);
+    return entity;
+  },
+
+  async update(ctx) {
+    // If _tracking_user is not provided (e.g., from Strapi admin UI), get it from context
+    if (!ctx.request.body._tracking_user && ctx.state.user) {
+      ctx.request.body._tracking_user = ctx.state.user;
+    }
+    const { id } = ctx.params;
+    // Call the core update service
+    const entity = await strapi.services.orders.update({ id }, ctx.request.body);
+    return entity;
+  },
 };
