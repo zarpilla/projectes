@@ -154,6 +154,20 @@
     },
     "volume_discount": {
       "type": "decimal"
+    },
+    "deposit_date": {
+      "type": "datetime"
+    },
+    "deposit_user": {
+      "plugin": "users-permissions",
+      "model": "user"
+    },
+    "pickup_date": {
+      "type": "datetime"
+    },
+    "pickup_user": {
+      "plugin": "users-permissions",
+      "model": "user"
     }
   }
 }
