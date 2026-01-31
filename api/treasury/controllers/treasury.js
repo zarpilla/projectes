@@ -27,20 +27,8 @@ const getBankAccountName = (bankAccount, defaultBankAccount) => {
 module.exports = {
   async forecast(ctx) {
 
-    let where = { _limit: -1 };
-
-    if (ctx.query && ctx.query.project_states && ctx.query.project_states !== undefined) {
-      where = { _limit: -1, is_mother: false, project_state_in: ctx.query.project_states.split(",").map((x) => parseInt(x)) };
-    }
-
     const year = ctx.query.year;
     const bankAccountFilterIds = ctx.query.bank_account_id;
-
-    if (ctx.query && ctx.query.filter && ctx.query.filter === "approved") {
-      where = { _limit: -1, is_mother: false, project_state_in: [1, 2] };
-    } else if (ctx.query && ctx.query.filter && ctx.query.filter === "requested") {
-      where = { _limit: -1, is_mother: false, project_state_eq: 3 };
-    }
 
     const treasury = [];
     // const treasuryData = [];
@@ -50,27 +38,55 @@ module.exports = {
     console.time("forecast")
 
     const treasuries = 
-    await strapi.query("treasury").find({ _limit: -1 }, ["bank_account"])
+    await strapi.query("treasury").find({ _limit: -1 }, ["bank_account", "project"])
     
     const emitted = 
-    await strapi.query("emitted-invoice").find({ _limit: -1 }, ["bank_account"])
+    await strapi.query("emitted-invoice").find({ _limit: -1 }, ["bank_account", "project", "projects", "contact"])
     
     const received = 
-    await strapi.query("received-invoice").find({ _limit: -1 }, ["bank_account"])
+    await strapi.query("received-invoice").find({ _limit: -1 }, ["bank_account", "project", "projects", "contact"])
     
     const receivedIncomes = 
-    await strapi.query("received-income").find({ _limit: -1 }, ["bank_account"])
+    await strapi.query("received-income").find({ _limit: -1 }, ["bank_account", "project", "projects", "contact", "document_type"])
     
     const receivedExpenses = 
-    await strapi.query("received-expense").find({ _limit: -1 }, ["bank_account"])
+    await strapi.query("received-expense").find({ _limit: -1 }, ["bank_account", "project", "projects", "contact", "document_type"])
 
     const payrolls = 
     await strapi.query("payroll").find({ _limit: -1 }, ["bank_account", "year", "month", "users_permissions_user"])
     
-    const projects = 
-    await strapi.query("project").find(where,
+    // Fetch ALL projects (we'll filter in JavaScript)
+    const allProjectsRaw = 
+    await strapi.query("project").find({ _limit: -1 },
       ["project_phases", "project_phases.expenses", "project_phases.expenses.provider", "project_phases.expenses.expense_type", "project_phases.expenses.invoice", "project_phases.expenses.grant", "project_phases.expenses.ticket", "project_phases.expenses.diet", "project_phases.expenses.expense", "project_phases.expenses.bank_account", "project_phases.incomes", "project_phases.incomes.client", "project_phases.incomes.income_type", "project_phases.incomes.invoice", "project_phases.incomes.income", "project_phases.incomes.bank_account"]
     )
+    
+    // Filter out mother projects (is_mother === true) for unpaid items processing
+    // This ensures we only process real projects, not container/mother projects
+    const allProjects = allProjectsRaw.filter(p => p.is_mother !== true);
+    
+    // Also filter projects with the specified state filter for the return list
+    const projects = allProjects.filter(p => {
+      // If no specific filter, return all non-mother projects
+      if (!ctx.query || (!ctx.query.project_states && !ctx.query.filter)) {
+        return true;
+      }
+      
+      // Apply project_states filter
+      if (ctx.query.project_states) {
+        const states = ctx.query.project_states.split(",").map((x) => parseInt(x));
+        return states.includes(p.project_state);
+      }
+      
+      // Apply filter shortcuts
+      if (ctx.query.filter === "approved") {
+        return [1, 2].includes(p.project_state);
+      } else if (ctx.query.filter === "requested") {
+        return p.project_state === 3;
+      }
+      
+      return true;
+    });
 
     const years = 
     await strapi.query("year").find({ _limit: -1 })
@@ -86,10 +102,24 @@ module.exports = {
 
     // vat
     const vat = { paid: 0, received: 0, deductible_vat_pct: 0, deductible_vat_pct_sum: 0, deductible_vat_pct_n: 0, deductible_vat: 0, documents: [] };
-    const vat_expected = { paid: 0, received: 0 };    
+    const vat_expected = { paid: 0, received: 0 };
+    const vat_expected_by_quarter = {};    
 
-    for (let p of projects) {
+    console.log('Processing all projects for unpaid items:', allProjects.length);
+    console.log('Processing filtered projects:', projects.length);
+
+    // Process ALL projects to find unpaid incomes and expenses
+    for (let p of allProjects) {
+      const hasUnpaidItems = p.project_phases?.some(ph => 
+        (ph.incomes?.some(i => !i.paid) || ph.expenses?.some(e => !e.paid))
+      );
+      if (hasUnpaidItems) {
+        console.log('Project with unpaid items:', p.name, 'Phases:', p.project_phases?.length);
+      }
       for (let ph of p.project_phases) {
+        if (ph.incomes?.some(i => !i.paid) || ph.expenses?.some(e => !e.paid)) {
+          console.log('  Phase:', ph.name, 'Incomes:', ph.incomes?.length, 'Expenses:', ph.expenses?.length);
+        }
         for (let e of ph.expenses || []) {          
           if (!e.paid) {
             const expense = {
@@ -108,8 +138,26 @@ module.exports = {
             treasury.push(expense);
 
             const date_est = e.date_estimate_document || e.date
-            if (date_est && moment(date_est, 'YYYY-MM-DD').year() <= moment().year() && e.expense_type && e.expense_type.vat_pct) {
-              vat_expected.paid += e.total_amount * e.expense_type.vat_pct / 100;
+            if (date_est && e.expense_type && e.expense_type.vat_pct) {
+              const vatAmount = e.total_amount * e.expense_type.vat_pct / 100;
+              vat_expected.paid += vatAmount;
+              
+              // Group by quarter
+              const dateEstMoment = moment(date_est, 'YYYY-MM-DD');
+              const quarter = dateEstMoment.quarter();
+              const year = dateEstMoment.year();
+              const key = `${year}-Q${quarter}`;
+              
+              if (!vat_expected_by_quarter[key]) {
+                vat_expected_by_quarter[key] = {
+                  year,
+                  quarter,
+                  paid: 0,
+                  received: 0
+                };
+              }
+              
+              vat_expected_by_quarter[key].paid += vatAmount;
             }
           }
           if (e.invoice && e.invoice.id) {
@@ -149,7 +197,9 @@ module.exports = {
           }
         }
         for (let i of ph.incomes || []) {
+          console.log('    Income:', i.id, 'Paid:', i.paid, 'Concept:', i.concept, 'Date:', i.date);
           if (!i.paid) {
+            console.log('      -> Adding to treasury as "Ingrés esperat"');
             const income = {
               incomeId: i.id,
               project_name: p.name,
@@ -167,8 +217,26 @@ module.exports = {
             
             const date_est = i.date_estimate_document || i.date
 
-            if (date_est && moment(date_est, 'YYYY-MM-DD').year() <= moment().year() && i.income_type && i.income_type.vat_pct) {
-              vat_expected.received += i.total_amount * i.income_type.vat_pct / 100;
+            if (date_est && i.income_type && i.income_type.vat_pct) {
+              const vatAmount = i.total_amount * i.income_type.vat_pct / 100;
+              vat_expected.received += vatAmount;
+              
+              // Group by quarter
+              const dateEstMoment = moment(date_est, 'YYYY-MM-DD');
+              const quarter = dateEstMoment.quarter();
+              const year = dateEstMoment.year();
+              const key = `${year}-Q${quarter}`;
+              
+              if (!vat_expected_by_quarter[key]) {
+                vat_expected_by_quarter[key] = {
+                  year,
+                  quarter,
+                  paid: 0,
+                  received: 0
+                };
+              }
+              
+              vat_expected_by_quarter[key].received += vatAmount;
             }
           }
           if (i.invoice && i.invoice.id) {
@@ -617,21 +685,117 @@ module.exports = {
     }
 
 
-    if (-1*(vat_expected.received - (vat_expected.paid * me.options.deductible_vat_pct / 100)) !== 0) {
-      treasury.push({
-        project_name: "",
+    // Group VAT documents by quarter for executed VAT
+    const vatByQuarter = {};
+    
+    for (let doc of vat.documents) {
+      const docDate = moment(doc.date, 'YYYY-MM-DD');
+      const quarter = docDate.quarter();
+      const year = docDate.year();
+      const key = `${year}-Q${quarter}`;
+      
+      if (!vatByQuarter[key]) {
+        vatByQuarter[key] = {
+          year,
+          quarter,
+          paid: 0,
+          received: 0,
+          deductible_vat: 0,
+          deductible_vat_pct_sum: 0,
+          deductible_vat_pct_n: 0,
+          documents: []
+        };
+      }
+      
+      if (doc.type === 'received-invoices' || doc.type === 'received-expenses') {
+        const deductiblePct = getDeductiblePct(years, doc.date);
+        vatByQuarter[key].paid += doc.total_vat;
+        vatByQuarter[key].deductible_vat += deductiblePct * doc.total_vat;
+        vatByQuarter[key].deductible_vat_pct_sum += deductiblePct;
+        vatByQuarter[key].deductible_vat_pct_n++;
+      } else if (doc.type === 'emitted-invoices' || doc.type === 'received-incomes') {
+        vatByQuarter[key].received += doc.total_vat;
+        vatByQuarter[key].deductible_vat += -1 * doc.total_vat;
+      }
+      
+      vatByQuarter[key].documents.push(doc);
+    }
+    
+    // Add executed VAT entries to treasury
+    for (let key in vatByQuarter) {
+      const qData = vatByQuarter[key];
+      const balance = qData.deductible_vat;
+      
+      if (balance !== 0) {
+        // Calculate the payment date: 30th of the month after quarter end
+        // Exception: Q4 (Oct-Dec) is paid on January 20th instead of 30th
+        let paymentDate = moment(`${qData.year}`, 'YYYY')
+          .quarter(qData.quarter)
+          .endOf('quarter')
+          .add(1, 'month');
+        
+        if (qData.quarter === 4) {
+          // Q4: January 20th
+          paymentDate.date(20);
+        } else {
+          // Q1, Q2, Q3: 30th of the month
+          paymentDate.date(30);
+        }
+        
+        // Determine if it's paid (before today) or expected (today or future)
+        const isPaid = paymentDate.isBefore(moment(), 'day');
+        
+        treasury.push({
+          project_name: "",
           project_id: 0,
-          type: "IVA previst pendent de saldar",
-          concept: `IVA previst pendent de saldar`,
-          total_amount: -1*(vat_expected.received - (vat_expected.paid * me.options.deductible_vat_pct / 100)),
-          date: moment().endOf("year"),
+          type: "IVA executat pendent de saldar",
+          concept: `IVA executat ${qData.year} T${qData.quarter}`,
+          total_amount: -1 * balance,
+          date: paymentDate,
           date_error: false,
-          paid: false,
-          contact:
-            "",
+          paid: isPaid,
+          contact: "",
           to: null,
           bank_account: me.bank_account_vat && me.bank_account_vat.name ? me.bank_account_vat.name : null,
-      })
+        });
+      }
+    }
+
+    // Add expected VAT entries to treasury (grouped by quarter)
+    for (let key in vat_expected_by_quarter) {
+      const qData = vat_expected_by_quarter[key];
+      const balance = qData.received - (qData.paid * me.options.deductible_vat_pct / 100);
+      
+      if (balance !== 0) {
+        // Calculate the payment date: 30th of the month after quarter end
+        // Exception: Q4 (Oct-Dec) is paid on January 20th instead of 30th
+        let paymentDate = moment(`${qData.year}`, 'YYYY')
+          .quarter(qData.quarter)
+          .endOf('quarter')
+          .add(1, 'month');
+        
+        if (qData.quarter === 4) {
+          // Q4: January 20th
+          paymentDate.date(20);
+        } else {
+          // Q1, Q2, Q3: 30th of the month
+          paymentDate.date(30);
+        }
+        
+        treasury.push({
+          project_name: "",
+          project_id: 0,
+          type: "IVA previst pendent de saldar",
+          concept: `IVA previst ${qData.year} T${qData.quarter}`,
+          total_amount: -1 * balance,
+          date: paymentDate,
+          date_error: false,
+          paid: false,
+          contact: "",
+          to: null,
+          bank_account: me.bank_account_vat && me.bank_account_vat.name ? me.bank_account_vat.name : null,
+        });
+      }
     }
 
     console.timeEnd("process")
@@ -681,14 +845,33 @@ module.exports = {
       // Parse bank account IDs (can be comma-separated for multiple selection)
       const bankAccountIdArray = bankAccountFilterIds.split(',').map(id => id.trim()).filter(id => id !== '');
       
+      console.log('Bank account filter IDs:', bankAccountIdArray);
+      console.log('Treasury entries before filter:', treasuryDataX.length);
+      console.log('Sample entries:', treasuryDataX.filter(t => t.type === 'Ingrés esperat').map(t => ({
+        type: t.type,
+        concept: t.concept,
+        bank_account: t.bank_account,
+        project_name: t.project_name
+      })));
+      
       if (bankAccountIdArray.length > 0) {
         // Find the bank account names by IDs for filtering
         const selectedBankAccountNames = bankAccounts
           .filter(ba => bankAccountIdArray.includes(ba.id.toString()))
           .map(ba => ba.name);
         
+        console.log('Selected bank account names:', selectedBankAccountNames);
+        
         if (selectedBankAccountNames.length > 0) {
-          filteredTreasuryDataX = treasuryDataX.filter(t => selectedBankAccountNames.includes(t.bank_account));
+          // Filter entries: include if bank_account matches OR if bank_account is null/undefined
+          filteredTreasuryDataX = treasuryDataX.filter(t => 
+            selectedBankAccountNames.includes(t.bank_account) || 
+            !t.bank_account || 
+            t.bank_account === null
+          );
+          
+          console.log('Treasury entries after filter:', filteredTreasuryDataX.length);
+          console.log('Ingrés esperat after filter:', filteredTreasuryDataX.filter(t => t.type === 'Ingrés esperat').length);
           
           // Recalculate subtotals for the filtered account-specific data
           let accountSubtotal = 0;
