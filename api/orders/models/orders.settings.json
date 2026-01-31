@@ -168,6 +168,9 @@
     "pickup_user": {
       "plugin": "users-permissions",
       "model": "user"
+    },
+    "collection_point": {
+      "model": "contacts"
     }
   }
 }

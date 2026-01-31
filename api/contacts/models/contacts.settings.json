@@ -129,6 +129,9 @@
     },
     "notes_delivery": {
       "type": "text"
+    },
+    "collection_points": {
+      "collection": "contacts"
     }
   }
 }
