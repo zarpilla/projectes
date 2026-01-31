@@ -57,6 +57,14 @@
       }
     },
     {
+      "method": "POST",
+      "path": "/contacts/unify",
+      "handler": "contacts.unify",
+      "config": {
+        "policies": []
+      }
+    },
+    {
       "method": "PUT",
       "path": "/contacts/:id",
       "handler": "contacts.update",

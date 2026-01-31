@@ -76,4 +76,59 @@ module.exports = {
 
     return contacts;
   },
+  async unify(ctx) {
+    const { sourceContactId, targetContactId } = ctx.request.body;
+
+    // Validation
+    if (!sourceContactId || !targetContactId) {
+      return ctx.badRequest('Both sourceContactId and targetContactId are required');
+    }
+
+    if (sourceContactId === targetContactId) {
+      return ctx.badRequest('Source and target contacts cannot be the same');
+    }
+
+    try {
+      // Verify both contacts exist
+      const sourceContact = await strapi.query('contacts').findOne({ id: sourceContactId });
+      const targetContact = await strapi.query('contacts').findOne({ id: targetContactId });
+
+      if (!sourceContact) {
+        return ctx.notFound('Source contact not found');
+      }
+
+      if (!targetContact) {
+        return ctx.notFound('Target contact not found');
+      }
+
+      // Get all orders from the source contact
+      const orders = await strapi.query('orders').find({ contact: sourceContactId, _limit: -1 });
+
+      // Update all orders to point to the target contact
+      let movedCount = 0;
+      for (const order of orders) {
+        await strapi.query('orders').update(
+          { id: order.id },
+          { contact: targetContactId }
+        );
+        movedCount++;
+      }
+
+      // Log the action for audit purposes
+      console.log(`[UNIFY CONTACTS] User ${ctx.state.user.id} moved ${movedCount} orders from contact ${sourceContactId} to ${targetContactId}`);
+
+      // Return result
+      ctx.send({
+        success: true,
+        movedOrders: movedCount,
+        sourceContactId,
+        targetContactId,
+        message: `Successfully moved ${movedCount} orders from contact ${sourceContactId} to contact ${targetContactId}`
+      });
+
+    } catch (error) {
+      console.error('Error unifying contacts:', error);
+      return ctx.badRequest('Error unifying contacts', { error: error.message });
+    }
+  },
 };
