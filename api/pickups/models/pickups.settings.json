@@ -23,6 +23,9 @@
     },
     "message": {
       "type": "text"
+    },
+    "city": {
+      "model": "city"
     }
   }
 }
