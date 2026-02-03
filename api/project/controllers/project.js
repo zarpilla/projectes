@@ -2042,6 +2042,14 @@ module.exports = {
       if (incomes) {
         for await (const income of incomes) {
           income.total_amount = income.quantity * income.amount;
+          
+          // Clean up bank_account - ensure it's either a valid ID or null
+          if (income.bank_account && typeof income.bank_account === 'object' && !income.bank_account.id) {
+            income.bank_account = null;
+          } else if (income.bank_account && income.bank_account.id) {
+            income.bank_account = income.bank_account.id;
+          }
+          
           if (!income.id) {
             const { estimated_hours, ...item } = income;
             if (entity === "project-original-phases") {
@@ -2084,6 +2092,12 @@ module.exports = {
       if (expenses) {
         for await (const expense of expenses) {
           expense.total_amount = expense.quantity * expense.amount;
+          
+          // Clean up bank_account - ensure it's either a valid ID or null
+          if (expense.bank_account && typeof expense.bank_account === 'object' && !expense.bank_account.id) {
+            expense.bank_account = null;
+          }
+          
           if (!expense.id) {
             if (entity === "project-original-phases") {
               await strapi.query("phase-expense").create({
