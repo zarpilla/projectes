@@ -171,6 +171,10 @@
     },
     "collection_point": {
       "model": "contacts"
+    },
+    "incidences": {
+      "via": "order",
+      "collection": "incidences"
     }
   }
 }

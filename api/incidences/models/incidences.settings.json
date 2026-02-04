@@ -1,0 +1,41 @@
+{
+  "kind": "collectionType",
+  "collectionName": "incidences",
+  "info": {
+    "name": "Incidences",
+    "description": ""
+  },
+  "options": {
+    "increments": true,
+    "timestamps": true,
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "state": {
+      "type": "enumeration",
+      "enum": [
+        "open",
+        "wip",
+        "closed"
+      ]
+    },
+    "created_user": {
+      "plugin": "users-permissions",
+      "model": "user"
+    },
+    "closed_user": {
+      "plugin": "users-permissions",
+      "model": "user"
+    },
+    "closed_date": {
+      "type": "datetime"
+    },
+    "description": {
+      "type": "text"
+    },
+    "order": {
+      "model": "orders",
+      "via": "incidences"
+    }
+  }
+}

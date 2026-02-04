@@ -105,11 +105,8 @@ module.exports = {
     const vat_expected = { paid: 0, received: 0 };
     const vat_expected_by_quarter = {};    
 
-    console.log('Processing all projects for unpaid items:', allProjects.length);
-    console.log('Processing filtered projects:', projects.length);
-
-    // Process ALL projects to find unpaid incomes and expenses
-    for (let p of allProjects) {
+    // Process filtered projects to find unpaid incomes and expenses
+    for (let p of projects) {
       const hasUnpaidItems = p.project_phases?.some(ph => 
         (ph.incomes?.some(i => !i.paid) || ph.expenses?.some(e => !e.paid))
       );
