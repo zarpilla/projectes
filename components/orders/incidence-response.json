@@ -1,0 +1,20 @@
+{
+  "collectionName": "components_orders_incidence_responses",
+  "info": {
+    "name": "IncidenceResponse",
+    "icon": "arrow-circle-right"
+  },
+  "options": {},
+  "attributes": {
+    "text": {
+      "type": "text"
+    },
+    "user": {
+      "plugin": "users-permissions",
+      "model": "user"
+    },
+    "response_date": {
+      "type": "datetime"
+    }
+  }
+}

@@ -185,7 +185,7 @@ async function importSeedData() {
     "verifactu-declaration": ["find", "findone", "create"],
     "pivot-table-view": ["find", "findone", "create", "update", "delete"],
     "bank-accounts": ["find", "findone"],
-    incidences: ["create", "find", "findone", "update"],
+    incidences: ["create", "find", "findone", "update", "count", "delete"],
   });
 
   await setPermissions("authenticated", "upload", {

@@ -36,6 +36,11 @@
     "order": {
       "model": "orders",
       "via": "incidences"
+    },
+    "incidence_response": {
+      "type": "component",
+      "repeatable": true,
+      "component": "orders.incidence-response"
     }
   }
 }

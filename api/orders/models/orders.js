@@ -286,6 +286,86 @@ const createOrderTracking = async (orderId, status, user) => {
   }
 };
 
+// --- INCIDENCES LOGIC ---
+const processIncidences = async (orderId, incidences, trackingUser) => {
+  try {
+    // Get existing incidences for this order
+    const existingIncidences = await strapi.query("incidences").find({
+      order: orderId,
+      _limit: -1,
+    });
+
+    // Create a map of existing incidences by ID for quick lookup
+    const existingMap = new Map(existingIncidences.map(inc => [inc.id, inc]));
+    const processedIds = new Set();
+
+    // Process each incidence from the form
+    for (const incidence of incidences) {
+      if (incidence.id) {
+        // Update existing incidence
+        processedIds.add(incidence.id);
+        const existing = existingMap.get(incidence.id);
+        
+        if (existing) {
+          const updateData = {
+            description: incidence.description,
+            state: incidence.state,
+          };
+
+          // If changing to closed state and not already closed, set closed_date and closed_user
+          if (incidence.state === 'closed' && existing.state !== 'closed') {
+            updateData.closed_date = new Date();
+            if (trackingUser) {
+              updateData.closed_user = trackingUser.id;
+            }
+          }
+
+          await strapi.query("incidences").update(
+            { id: incidence.id },
+            updateData
+          );
+        }
+      } else {
+        // Create new incidence
+        const createData = {
+          order: orderId,
+          description: incidence.description,
+          state: incidence.state || 'open',
+        };
+
+        if (trackingUser) {
+          createData.created_user = trackingUser.id;
+        }
+
+        // If creating as closed, set closed_date and closed_user
+        if (createData.state === 'closed') {
+          createData.closed_date = new Date();
+          if (trackingUser) {
+            createData.closed_user = trackingUser.id;
+          }
+        }
+
+        const newIncidence = await strapi.query("incidences").create(createData);
+        processedIds.add(newIncidence.id);
+      }
+    }
+
+    // Note: We're not deleting incidences that are not in the list
+    // If you want to delete removed incidences, uncomment the code below:
+    /*
+    // Delete incidences that were removed from the list
+    for (const existing of existingIncidences) {
+      if (!processedIds.has(existing.id)) {
+        await strapi.query("incidences").delete({ id: existing.id });
+      }
+    }
+    */
+  } catch (error) {
+    console.error("Error processing incidences:", error);
+    throw error;
+  }
+};
+
 const processMultideliveryDiscountForCurrentOrder = async (orderId, data) => {
   // Skip if this is an internal update
   if (data._internal) {
@@ -520,41 +600,11 @@ module.exports = {
 
       await setDeliveryTypeRefrigerated(data);
 
-      if (data.incidence && !data.incidence_solved) {
-        const me = await strapi.query("me").findOne();
-        if (!me.contact_form_email) {
-          throw new Error("contact_form_email not set");
-        }
-
-        const to = [data.email];
-        me.contact_form_email.split(",").forEach((email) => {
-          to.push(email);
-        });
-        const from = strapi.config.get(
-          "plugins.email.settings.defaultFrom",
-          ""
-        );
-        const subject = `[ESSSTRAPIS] Incidència amb una comanda`;
-        const userData = await strapi
-          .query("user", "users-permissions")
-          .findOne({ id: data.user });
-        const html = `
-                <b>Incidència amb una comanda</b><br><br>
-                PROVEÏDORA: ${userData.fullname || userData.username} (${
-          userData.id
-        })<br>
-                COMANDA: #${params.id.toString().padStart(4, "0")} <br>
-                INCIDÈNCIA: ${data.incidence_description} <br>                
-                --<br>
-                Missatge automàtic.<br>                
-                --<br>`;
-
-        await strapi.plugins["email"].services.email.send({
-          to,
-          from,
-          subject,
-          html,
-        });
+      // Handle incidences if provided
+      if (data.incidences && Array.isArray(data.incidences)) {
+        // Store incidences data temporarily (will be processed in afterUpdate)
+        data._incidencesToProcess = data.incidences;
+        delete data.incidences; // Remove from data to avoid Strapi trying to process it
       }
 
       // Merge data with previous order data for complete context
@@ -584,6 +634,11 @@ module.exports = {
         return;
       }
 
+      // Process incidences if provided
+      if (data._incidencesToProcess) {
+        await processIncidences(result.id, data._incidencesToProcess, data._tracking_user);
+      }
+
       // Get user from data or try to get from created_by field
       let trackingUser = data._tracking_user;
       
@@ -610,6 +665,11 @@ module.exports = {
       // Skip if this is an internal update
       if (data._internal) {
         return;
+      }
+
+      // Process incidences if provided
+      if (data._incidencesToProcess) {
+        await processIncidences(params.id, data._incidencesToProcess, data._tracking_user);
       }
 
       // Get the previous order data that was stored in beforeUpdate

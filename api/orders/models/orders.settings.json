@@ -121,17 +121,6 @@
     "last_mile": {
       "type": "boolean"
     },
-    "incidence": {
-      "type": "boolean",
-      "default": false
-    },
-    "incidence_description": {
-      "type": "text"
-    },
-    "incidence_solved": {
-      "type": "boolean",
-      "default": false
-    },
     "emitted_invoice_datetime": {
       "type": "datetime"
     },
