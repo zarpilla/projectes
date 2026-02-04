@@ -162,6 +162,7 @@ module.exports = {
               type: "invoice",
               id: e.invoice.id,
               code: e.invoice.code,
+              concept: e.concept,
             });
           }
           if (e.grant && e.grant.id) {
@@ -169,6 +170,7 @@ module.exports = {
               type: "grant",
               id: e.grant.id,
               code: e.grant.code,
+              concept: e.concept,
             });
           }
           if (e.ticket && e.ticket.id) {
@@ -176,6 +178,7 @@ module.exports = {
               type: "ticket",
               id: e.ticket.id,
               code: e.ticket.code,
+              concept: e.concept,
             });
           }
           if (e.diet && e.diet.id) {
@@ -183,6 +186,7 @@ module.exports = {
               type: "diet",
               id: e.diet.id,
               code: e.diet.code,
+              concept: e.concept,
             });
           }
           if (e.expense && e.expense.id) {
@@ -190,6 +194,7 @@ module.exports = {
               type: "expense",
               id: e.expense.id,
               code: e.expense.code,
+              concept: e.concept,
             });
           }
         }
@@ -241,6 +246,7 @@ module.exports = {
               type: "invoice",
               id: i.invoice.id,
               code: i.invoice.code,
+              concept: i.concept,
             });
           }
           if (i.grant && i.grant.id) {
@@ -248,6 +254,7 @@ module.exports = {
               type: "grant",
               id: i.grant.id,
               code: i.grant.code,
+              concept: i.concept,
             });
           }
           if (i.income && i.income.id) {
@@ -255,6 +262,7 @@ module.exports = {
               type: "income",
               id: i.income.id,
               code: i.income.code,
+              concept: i.concept,
             });
           }
         }
@@ -345,6 +353,13 @@ module.exports = {
         : i.paybefore
         ? moment(i.paybefore, "YYYY-MM-DD")
         : moment(i.emitted, "YYYY-MM-DD");
+      
+      // Find the original project income concept by looking up this invoice in projectIncomes
+      const projectIncome = projectIncomes.find(pi => 
+        pi.type === "invoice" && pi.id === i.id
+      );
+      const conceptProject = projectIncome ? projectIncome.concept : "";
+      
       const income = {
         project_name:
           i.project && i.project.name
@@ -371,6 +386,7 @@ module.exports = {
         contact: i.contact && i.contact.name ? i.contact.name : "?",
         to: `/document/${i.id}/emitted-invoices`,
         bank_account: getBankAccountName(i.bank_account, me.bank_account_default),
+        conceptProject
       };
 
       treasury.push(income);
@@ -390,6 +406,13 @@ module.exports = {
         : i.paybefore
         ? moment(i.paybefore, "YYYY-MM-DD")
         : moment(i.emitted, "YYYY-MM-DD");
+      
+      // Find the original project income concept by looking up this income in projectIncomes
+      const projectIncome = projectIncomes.find(pi => 
+        pi.type === "income" && pi.id === i.id
+      );
+      const conceptProject = projectIncome ? projectIncome.concept : "";
+      
       const income = {
         project_name:
           i.project && i.project.name
@@ -418,6 +441,7 @@ module.exports = {
         contact: i.contact && i.contact.name ? i.contact.name : "?",
         to: `/document/${i.id}/received-incomes`,
         bank_account: getBankAccountName(i.bank_account, me.bank_account_default),
+        conceptProject
       };
       treasury.push(income);
       if (i.total_vat) {
@@ -435,6 +459,13 @@ module.exports = {
         : e.paybefore
         ? moment(e.paybefore, "YYYY-MM-DD")
         : moment(e.emitted, "YYYY-MM-DD");
+      
+      // Find the original project expense concept by looking up this invoice in projectExpenses
+      const projectExpense = projectExpenses.find(pe => 
+        pe.type === "invoice" && pe.id === e.id
+      );
+      const conceptProject = projectExpense ? projectExpense.concept : "";
+      
       const expense = {
         project_name:
           e.project && e.project.name
@@ -461,6 +492,7 @@ module.exports = {
         contact: e.contact && e.contact.name ? e.contact.name : "-",
         to: `/document/${e.id}/received-invoices`,
         bank_account: getBankAccountName(e.bank_account, me.bank_account_default),
+        conceptProject
       };
       treasury.push(expense);
       if (e.total_irpf) {
@@ -514,6 +546,13 @@ module.exports = {
         : e.paybefore
         ? moment(e.paybefore, "YYYY-MM-DD")
         : moment(e.emitted, "YYYY-MM-DD");
+      
+      // Find the original project expense concept by looking up this expense in projectExpenses
+      const projectExpense = projectExpenses.find(pe => 
+        pe.type === "expense" && pe.id === e.id
+      );
+      const conceptProject = projectExpense ? projectExpense.concept : "";
+      
       const expense = {
         project_name:
           e.project && e.project.name
@@ -542,6 +581,7 @@ module.exports = {
         contact: e.contact && e.contact.name ? e.contact.name : "-",
         to: `/document/${e.id}/received-expenses`,
         bank_account: getBankAccountName(e.bank_account, me.bank_account_default),
+        conceptProject
       };
       treasury.push(expense);
       if (e.total_irpf) {
@@ -841,15 +881,6 @@ module.exports = {
     if (bankAccountFilterIds && bankAccountFilterIds.trim() !== '') {
       // Parse bank account IDs (can be comma-separated for multiple selection)
       const bankAccountIdArray = bankAccountFilterIds.split(',').map(id => id.trim()).filter(id => id !== '');
-      
-      console.log('Bank account filter IDs:', bankAccountIdArray);
-      console.log('Treasury entries before filter:', treasuryDataX.length);
-      console.log('Sample entries:', treasuryDataX.filter(t => t.type === 'Ingrés esperat').map(t => ({
-        type: t.type,
-        concept: t.concept,
-        bank_account: t.bank_account,
-        project_name: t.project_name
-      })));
       
       if (bankAccountIdArray.length > 0) {
         // Find the bank account names by IDs for filtering
