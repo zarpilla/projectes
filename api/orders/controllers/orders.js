@@ -428,193 +428,6 @@ module.exports = {
       await sharp(logoUrl).png().toFile(logo);
     }
 
-    // if (invoice.paybefore) {
-    //   invoiceHeader.push({
-    //     label: "Venciment",
-    //     value: moment(invoice.paybefore, "YYYY-MM-DD").format("DD-MM-YYYY"),
-    //   });
-    // } else if (
-    //   invoice.paid &&
-    //   invoice.paid_date &&
-    //   doc === "received-expense"
-    // ) {
-    //   invoiceHeader.push({
-    //     label: "Pagada",
-    //     value: moment(invoice.paid_date, "YYYY-MM-DD").format("DD-MM-YYYY"),
-    //   });
-    // }
-    /*
-    const showDate = false;
-    const showQuantity = false;
-    const showVat = true; //invoice.lines.find((l) => l.vat > 0) !== undefined;
-    const showIrpf = false; //invoice.lines.find((l) => l.irpf > 0) !== undefined;
-
-    const detailsHeader = [];
-
-    let columnsWidth =
-      0.35 +
-      (showDate ? 0.1 : 0) +
-      (showQuantity ? 0.08 * 2 : 0) +
-      0.19 +
-      (showVat ? 0.1 : 0) +
-      (showIrpf ? 0.1 : 0) +
-      0.1;
-
-    let columnsRatio = 1 / columnsWidth;
-
-    detailsHeader.push({
-      value: "Concepte",
-      width: 0.35 * columnsRatio,
-    });
-    if (showDate) {
-      detailsHeader.push({
-        value: "Data",
-        width: 0.12 * columnsRatio,
-      });
-    }
-    if (showQuantity) {
-      detailsHeader.push({
-        value: "Q.",
-        width: 0.07 * columnsRatio,
-      });
-    }
-    if (showQuantity) {
-      detailsHeader.push({
-        value: "Base",
-        width: 0.09 * columnsRatio,
-      });
-    }
-    detailsHeader.push({
-      value: "Base imposable",
-      width: 0.18 * columnsRatio,
-    });
-    if (showVat) {
-      detailsHeader.push({
-        value: "IVA",
-        width: 0.1 * columnsRatio,
-      });
-    }
-    if (showIrpf) {
-      detailsHeader.push({
-        value: "IRPF",
-        width: 0.1 * columnsRatio,
-      });
-    }
-    detailsHeader.push({
-      value: "TOTAL",
-      width: 0.1 * columnsRatio,
-    });
-
-    const parts = [];
-
-    //for (var i = 0; i < invoice.lines.length; i++) {
-    const line = invoice; //invoice.lines[i];
-    line.quantity = 1;
-    line.vat = 21;
-    line.base = line.price;
-    line.irpf = 0;
-    const part = [];
-
-    if (line.quantity && line.price) {
-      var concept = `${invoice.route.name.trim()}${
-        invoice.estimated_delivery_date
-          ? " - " + invoice.estimated_delivery_date
-          : ""
-      } - ${invoice.pickup.name} ${
-        invoice.refrigerated ? "Refrigerada" : ""
-      } - ${invoice.units} ${invoice.units > 1 ? "caixes" : "caixa"} - ${
-        invoice.kilograms
-      } kg`;
-      // if (line.comments) {
-      //   concept += "\n\n" + line.comments;
-      // }
-      part.push({
-        value: concept,
-        width: 0.31 * columnsRatio,
-      });
-      if (showDate) {
-        part.push({
-          value: line.date,
-          width: 0.12 * columnsRatio,
-        });
-      }
-      if (showQuantity) {
-        part.push({
-          value: line.quantity,
-          width: 0.07 * columnsRatio,
-        });
-      }
-
-      if (showQuantity) {
-        part.push({
-          value: line.price,
-          width: 0.09 * columnsRatio,
-          price: true,
-        });
-      }
-
-      part.push({
-        value: line.quantity * line.price,
-        price: true,
-        width: 0.18 * columnsRatio,
-      });
-      if (showVat) {
-        part.push({
-          value:
-            formatCurrency((line.quantity * line.price * line.vat) / 100) +
-            ` EUR (${line.vat}%)`,
-          // price: true,
-          width: 0.14 * columnsRatio,
-        });
-      }
-      if (showIrpf) {
-        part.push({
-          value:
-            formatCurrency((-1 * line.quantity * line.base * line.irpf) / 100) +
-            ` EUR (${line.irpf}%)`,
-          // price: true,
-          width: 0.1 * columnsRatio,
-        });
-      }
-      part.push({
-        value:
-          line.quantity * line.price -
-          (line.quantity * line.price * line.irpf) / 100 +
-          (line.quantity * line.price * line.vat) / 100,
-        price: true,
-        width: 0.1 * columnsRatio,
-      });
-      parts.push(part);
-    }
-    //}
-
-    const total = [];
-    total.push({
-      label: "Base imposable",
-      value: invoice.price,
-      price: true,
-    });
-    if (showVat) {
-      total.push({
-        label: "IVA",
-        value: invoice.price * 0.21,
-        price: true,
-      });
-    }
-    if (showIrpf) {
-      total.push({
-        label: "IRPF",
-        value: -1 * 0,
-        price: true,
-      });
-    }
-    total.push({
-      label: "TOTAL",
-      value: invoice.price * 1.21,
-      price: true,
-    });
-    */
-
     const legal = [];
 
     legal.push({
@@ -718,6 +531,14 @@ module.exports = {
 
     const invoiceHeaderBoxes = [...invoiceHeader];
 
+    // Build transfer pickup text if both origin and destination exist
+    let transferPickupText = null;
+    if (invoice.transfer_pickup_origin && invoice.transfer_pickup_destination) {
+      const originAlias = invoice.transfer_pickup_origin.alias || invoice.transfer_pickup_origin.name;
+      const destinationAlias = invoice.transfer_pickup_destination.alias || invoice.transfer_pickup_destination.name;
+      transferPickupText = `${originAlias} -> ${destinationAlias}`;
+    }
+
     let myInvoice = new MicroInvoiceOrder({
       style: {
         header: {
@@ -780,6 +601,13 @@ module.exports = {
               ],
             },
           ],
+
+          transfer: transferPickupText ? [
+            {
+              label: "TRANSFER",
+              value: [transferPickupText],
+            },
+          ] : null,
 
           legal: legal,
 
@@ -971,6 +799,14 @@ module.exports = {
 
       const invoiceHeaderBoxes = [...invoiceHeader];
 
+      // Build transfer pickup text if both origin and destination exist
+      let transferPickupText = null;
+      if (order.transfer_pickup_origin && order.transfer_pickup_destination) {
+        const originAlias = order.transfer_pickup_origin.alias || order.transfer_pickup_origin.name;
+        const destinationAlias = order.transfer_pickup_destination.alias || order.transfer_pickup_destination.name;
+        transferPickupText = `${originAlias} -> ${destinationAlias}`;
+      }
+
       let myInvoice = new MicroInvoiceOrder({
         style: {
           header: {
@@ -1039,6 +875,13 @@ module.exports = {
                 ],
               },
             ],
+
+            transfer: transferPickupText ? [
+              {
+                label: "TRANSFER",
+                value: [transferPickupText],
+              },
+            ] : null,
 
             legal: legal,
 

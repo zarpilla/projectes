@@ -132,6 +132,9 @@ module.exports = class MicroinvoiceOrder {
       provider : {
         height : 0
       },
+      transfer : {
+        height : 0
+      },
       fonts : {
         fallback : {
           loaded : false
@@ -363,6 +366,11 @@ module.exports = class MicroinvoiceOrder {
       _fontSize = "big"
     } else if (type === "provider") {      
       
+      this.setCursor("x", this.options.style.header.textPositionProvider);
+      _fontSize = "regular"
+    } else if (type === "transfer") {      
+      // Start from where provider ended
+      this.setCursor("y", this.storage.provider.height);
       this.setCursor("x", this.options.style.header.textPositionProvider);
       _fontSize = "regular"
     } else {
@@ -737,7 +745,10 @@ module.exports = class MicroinvoiceOrder {
     for (let i = 0; i < this.options.data.pages; i++) {
       this.generateHeader(i);      
       this.generateDetails("customer");
-      this.generateDetails("provider");    
+      this.generateDetails("provider");
+      if (this.options.data.invoice.transfer) {
+        this.generateDetails("transfer");
+      }
       this.generateLegal();    
       this.generatePartsLines(i);
       this.generateRectangle(330, 260, 222, 80, this.options.style.text.primaryColor);  

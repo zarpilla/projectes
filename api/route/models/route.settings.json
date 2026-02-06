@@ -60,6 +60,9 @@
     },
     "volume_discount_price": {
       "type": "decimal"
+    },
+    "transfer_pickup": {
+      "model": "pickups"
     }
   }
 }

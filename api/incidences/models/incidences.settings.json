@@ -34,8 +34,8 @@
       "type": "text"
     },
     "order": {
-      "model": "orders",
-      "via": "incidences"
+      "via": "incidences",
+      "model": "orders"
     },
     "incidence_response": {
       "type": "component",

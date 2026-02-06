@@ -164,6 +164,29 @@
     "incidences": {
       "via": "order",
       "collection": "incidences"
+    },
+    "transfer": {
+      "type": "boolean"
+    },
+    "transfer_start_date": {
+      "type": "datetime"
+    },
+    "transfer_end_date": {
+      "type": "datetime"
+    },
+    "transfer_start_user": {
+      "plugin": "users-permissions",
+      "model": "user"
+    },
+    "transfer_end_user": {
+      "plugin": "users-permissions",
+      "model": "user"
+    },
+    "transfer_pickup_origin": {
+      "model": "pickups"
+    },
+    "transfer_pickup_destination": {
+      "model": "pickups"
     }
   }
 }

@@ -2,6 +2,7 @@
 const moment = require("moment");
 const _ = require("lodash");
 
+
 let sendEmail = async (data, config) => {
   if (!data) {
     return;
@@ -10,14 +11,31 @@ let sendEmail = async (data, config) => {
   let emailFrom = strapi.config.get("plugins.email.settings.defaultFrom", "");
 
   let text = "";
-  if (data.rows.filter((r) => r.type === "expired").length > 0) {
+  let hasFinalWarnings = false;
+  
+  // Regular expired tasks (updated in the last 15 days)
+  if (data.rows.filter((r) => r.type === "expired" && !r.shouldStop).length > 0) {
     text += `Hi ha <a target='_blank' href='${config.front_url}tasks'>tasques o checklists</a> amb la data límit superada:<br><br>`;
     data.rows
-      .filter((r) => r.type === "expired")
+      .filter((r) => r.type === "expired" && !r.shouldStop)
       .forEach((r) => {
         text += ` - ${r.name}: ${moment(r.date, "YYYY-MM-DD").format(
           "DD/MM/YYYY"
-        )}<br>`; // " - " + r.name +  "<br>";
+        )}<br>`;
+      });
+    text += "<br><br>";
+  }
+
+  // Final warning for tasks expired > 15 days without updates
+  if (data.rows.filter((r) => r.type === "expired" && r.shouldStop).length > 0) {
+    hasFinalWarnings = true;
+    text += `<strong>ÚLTIM AVÍS:</strong> Les següents tasques o checklists porten més de 15 dies amb la data límit superada i no s'han actualitzat. Deixareu de rebre notificacions sobre aquestes tasques:<br><br>`;
+    data.rows
+      .filter((r) => r.type === "expired" && r.shouldStop)
+      .forEach((r) => {
+        text += ` - ${r.name}: ${moment(r.date, "YYYY-MM-DD").format(
+          "DD/MM/YYYY"
+        )}<br>`;
       });
     text += "<br><br>";
   }
@@ -27,7 +45,7 @@ let sendEmail = async (data, config) => {
     data.rows
       .filter((r) => r.type === "new")
       .forEach((r) => {
-        text += ` - ${r.name}<br>`; // " - " + r.name +  "<br>";
+        text += ` - ${r.name}<br>`;
       });
     text += "<br><br>";
   }
@@ -36,11 +54,15 @@ let sendEmail = async (data, config) => {
   if (
     data.email === process.env.TASK_EMAIL_TO ||
     process.env.TASK_EMAIL_TO === "*"
-  ) {    
+  ) {
+    const subject = hasFinalWarnings 
+      ? "[ESSSTRAPIS] Resum de tasques - ÚLTIM AVÍS"
+      : "[ESSSTRAPIS] Resum de tasques";
+    
     await strapi.plugins["email"].services.email.send({
       to: data.email,
       from: emailFrom,
-      subject: "[ESSSTRAPIS] Resum de tasques",
+      subject: subject,
       html: text,
     });
   }
@@ -50,6 +72,7 @@ let sendEmail = async (data, config) => {
 module.exports = {
   async email(ctx) {
     const messages = [];
+    const fifteenDaysAgo = moment().subtract(15, "days");
 
     const tasks = await strapi
       .query("task")
@@ -59,8 +82,13 @@ module.exports = {
       (t) => t.due_date <= moment().format("YYYY-MM-DD")
     );
 
+    // Process expired tasks
     expired.forEach((e) => {
       e.users_permissions_users.forEach((u) => {
+        // Check if task was updated in the last 15 days
+        const wasRecentlyUpdated = moment(e.updated_at).isAfter(fifteenDaysAgo);
+        const shouldStop = !wasRecentlyUpdated;
+
         messages.push({
           id: e.id,
           name: e.name,
@@ -70,6 +98,7 @@ module.exports = {
           type: "expired",
           scope: "task",
           date: e.due_date,
+          shouldStop: shouldStop,
         });
       });
     });
@@ -86,7 +115,11 @@ module.exports = {
         )
     );
 
+    // Process checklists
     checklists.forEach((e) => {
+      const wasRecentlyUpdated = moment(e.updated_at).isAfter(fifteenDaysAgo);
+      const shouldStop = !wasRecentlyUpdated;
+
       e.users_permissions_users.forEach((u) => {
         messages.push({
           id: e.id,
@@ -97,21 +130,24 @@ module.exports = {
           type: "expired",
           scope: "task-checklist",
           date: e.due_date,
+          shouldStop: shouldStop,
         });
-        e.checklist.forEach((c) => {
-          if (c.done === false && c.due_date <= moment().format("YYYY-MM-DD")) {
-            messages.push({
-              id: e.id,
-              name: e.name,
-              project: e.project ? e.project.name : "",
-              username: c.user ? c.user.username : "",
-              email: c.user ? c.user.email : "",
-              type: "expired",
-              scope: "checklist",
-              date: c.due_date,
-            });
-          }
-        });
+      });
+      
+      e.checklist.forEach((c) => {
+        if (c.done === false && c.due_date <= moment().format("YYYY-MM-DD")) {
+          messages.push({
+            id: e.id,
+            name: e.name,
+            project: e.project ? e.project.name : "",
+            username: c.user ? c.user.username : "",
+            email: c.user ? c.user.email : "",
+            type: "expired",
+            scope: "checklist",
+            date: c.due_date,
+            shouldStop: shouldStop,
+          });
+        }
       });
     });
 
@@ -136,6 +172,7 @@ module.exports = {
             type: "new",
             scope: "task",
             date: e.due_date,
+            shouldStop: false,
           });
         }
       });
@@ -172,11 +209,12 @@ module.exports = {
             id: e.id,
             name: e.name,
             project: e.project ? e.project.name : "",
-            username: c.user ? c.user.username : "",
-            username: c.user ? c.user.email : "",
+            username: c.user.username,
+            email: c.user.email,
             type: "new",
             scope: "checklist",
             date: c.due_date,
+            shouldStop: false,
           });
         }
       });
