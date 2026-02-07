@@ -394,7 +394,17 @@ module.exports = {
         if (!i.vat_paid_date) {
           vat.received += i.total_vat;
           vat.deductible_vat += -1 * i.total_vat;
-          vat.documents.push({ id: i.id, code: i.code, type: 'emitted-invoices', total_vat: i.total_vat, total: i.total, date: i.emitted });
+          const theoreticalPct = getDeductiblePct(years, i.emitted) * 100;
+          vat.documents.push({ 
+            id: i.id, 
+            code: i.code, 
+            type: 'emitted-invoices', 
+            total_vat: i.total_vat, 
+            total: i.total, 
+            date: i.emitted,
+            deductible_vat_pct: i.deductible_vat_pct || null,
+            theoretical_deductible_vat_pct: theoreticalPct
+          });
         }
       }
     }
@@ -448,7 +458,17 @@ module.exports = {
         if (!i.vat_paid_date) {
           vat.received += i.total_vat;
           vat.deductible_vat += -1 * i.total_vat;
-          vat.documents.push({ id: i.id, code: i.code, type: 'received-incomes', total_vat: i.total_vat, total: i.total, date: i.emitted });
+          const theoreticalPct = getDeductiblePct(years, i.emitted) * 100;
+          vat.documents.push({ 
+            id: i.id, 
+            code: i.code, 
+            type: 'received-incomes', 
+            total_vat: i.total_vat, 
+            total: i.total, 
+            date: i.emitted,
+            deductible_vat_pct: i.deductible_vat_pct || null,
+            theoretical_deductible_vat_pct: theoreticalPct
+          });
         }
       }
     }
@@ -536,7 +556,17 @@ module.exports = {
           vat.deductible_vat += getDeductiblePct(years, e.emitted) * e.total_vat;          
           vat.deductible_vat_pct_sum += getDeductiblePct(years, e.emitted)
           vat.deductible_vat_pct_n++
-          vat.documents.push({ id: e.id, code: e.code, type: 'received-invoices', total_vat: e.total_vat, total: e.total, date: e.emitted });
+          const theoreticalPct = getDeductiblePct(years, e.emitted) * 100;
+          vat.documents.push({ 
+            id: e.id, 
+            code: e.code, 
+            type: 'received-invoices', 
+            total_vat: e.total_vat, 
+            total: e.total, 
+            date: e.emitted,
+            deductible_vat_pct: e.deductible_vat_pct || null,
+            theoretical_deductible_vat_pct: theoreticalPct
+          });
         }
       }
     }
@@ -622,7 +652,17 @@ module.exports = {
           vat.deductible_vat += getDeductiblePct(years, e.emitted) * e.total_vat;
           vat.deductible_vat_pct_sum += getDeductiblePct(years, e.emitted)
           vat.deductible_vat_pct_n++
-          vat.documents.push({ id: e.id, code: e.code, type: 'received-expenses', total_vat: e.total_vat, total: e.total, date: e.emitted });
+          const theoreticalPct = getDeductiblePct(years, e.emitted) * 100;
+          vat.documents.push({ 
+            id: e.id, 
+            code: e.id, 
+            type: 'received-expenses', 
+            total_vat: e.total_vat, 
+            total: e.total, 
+            date: e.emitted,
+            deductible_vat_pct: e.deductible_vat_pct || null,
+            theoretical_deductible_vat_pct: theoreticalPct
+          });
         }
       }
     }
