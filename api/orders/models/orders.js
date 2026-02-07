@@ -237,6 +237,31 @@ const setDeliveryTypeRefrigerated = async (data) => {
   }
 };
 
+/**
+ * Normalize contact_legal_form to ensure it's never an empty object or invalid value
+ */
+const normalizeContactLegalForm = (data) => {
+  // Check if contact_legal_form exists and is an object (including empty objects)
+  if (data.contact_legal_form !== undefined && data.contact_legal_form !== null) {
+    if (typeof data.contact_legal_form === 'object') {
+      // It's an object - check if it has an id property
+      if (data.contact_legal_form.id) {
+        data.contact_legal_form = data.contact_legal_form.id;
+      } else {
+        // Empty object or object without id - set to default
+        data.contact_legal_form = 1;
+      }
+    } else if (data.contact_legal_form === 0 || data.contact_legal_form === '') {
+      // Zero or empty string - set to default
+      data.contact_legal_form = 1;
+    }
+    // If it's already a valid number, leave it as is
+  } else {
+    // Null or undefined - set to default
+    data.contact_legal_form = 1;
+  }
+};
+
 // --- COLLECTION ORDER LOGIC ---
 
 /**
@@ -404,12 +429,12 @@ const processCollectionOrder = async (orderId, orderData) => {
     return;
   }
 
-  // Find existing pending collection order for this owner and collection point
+  // Find existing pending or deposited collection order for this owner and collection point
   const existingCollectionOrders = await strapi.query("orders").find({
     is_collection_order: true,
     owner: ownerId,
     contact: collectionPointId,
-    status: "pending",
+    status_in: ["pending", "deposited"],
     _limit: 1
   });
 
@@ -438,6 +463,7 @@ const processCollectionOrder = async (orderId, orderData) => {
       route: route.id,
       estimated_delivery_date: estimatedDeliveryDate,
       transfer: transferInfo.transfer,
+      contact_pickup_discount: collectionPointContact.pickup_discount || 0,
       _internal: true // Prevent recursive processing
     };
 
@@ -481,6 +507,7 @@ const processCollectionOrder = async (orderId, orderData) => {
       contact_time_slot_1_end: collectionPointContact.time_slot_1_end,
       contact_time_slot_2_ini: collectionPointContact.time_slot_2_ini,
       contact_time_slot_2_end: collectionPointContact.time_slot_2_end,
+      contact_pickup_discount: collectionPointContact.pickup_discount || 0,
       route: route.id,
       estimated_delivery_date: estimatedDeliveryDate,
       pickup: pickupId,
@@ -524,6 +551,53 @@ const processCollectionOrder = async (orderId, orderData) => {
 };
 
 /**
+ * Check if collection order should be auto-deposited
+ */
+const checkAndUpdateCollectionOrderStatus = async (collectionOrderId) => {
+  // Get the collection order
+  const collectionOrder = await strapi.query("orders").findOne({ 
+    id: collectionOrderId 
+  });
+
+  if (!collectionOrder || !collectionOrder.is_collection_order) {
+    return;
+  }
+
+  // Only process if collection order is pending or deposited
+  if (collectionOrder.status !== "pending" && collectionOrder.status !== "deposited") {
+    return;
+  }
+
+  // Get all related orders
+  const relatedOrders = await strapi.query("orders").find({
+    collection_order: collectionOrderId,
+    status_ne: "cancelled",
+    _limit: -1
+  });
+
+  if (!relatedOrders || relatedOrders.length === 0) {
+    return;
+  }
+
+  // Check if all related orders are deposited
+  const allDeposited = relatedOrders.every(order => order.deposit_date !== null);
+
+  if (allDeposited && collectionOrder.status !== "deposited") {
+    // Update collection order status to deposited
+    await strapi.query("orders").update(
+      { id: collectionOrderId },
+      { status: "deposited", _internal: true }
+    );
+  } else if (!allDeposited && collectionOrder.status !== "pending") {
+    // If not all deposited, move back to pending (e.g., new order was added to a deposited collection)
+    await strapi.query("orders").update(
+      { id: collectionOrderId },
+      { status: "pending", _internal: true }
+    );
+  }
+};
+
+/**
  * Update collection order with aggregated data from its collection_orders
  */
 const updateCollectionOrderAggregates = async (collectionOrderId) => {
@@ -534,6 +608,17 @@ const updateCollectionOrderAggregates = async (collectionOrderId) => {
 
   if (!collectionOrder || !collectionOrder.is_collection_order) {
     return;
+  }
+
+  // Get the collection point contact to refresh discount
+  const collectionPointId = collectionOrder.contact?.id || collectionOrder.contact;
+  let updatedPickupDiscount = 0;
+  
+  if (collectionPointId) {
+    const collectionPointContact = await strapi.query("contacts").findOne({ id: collectionPointId });
+    if (collectionPointContact) {
+      updatedPickupDiscount = collectionPointContact.pickup_discount || 0;
+    }
   }
 
   // Get all related orders
@@ -577,6 +662,7 @@ const updateCollectionOrderAggregates = async (collectionOrderId) => {
     kilograms: totalKilograms,
     refrigerated: isRefrigerated,
     comments: concatenatedComments,
+    contact_pickup_discount: updatedPickupDiscount,
     _internal: true
   };
 
@@ -1025,6 +1111,9 @@ module.exports = {
         data.route_date = new Date();
       }
 
+      // Normalize contact_legal_form to prevent empty objects
+      normalizeContactLegalForm(data);
+
       await setDeliveryTypeRefrigerated(data);
 
       if (data.status === "lastmile") {
@@ -1056,6 +1145,9 @@ module.exports = {
       if (data.status === "lastmile") {
         data.last_mile = true;
       }
+
+      // Normalize contact_legal_form to prevent empty objects
+      normalizeContactLegalForm(data);
 
       await setDeliveryTypeRefrigerated(data);
 
@@ -1095,6 +1187,15 @@ module.exports = {
 
       // Process collection order if needed
       await processCollectionOrder(result.id, result);
+
+      // If this order was added to a collection order, check if it should be auto-deposited
+      const updatedOrder = await strapi.query("orders").findOne({ id: result.id });
+      if (updatedOrder && updatedOrder.collection_order) {
+        const collectionOrderId = typeof updatedOrder.collection_order === 'object'
+          ? updatedOrder.collection_order.id
+          : updatedOrder.collection_order;
+        await checkAndUpdateCollectionOrderStatus(collectionOrderId);
+      }
 
       // Process incidences if provided
       if (data._incidencesToProcess) {
@@ -1147,6 +1248,8 @@ module.exports = {
             ? currentOrder.collection_order.id 
             : currentOrder.collection_order;
           await updateCollectionOrderAggregates(collectionOrderId);
+          // Check if collection order should be auto-deposited
+          await checkAndUpdateCollectionOrderStatus(collectionOrderId);
         }
         
         // Check if collection_order was removed
@@ -1155,6 +1258,8 @@ module.exports = {
             ? previousOrder.collection_order.id
             : previousOrder.collection_order;
           await updateCollectionOrderAggregates(oldCollectionOrderId);
+          // Check if collection order should be auto-deposited
+          await checkAndUpdateCollectionOrderStatus(oldCollectionOrderId);
         }
       }
 
