@@ -187,6 +187,17 @@
     },
     "transfer_pickup_destination": {
       "model": "pickups"
+    },
+    "collection_orders": {
+      "collection": "orders",
+      "via": "collection_order"
+    },
+    "collection_order": {
+      "model": "orders",
+      "via": "collection_orders"
+    },
+    "is_collection_order": {
+      "type": "boolean"
     }
   }
 }

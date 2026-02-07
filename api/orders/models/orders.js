@@ -237,6 +237,460 @@ const setDeliveryTypeRefrigerated = async (data) => {
   }
 };
 
+// --- COLLECTION ORDER LOGIC ---
+
+/**
+ * Calculate route for a collection point contact based on its city
+ */
+const calculateRouteForCollectionPoint = async (collectionPointContact) => {
+  if (!collectionPointContact || !collectionPointContact.city) {
+    return null;
+  }
+
+  // Find city object by name
+  const cities = await strapi.query("city").find({ name: collectionPointContact.city, _limit: 1 });
+  if (!cities || cities.length === 0) {
+    return null;
+  }
+  const cityId = cities[0].id;
+
+  // Find route that serves this city
+  const cityRoutes = await strapi.query("city-route").find({ city: cityId, _limit: -1 });
+  if (!cityRoutes || cityRoutes.length === 0) {
+    return null;
+  }
+
+  // Extract route IDs properly
+  const routeIds = cityRoutes
+    .map(cr => {
+      if (typeof cr.route === 'object' && cr.route !== null) {
+        return cr.route.id;
+      }
+      return cr.route;
+    })
+    .filter(id => id !== null && id !== undefined && typeof id === 'number');
+
+  if (routeIds.length === 0) {
+    return null;
+  }
+
+  // Get the first active route
+  const routes = await strapi.query("route").find({ 
+    id_in: routeIds,
+    active: true,
+    _limit: 1 
+  });
+  
+  return routes && routes.length > 0 ? routes[0] : null;
+};
+
+/**
+ * Calculate estimated delivery date based on route
+ */
+const calculateEstimatedDeliveryDate = (route) => {
+  if (!route) {
+    return null;
+  }
+
+  const routeDayOfWeek = route.monday
+    ? 1
+    : route.tuesday
+    ? 2
+    : route.wednesday
+    ? 3
+    : route.thursday
+    ? 4
+    : route.friday
+    ? 5
+    : route.saturday
+    ? 6
+    : route.sunday
+    ? 7
+    : 0;
+
+  if (routeDayOfWeek === 0) {
+    return null;
+  }
+
+  // Find next occurrence of the route day
+  let nextDay = moment();
+  let found = false;
+  let maxIterations = 7;
+  let iterations = 0;
+
+  while (!found && iterations < maxIterations) {
+    nextDay = nextDay.add(1, "day");
+    if (routeDayOfWeek === nextDay.day()) {
+      found = true;
+    }
+    iterations++;
+  }
+
+  return found ? nextDay.format("YYYY-MM-DD") : null;
+};
+
+/**
+ * Check if transfer is needed for a collection order
+ */
+const checkTransferNeededForCollectionOrder = async (pickupId, routeId) => {
+  if (!pickupId || !routeId) {
+    return { transfer: false };
+  }
+
+  // Get pickup details
+  const pickup = await strapi.query("pickups").findOne({ id: pickupId });
+  if (!pickup) {
+    return { transfer: false };
+  }
+
+  // Get route details
+  const route = await strapi.query("route").findOne({ id: routeId });
+  if (!route) {
+    return { transfer: false };
+  }
+
+  let pickupCityId = null;
+
+  // Get city from pickup
+  if (pickup.city) {
+    pickupCityId = typeof pickup.city === 'object' ? pickup.city.id : pickup.city;
+  }
+
+  if (!pickupCityId) {
+    return { transfer: false };
+  }
+
+  // Check if route serves this city
+  const cityRoutes = await strapi.query("city-route").find({
+    city: pickupCityId,
+    route: routeId,
+    _limit: 1
+  });
+
+  const routeTravelsToCity = cityRoutes && cityRoutes.length > 0;
+
+  if (!routeTravelsToCity) {
+    // Transfer is needed
+    return {
+      transfer: true,
+      transfer_pickup_origin: pickupId,
+      transfer_pickup_destination: route.transfer_pickup?.id || route.transfer_pickup || null
+    };
+  }
+
+  return { transfer: false };
+};
+
+/**
+ * Process collection order: find or create a collection order for the collection point
+ */
+const processCollectionOrder = async (orderId, orderData) => {
+  // Skip if no collection_point or if this is already a collection order
+  if (!orderData.collection_point || orderData.is_collection_order) {
+    return;
+  }
+
+  const collectionPointId = orderData.collection_point.id || orderData.collection_point;
+  const ownerId = orderData.owner?.id || orderData.owner;
+
+  if (!collectionPointId || !ownerId) {
+    return;
+  }
+
+  // Get collection point contact details
+  const collectionPointContact = await strapi.query("contacts").findOne({ id: collectionPointId });
+  if (!collectionPointContact) {
+    console.error(`Collection point contact ${collectionPointId} not found`);
+    return;
+  }
+
+  // Find existing pending collection order for this owner and collection point
+  const existingCollectionOrders = await strapi.query("orders").find({
+    is_collection_order: true,
+    owner: ownerId,
+    contact: collectionPointId,
+    status: "pending",
+    _limit: 1
+  });
+
+  let collectionOrder = existingCollectionOrders && existingCollectionOrders.length > 0 ? existingCollectionOrders[0] : null;
+
+  // Calculate route for collection point
+  const route = await calculateRouteForCollectionPoint(collectionPointContact);
+  if (!route) {
+    console.error(`Could not find route for collection point ${collectionPointId}`);
+    return;
+  }
+
+  // Calculate estimated delivery date
+  const estimatedDeliveryDate = calculateEstimatedDeliveryDate(route);
+
+  // Get pickup from original order (inherit collection_point for the collection order)
+  const pickupId = orderData.pickup?.id || orderData.pickup;
+  const originalCollectionPoint = orderData.collection_point?.id || orderData.collection_point;
+
+  // Check if transfer is needed
+  const transferInfo = await checkTransferNeededForCollectionOrder(pickupId, route.id);
+
+  if (collectionOrder) {
+    // Update existing collection order
+    const updateData = {
+      route: route.id,
+      estimated_delivery_date: estimatedDeliveryDate,
+      transfer: transferInfo.transfer,
+      _internal: true // Prevent recursive processing
+    };
+
+    if (transferInfo.transfer) {
+      updateData.transfer_pickup_origin = transferInfo.transfer_pickup_origin;
+      updateData.transfer_pickup_destination = transferInfo.transfer_pickup_destination;
+    }
+
+    // Copy delivery_type from original order if available
+    if (orderData.delivery_type) {
+      updateData.delivery_type = orderData.delivery_type.id || orderData.delivery_type;
+    }
+
+    // Add current order to collection_orders if not already there
+    const currentCollectionOrders = collectionOrder.collection_orders || [];
+    const orderIdToAdd = orderId || orderData.id;
+    if (orderIdToAdd && !currentCollectionOrders.find(o => (o.id || o) === orderIdToAdd)) {
+      updateData.collection_orders = [...currentCollectionOrders.map(o => o.id || o), orderIdToAdd];
+    }
+
+    await strapi.query("orders").update({ id: collectionOrder.id }, updateData);
+    
+    // After updating, recalculate aggregated data
+    await updateCollectionOrderAggregates(collectionOrder.id);
+  } else {
+    // Create new collection order
+    const createData = {
+      is_collection_order: true,
+      owner: ownerId,
+      contact: collectionPointId,
+      contact_name: collectionPointContact.name,
+      contact_trade_name: collectionPointContact.trade_name || collectionPointContact.name,
+      contact_nif: collectionPointContact.nif,
+      contact_address: collectionPointContact.address,
+      contact_postcode: collectionPointContact.postcode,
+      contact_city: collectionPointContact.city,
+      contact_phone: collectionPointContact.phone,
+      contact_legal_form: collectionPointContact.legal_form?.id || collectionPointContact.legal_form,
+      contact_notes: collectionPointContact.notes,
+      contact_time_slot_1_ini: collectionPointContact.time_slot_1_ini,
+      contact_time_slot_1_end: collectionPointContact.time_slot_1_end,
+      contact_time_slot_2_ini: collectionPointContact.time_slot_2_ini,
+      contact_time_slot_2_end: collectionPointContact.time_slot_2_end,
+      route: route.id,
+      estimated_delivery_date: estimatedDeliveryDate,
+      pickup: pickupId,
+      collection_point: originalCollectionPoint, // Inherit collection_point from creating order
+      status: "pending",
+      transfer: transferInfo.transfer,
+      units: 0,
+      kilograms: 0,
+      refrigerated: false,
+      _internal: true // Prevent recursive processing
+    };
+
+    // Copy delivery_type from original order if available
+    if (orderData.delivery_type) {
+      createData.delivery_type = orderData.delivery_type.id || orderData.delivery_type;
+    }
+
+    if (transferInfo.transfer) {
+      createData.transfer_pickup_origin = transferInfo.transfer_pickup_origin;
+      createData.transfer_pickup_destination = transferInfo.transfer_pickup_destination;
+    }
+
+    // Add current order to collection_orders
+    if (orderId) {
+      createData.collection_orders = [orderId];
+    }
+
+    const newCollectionOrder = await strapi.query("orders").create(createData);
+    
+    // Update the original order with the collection_order reference
+    if (orderId && newCollectionOrder) {
+      await strapi.query("orders").update(
+        { id: orderId },
+        { collection_order: newCollectionOrder.id, _internal: true }
+      );
+      
+      // After creating, recalculate aggregated data
+      await updateCollectionOrderAggregates(newCollectionOrder.id);
+    }
+  }
+};
+
+/**
+ * Update collection order with aggregated data from its collection_orders
+ */
+const updateCollectionOrderAggregates = async (collectionOrderId) => {
+  // Get the collection order with its related orders
+  const collectionOrder = await strapi.query("orders").findOne({ 
+    id: collectionOrderId 
+  });
+
+  if (!collectionOrder || !collectionOrder.is_collection_order) {
+    return;
+  }
+
+  // Get all related orders
+  const relatedOrders = await strapi.query("orders").find({
+    collection_order: collectionOrderId,
+    status_ne: "cancelled",
+    _limit: -1
+  });
+
+  if (!relatedOrders || relatedOrders.length === 0) {
+    return;
+  }
+
+  // Calculate aggregates
+  let totalUnits = 0;
+  let totalKilograms = 0;
+  let isRefrigerated = false;
+  let commentsArray = [];
+
+  relatedOrders.forEach(order => {
+    totalUnits += order.units || 0;
+    totalKilograms += parseFloat(order.kilograms || 0);
+    if (order.refrigerated) {
+      isRefrigerated = true;
+    }
+    // Collect comments from orders that have them
+    if (order.comments && order.comments.trim() !== '') {
+      commentsArray.push(`#${order.id} ${order.comments}`);
+    }
+  });
+
+  // Concatenate comments with newlines
+  const concatenatedComments = commentsArray.join('\n');
+
+  // Calculate route rate excluding "Pickup" rates
+  const routeRate = await calculateCollectionOrderRouteRate(collectionOrder, totalKilograms);
+
+  // Update collection order with aggregates
+  const updateData = {
+    units: totalUnits,
+    kilograms: totalKilograms,
+    refrigerated: isRefrigerated,
+    comments: concatenatedComments,
+    _internal: true
+  };
+
+  // Only update route_rate if one was found
+  if (routeRate) {
+    updateData.route_rate = routeRate.id;
+    updateData.price = calculatePriceFromRouteRate(routeRate, totalKilograms, 0);
+  }
+
+  await strapi.query("orders").update({ id: collectionOrderId }, updateData);
+};
+
+/**
+ * Calculate route rate for collection order (excluding "Pickup" rates)
+ */
+const calculateCollectionOrderRouteRate = async (collectionOrder, kilograms) => {
+  if (!collectionOrder.route) {
+    return null;
+  }
+
+  const routeId = typeof collectionOrder.route === 'object' ? collectionOrder.route.id : collectionOrder.route;
+  const deliveryTypeId = collectionOrder.delivery_type 
+    ? (typeof collectionOrder.delivery_type === 'object' ? collectionOrder.delivery_type.id : collectionOrder.delivery_type)
+    : null;
+
+  // Get all route rates
+  let routeRates = await strapi.query("route-rate").find({ _limit: -1 });
+
+  // Filter by route (rates that apply to this route or all routes)
+  routeRates = routeRates.filter(r => {
+    if (!r.routes || r.routes.length === 0) return true;
+    return r.routes.some(rt => {
+      const rtId = typeof rt === 'object' ? rt.id : rt;
+      return rtId === routeId;
+    });
+  });
+
+  // Exclude rates with pickup (we want rates without pickup or with pickup ID 1 "No Pickup")
+  routeRates = routeRates.filter(r => {
+    if (!r.pickup) return true; // No pickup specified = applies to all
+    const pickupId = typeof r.pickup === 'object' ? r.pickup.id : r.pickup;
+    return pickupId === 1; // Only accept "No Pickup" rates
+  });
+
+  // Filter by delivery type
+  if (deliveryTypeId) {
+    routeRates = routeRates.filter(r => {
+      if (!r.delivery_type) return true;
+      const dtId = typeof r.delivery_type === 'object' ? r.delivery_type.id : r.delivery_type;
+      return dtId === deliveryTypeId;
+    });
+  }
+
+  // Prefer rates specific to the route over general rates
+  let specificRates = routeRates.filter(r => r.routes && r.routes.length > 0);
+  if (specificRates.length > 0) {
+    return specificRates[0];
+  }
+
+  // Return first available rate
+  return routeRates.length > 0 ? routeRates[0] : null;
+};
+
+/**
+ * Calculate price from route rate
+ */
+const calculatePriceFromRouteRate = (routeRate, kilograms, pickupLines) => {
+  let price = 0;
+  
+  if (!routeRate) {
+    return price;
+  }
+
+  if (routeRate.ratev2 !== true) {
+    // Old rate structure
+    if (kilograms < 15) {
+      price = routeRate.less15 || 0;
+    } else if (kilograms < 30) {
+      price = routeRate.less30 || 0;
+    } else {
+      price = (routeRate.less30 || 0) + (kilograms - 30) * (routeRate.additional30 || 0);
+    }
+  } else {
+    // New rate structure (ratev2)
+    if (kilograms < 10) {
+      price = routeRate.less10 || 0;
+    } else if (kilograms >= 10 && kilograms <= 20) {
+      const t = (kilograms - 10) / 10;
+      price = (routeRate.more10 || 0) + t * ((routeRate.from10to20 || 0) - (routeRate.more10 || 0));
+    } else if (kilograms > 20 && kilograms <= 30) {
+      const t = (kilograms - 20) / 10;
+      price = (routeRate.from10to20 || 0) + t * ((routeRate.from20to30 || 0) - (routeRate.from10to20 || 0));
+    } else if (kilograms > 30 && kilograms <= 40) {
+      const t = (kilograms - 30) / 10;
+      price = (routeRate.from20to30 || 0) + t * ((routeRate.from30to40 || 0) - (routeRate.from20to30 || 0));
+    } else if (kilograms > 40 && kilograms <= 50) {
+      const t = (kilograms - 40) / 10;
+      price = (routeRate.from30to40 || 0) + t * ((routeRate.from40to50 || 0) - (routeRate.from30to40 || 0));
+    } else if (kilograms > 50 && kilograms <= 60) {
+      const t = (kilograms - 50) / 10;
+      price = (routeRate.from40to50 || 0) + t * ((routeRate.from50to60 || 0) - (routeRate.from40to50 || 0));
+    } else if (kilograms > 60) {
+      price = (routeRate.from50to60 || 0) + (kilograms - 60) * (routeRate.additional60 || 0);
+    }
+    
+    // Add pickup point charges if applicable (though for collection orders this should be 0)
+    if (pickupLines > 0 && routeRate.pickup_point) {
+      price += pickupLines * routeRate.pickup_point;
+    }
+  }
+  
+  return price;
+};
+
 const updateMultideliveryDiscountForOrders = async (
   orders,
   me,
@@ -566,6 +1020,11 @@ const processMultideliveryDiscountForOtherOrders = async (
 module.exports = {
   lifecycles: {
     async beforeCreate(data) {
+      // Set route_date to current date if not provided
+      if (!data.route_date) {
+        data.route_date = new Date();
+      }
+
       await setDeliveryTypeRefrigerated(data);
 
       if (data.status === "lastmile") {
@@ -634,6 +1093,9 @@ module.exports = {
         return;
       }
 
+      // Process collection order if needed
+      await processCollectionOrder(result.id, result);
+
       // Process incidences if provided
       if (data._incidencesToProcess) {
         await processIncidences(result.id, data._incidencesToProcess, data._tracking_user);
@@ -667,11 +1129,6 @@ module.exports = {
         return;
       }
 
-      // Process incidences if provided
-      if (data._incidencesToProcess) {
-        await processIncidences(params.id, data._incidencesToProcess, data._tracking_user);
-      }
-
       // Get the previous order data that was stored in beforeUpdate
       const previousOrder = data._previousOrderData;
 
@@ -679,6 +1136,32 @@ module.exports = {
       const currentOrder = await strapi
         .query("orders")
         .findOne({ id: params.id });
+
+      if (currentOrder) {
+        // Process collection order if needed (collection_point was added or changed)
+        await processCollectionOrder(params.id, currentOrder);
+        
+        // If this order has a collection_order, update its aggregates
+        if (currentOrder.collection_order) {
+          const collectionOrderId = typeof currentOrder.collection_order === 'object' 
+            ? currentOrder.collection_order.id 
+            : currentOrder.collection_order;
+          await updateCollectionOrderAggregates(collectionOrderId);
+        }
+        
+        // Check if collection_order was removed
+        if (previousOrder && previousOrder.collection_order && !currentOrder.collection_order) {
+          const oldCollectionOrderId = typeof previousOrder.collection_order === 'object'
+            ? previousOrder.collection_order.id
+            : previousOrder.collection_order;
+          await updateCollectionOrderAggregates(oldCollectionOrderId);
+        }
+      }
+
+      // Process incidences if provided
+      if (data._incidencesToProcess) {
+        await processIncidences(params.id, data._incidencesToProcess, data._tracking_user);
+      }
 
       if (currentOrder) {
         // Get user from data or try to get from updated_by field
@@ -703,6 +1186,24 @@ module.exports = {
           currentOrder,
           previousOrder
         );
+      }
+    },
+
+    async beforeDelete(params) {
+      // Store the order data before deletion to update collection order aggregates
+      const order = await strapi.query("orders").findOne({ id: params.id });
+      if (order && order.collection_order) {
+        // Store for afterDelete
+        params._deletedOrderCollectionOrder = typeof order.collection_order === 'object'
+          ? order.collection_order.id
+          : order.collection_order;
+      }
+    },
+
+    async afterDelete(result, params) {
+      // Update collection order aggregates if the deleted order was part of one
+      if (params._deletedOrderCollectionOrder) {
+        await updateCollectionOrderAggregates(params._deletedOrderCollectionOrder);
       }
     },
 
