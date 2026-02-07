@@ -32,6 +32,11 @@
     },
     "emitted_invoice": {
       "model": "emitted-invoice"
+    },
+    "justification_type": {
+      "type": "enumeration",
+      "enum": ["real", "estimated"],
+      "default": "real"
     }
   }
 }
