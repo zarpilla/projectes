@@ -272,8 +272,26 @@ module.exports = {
     treasuries.forEach((e) => {
       let expense;
       
+      // New: Handle is_real_balance entries (user sets exact balance for a specific date)
+      if (e.is_real_balance) {
+        expense = {
+          project_name: e.project?.name,
+          project_id: e.project?.id,
+          treasury_id: e.id,
+          type: "Saldo real ajustat",
+          concept: e.comment || "Ajust per saldo real",
+          total_amount: 0, // Will be calculated during subtotal processing
+          desired_balance: e.total, // The exact balance that should exist at this date
+          date: moment(e.date, "YYYY-MM-DD") || moment(),
+          date_error: e.date === null,
+          paid: true,
+          contact: "-",
+          bank_account: getBankAccountName(e.bank_account, me.bank_account_default),
+          is_real_balance_adjustment: true,
+        };
+      }
       // Special case: treasury with total=0 but balance>0 indicates real money in account for that day
-      if (e.total === 0 && e.balance && parseFloat(e.balance) > 0) {
+      else if (e.total === 0 && e.balance && parseFloat(e.balance) > 0) {
         expense = {
           project_name: e.project?.name,
           project_id: e.project?.id,
@@ -888,14 +906,42 @@ module.exports = {
     const treasuryData = _.sortBy(treasury2, "datef");
     const treasuryDataX = [];
 
+    // Track balance per bank account
+    const balanceByAccount = {};
     let subtotal = 0;
+    
     for (let i = 0; i < treasuryData.length; i++) {
       const t = treasuryData[i];
+      const account = t.bank_account || "default";
       
-      // For balance annotations, set the subtotal to the account balance
-      if (t.is_balance_annotation && t.account_balance !== undefined) {
-        subtotal = t.account_balance;
-      } else {
+      // Initialize account balance if needed
+      if (balanceByAccount[account] === undefined) {
+        balanceByAccount[account] = 0;
+      }
+      
+      // Handle is_real_balance adjustments
+      if (t.is_real_balance_adjustment) {
+        // Calculate what the theoretical balance is right now (before this adjustment)
+        const currentTheoreticalBalance = balanceByAccount[account];
+        const desiredBalance = t.desired_balance;
+        const adjustment = desiredBalance - currentTheoreticalBalance;
+        
+        // Set the total_amount to the adjustment needed
+        treasuryData[i].total_amount = adjustment;
+        
+        // Update both account balance and global subtotal
+        balanceByAccount[account] = desiredBalance;
+        subtotal += adjustment;
+      }
+      // For old-style balance annotations, set the subtotal to the account balance
+      else if (t.is_balance_annotation && t.account_balance !== undefined) {
+        const adjustment = t.account_balance - balanceByAccount[account];
+        balanceByAccount[account] = t.account_balance;
+        subtotal += adjustment;
+      } 
+      // Regular entry
+      else {
+        balanceByAccount[account] += t.total_amount;
         subtotal += t.total_amount;
       }
       
@@ -903,6 +949,7 @@ module.exports = {
         ...t,
         datex: moment(treasuryData[i].datef, "YYYYMMDD").format("DD-MM-YYYY"),
         subtotal,
+        account_subtotal: balanceByAccount[account], // Add per-account balance
       });
     }
 
