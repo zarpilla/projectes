@@ -816,12 +816,23 @@ module.exports = {
       vatByQuarter[key].documents.push(doc);
     }
     
-    // Add executed VAT entries to treasury
-    for (let key in vatByQuarter) {
-      const qData = vatByQuarter[key];
-      const balance = qData.deductible_vat;
+    // Add executed VAT entries to treasury with cumulative balance
+    // Sort quarters chronologically
+    const sortedVatQuarters = Object.keys(vatByQuarter)
+      .map(key => ({ key, ...vatByQuarter[key] }))
+      .sort((a, b) => {
+        if (a.year !== b.year) return a.year - b.year;
+        return a.quarter - b.quarter;
+      });
+    
+    let cumulativeVatBalance = 0;
+    
+    for (let qData of sortedVatQuarters) {
+      const quarterBalance = qData.deductible_vat;
+      cumulativeVatBalance += quarterBalance;
       
-      if (balance !== 0) {
+      // Only create treasury entry if cumulative balance is negative (payment required)
+      if (cumulativeVatBalance < 0) {
         // Calculate the payment date: 30th of the month after quarter end
         // Exception: Q4 (Oct-Dec) is paid on January 20th instead of 30th
         let paymentDate = moment(`${qData.year}`, 'YYYY')
@@ -844,8 +855,8 @@ module.exports = {
           project_name: "",
           project_id: 0,
           type: "IVA executat pendent de saldar",
-          concept: `IVA executat ${qData.year} T${qData.quarter}`,
-          total_amount: -1 * balance,
+          concept: `IVA executat ${qData.year} T${qData.quarter} (acumulat)`,
+          total_amount: cumulativeVatBalance,
           date: paymentDate,
           date_error: false,
           paid: isPaid,
@@ -853,15 +864,30 @@ module.exports = {
           to: null,
           bank_account: me.bank_account_vat && me.bank_account_vat.name ? me.bank_account_vat.name : null,
         });
+        
+        // Reset cumulative balance after payment
+        cumulativeVatBalance = 0;
       }
+      // If positive, balance carries forward to next quarter (no entry created)
     }
 
-    // Add expected VAT entries to treasury (grouped by quarter)
-    for (let key in vat_expected_by_quarter) {
-      const qData = vat_expected_by_quarter[key];
-      const balance = qData.received - (qData.paid * me.options.deductible_vat_pct / 100);
+    // Add expected VAT entries to treasury with cumulative balance
+    // Sort quarters chronologically
+    const sortedExpectedVatQuarters = Object.keys(vat_expected_by_quarter)
+      .map(key => ({ key, ...vat_expected_by_quarter[key] }))
+      .sort((a, b) => {
+        if (a.year !== b.year) return a.year - b.year;
+        return a.quarter - b.quarter;
+      });
+    
+    let cumulativeExpectedVatBalance = 0;
+    
+    for (let qData of sortedExpectedVatQuarters) {
+      const quarterBalance = qData.received - (qData.paid * me.options.deductible_vat_pct / 100);
+      cumulativeExpectedVatBalance += quarterBalance;
       
-      if (balance !== 0) {
+      // Only create treasury entry if cumulative balance is positive (payment required)
+      if (cumulativeExpectedVatBalance > 0) {
         // Calculate the payment date: 30th of the month after quarter end
         // Exception: Q4 (Oct-Dec) is paid on January 20th instead of 30th
         let paymentDate = moment(`${qData.year}`, 'YYYY')
@@ -881,8 +907,8 @@ module.exports = {
           project_name: "",
           project_id: 0,
           type: "IVA previst pendent de saldar",
-          concept: `IVA previst ${qData.year} T${qData.quarter}`,
-          total_amount: -1 * balance,
+          concept: `IVA previst ${qData.year} T${qData.quarter} (acumulat)`,
+          total_amount: -1 * cumulativeExpectedVatBalance,
           date: paymentDate,
           date_error: false,
           paid: false,
@@ -890,7 +916,11 @@ module.exports = {
           to: null,
           bank_account: me.bank_account_vat && me.bank_account_vat.name ? me.bank_account_vat.name : null,
         });
+        
+        // Reset cumulative balance after payment
+        cumulativeExpectedVatBalance = 0;
       }
+      // If positive, balance carries forward to next quarter (no entry created)
     }
 
     console.timeEnd("process")
