@@ -192,6 +192,38 @@ async function importSeedData() {
     upload: ["upload"],
   });
 
+  // Mark all projects as dirty for recalculation after beforeUpdate hook fix
+  // CRITICAL FIX: beforeUpdate now loads FULL project before calculating
+  // Previously it only had request data (partial fields), causing incorrect totals
+  // try {
+  //   const allProjects = await strapi.query('project').find({ published_at_null: false, _limit: -1 });
+  //   console.log(`[BOOTSTRAP] Found ${allProjects.length} projects to mark as dirty`);
+    
+  //   for (const project of allProjects) {
+  //     // Check if already in dirty queue
+  //     const existingQueue = await strapi.query('dirty-queue').findOne({ 
+  //       entity: 'project', 
+  //       entityId: project.id 
+  //     });
+      
+  //     if (!existingQueue) {
+  //       await strapi.query('dirty-queue').create({
+  //         entity: 'project',
+  //         entityId: project.id
+  //       });
+  //       // Also set the dirty flag on the project
+  //       await strapi.query('project').update(
+  //         { id: project.id },
+  //         { dirty: true, _internal: true }
+  //       );
+  //     }
+  //   }
+    
+  //   console.log("[BOOTSTRAP] Added all projects to dirty queue for recalculation");
+  // } catch (error) {
+  //   console.error("[BOOTSTRAP] Error adding projects to dirty queue:", error);
+  // }
+
   // set user permissions
   // const users = await strapi
   //   .query("user", "users-permissions")
@@ -526,6 +558,8 @@ async function importSeedData() {
     }
 
     console.log("Default bank account setup completed");
+
+    
   }
 }
 
@@ -921,6 +955,7 @@ async function calculateMotherProjects() {
     console.log(
       `Mother projects calculation completed: ${updatedCount} projects updated`,
     );
+
   } catch (error) {
     console.error("Error during mother projects calculation:", error);
     console.log("Calculation will be retried next time the server starts");

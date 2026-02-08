@@ -25,16 +25,38 @@ const doProjectInfoCalculations = async (data, id) => {
       : 100.0;
   const deductible_ratio = (100.0 - deductible_vat_pct) / 100.0;
 
+  // Initialize all three dimensions: original, estimated (current plan), real (executed)
+  data.total_original_incomes = 0;
+  data.total_original_expenses = 0;
+  data.total_original_hours = 0;
+  data.total_original_hours_price = 0;
+  data.total_original_expenses_vat = 0;
+  
+  data.total_estimated_incomes = 0;
+  data.total_estimated_expenses = 0;
+  data.total_estimated_hours = 0;
+  data.total_estimated_hours_price = 0;
+  data.total_estimated_expenses_vat = 0;
+  
+  data.total_real_incomes = 0;
+  data.total_real_expenses = 0;
+  data.total_real_hours = 0;
+  data.total_real_hours_price = 0;
+  data.total_real_expenses_vat = 0;
+
+  // Backwards compatibility
   data.total_incomes = 0;
   data.total_expenses = 0;
   data.total_expenses_hours = 0;
-  data.total_estimated_hours = 0;
   data.estimated_balance = 0;
   data.total_estimated_expenses = 0;
   data.total_expenses_vat = 0;
-  data.total_real_expenses_vat = 0;
+
+  var allByYear1 = [];
+  var allByYear2 = [];
 
   if (data.project_phases && data.project_phases.length) {
+    // Calculate ESTIMATED (current plan from project_phases - ALL lines including paid/unpaid)
     const infoPhases = await calculateEstimatedTotals(
       data,
       data.project_phases,
@@ -43,61 +65,28 @@ const doProjectInfoCalculations = async (data, id) => {
       true
     );
 
-    var allByYear1 = JSON.parse(JSON.stringify(infoPhases.totalsByYear));
-
-    // console.log('allByYear1', allByYear1)
-
+    allByYear1 = JSON.parse(JSON.stringify(infoPhases.totalsByYear));
     data = infoPhases.data;
-    data.total_expenses = infoPhases.total_expenses;
-    data.total_incomes = infoPhases.total_incomes;
-    data.total_estimated_hours = infoPhases.total_estimated_hours;
-    data.total_estimated_hours_price = infoPhases.total_estimated_hours_price;
-    // not assigned invoices
-    data.total_real_incomes = infoPhases.total_real_incomes;
-    data.total_real_expenses = infoPhases.total_real_expenses;
-    data.total_expenses_vat =
-      (isNaN(infoPhases.total_expenses_vat)
-        ? 0
-        : infoPhases.total_expenses_vat) * deductible_ratio;
-    data.total_real_expenses_vat =
-      infoPhases.total_real_expenses_vat * deductible_ratio;
+    
+    // Note: Project-level totals will be calculated by summing allByYear after periodification
+  }
 
-    // data.total_expenses = data.total_expenses + data.total_expenses_vat
+  if (data.project_original_phases && data.project_original_phases.length) {
+    // Calculate ORIGINAL (original budget from project_original_phases)
+    const infoOriginalPhases = await calculateEstimatedTotals(
+      data,
+      data.project_original_phases,
+      dailyDedications,
+      festives,
+      false
+    );
 
-    // console.log("data.project_original_phases", data.project_original_phases);
-
-    if (data.project_original_phases && data.project_original_phases.length) {
-      const infoOriginalPhases = await calculateEstimatedTotals(
-        data,
-        data.project_original_phases,
-        dailyDedications,
-        festives,
-        false
-      );
-
-      // console.log("infoOriginalPhases", infoOriginalPhases);
-
-      var allByYear2 = JSON.parse(
-        JSON.stringify(infoOriginalPhases.totalsByYear)
-      );
-
-      data = infoOriginalPhases.data;
-      data.total_expenses = infoOriginalPhases.total_expenses;
-      data.total_incomes = infoOriginalPhases.total_incomes;
-      data.total_estimated_hours = infoOriginalPhases.total_estimated_hours;
-      data.total_estimated_hours_price =
-        infoOriginalPhases.total_estimated_hours_price;
-
-      data.total_expenses_vat =
-        infoOriginalPhases.total_expenses_vat * deductible_ratio;
-    }
-  } else {
-    data.total_expenses = 0;
-    data.total_incomes = 0;
-    data.total_estimated_hours = 0;
-    data.total_estimated_hours_price = 0;
-    data.total_real_incomes = 0;
-    data.total_real_expenses = 0;
+    allByYear2 = JSON.parse(
+      JSON.stringify(infoOriginalPhases.totalsByYear)
+    );
+    data = infoOriginalPhases.data;
+    
+    // Note: Project-level totals will be calculated by summing allByYear after periodification
   }
 
   if (!data.activities) {
@@ -131,132 +120,187 @@ const doProjectInfoCalculations = async (data, id) => {
 
   var allByYear3 = JSON.parse(JSON.stringify(activitiesByYear));
 
-  let allByYearArray = _.concat(allByYear1, allByYear2, allByYear3);
+  // Rename fields in allByYear1 (from project_phases) to use "estimated" prefix
+  const allByYear1Renamed = allByYear1.map(y => ({
+    year: y.year,
+    total_estimated_incomes: y.total_incomes,
+    total_estimated_expenses: y.total_expenses,
+    total_estimated_expenses_vat: y.total_expenses_vat,
+    total_estimated_hours: y.total_estimated_hours,
+    total_estimated_hours_price: y.total_estimated_hours_price,
+    total_real_incomes: y.total_real_incomes,
+    total_real_expenses: y.total_real_expenses,
+    total_real_expenses_vat: y.total_real_expenses_vat,
+  }));
+
+  // Rename fields in allByYear2 (from project_original_phases) to use "original" prefix
+  const allByYear2Renamed = allByYear2.map(y => ({
+    year: y.year,
+    total_original_incomes: y.total_incomes,
+    total_original_expenses: y.total_expenses,
+    total_original_expenses_vat: y.total_expenses_vat,
+    total_original_hours: y.total_estimated_hours,
+    total_original_hours_price: y.total_estimated_hours_price,
+  }));
+
+  let allByYearArray = _.concat(allByYear1Renamed, allByYear2Renamed, allByYear3);
 
   var allByYearArrayJSON = JSON.parse(JSON.stringify(allByYearArray));
 
   const allByYear = _(_.values(allByYearArrayJSON.filter((a) => a !== null)))
     .groupBy("year")
     .map((rows, year) => {
+      // Aggregate three separate dimensions
+      const total_original_incomes = sumBy(rows, (r) =>
+        r.total_original_incomes !== undefined ? parseFloat(r.total_original_incomes) : 0.0
+      );
+      const total_original_expenses = sumBy(rows, (r) =>
+        r.total_original_expenses !== undefined ? parseFloat(r.total_original_expenses) : 0.0
+      );
+      const total_original_expenses_vat = sumBy(rows, (r) =>
+        r.total_original_expenses_vat !== undefined
+          ? deductible_ratio * parseFloat(r.total_original_expenses_vat)
+          : 0.0
+      );
+      const total_original_hours = sumBy(rows, (r) =>
+        r.total_original_hours !== undefined
+          ? parseFloat(r.total_original_hours)
+          : 0.0
+      );
+      const total_original_hours_price = sumBy(rows, (r) =>
+        r.total_original_hours_price !== undefined
+          ? parseFloat(r.total_original_hours_price)
+          : 0.0
+      );
+      
+      const total_estimated_incomes = sumBy(rows, (r) =>
+        r.total_estimated_incomes !== undefined ? parseFloat(r.total_estimated_incomes) : 0.0
+      );
+      const total_estimated_expenses = sumBy(rows, (r) =>
+        r.total_estimated_expenses !== undefined ? parseFloat(r.total_estimated_expenses) : 0.0
+      );
+      const total_estimated_expenses_vat = sumBy(rows, (r) =>
+        r.total_estimated_expenses_vat !== undefined
+          ? deductible_ratio * parseFloat(r.total_estimated_expenses_vat)
+          : 0.0
+      );
+      const total_estimated_hours = sumBy(rows, (r) =>
+        r.total_estimated_hours !== undefined
+          ? parseFloat(r.total_estimated_hours)
+          : 0.0
+      );
+      const total_estimated_hours_price = sumBy(rows, (r) =>
+        r.total_estimated_hours_price !== undefined
+          ? parseFloat(r.total_estimated_hours_price)
+          : 0.0
+      );
+      
+      const total_real_incomes = sumBy(rows, (r) =>
+        r.total_real_incomes !== undefined
+          ? parseFloat(r.total_real_incomes)
+          : 0.0
+      );
+      const total_real_expenses = sumBy(rows, (r) =>
+        r.total_real_expenses !== undefined
+          ? parseFloat(r.total_real_expenses)
+          : 0.0
+      );
+      const total_real_expenses_vat = sumBy(rows, (r) =>
+        r.total_real_expenses_vat !== undefined
+          ? deductible_ratio * parseFloat(r.total_real_expenses_vat)
+          : 0.0
+      );
+      const total_real_hours = sumBy(rows, (r) =>
+        r.total_real_hours !== undefined
+          ? parseFloat(r.total_real_hours)
+          : 0.0
+      );
+      const total_real_hours_price = sumBy(rows, (r) =>
+        r.total_real_hours_price !== undefined
+          ? parseFloat(r.total_real_hours_price)
+          : 0.0
+      );
+      
+      // EXCEPTION: Estimated hours should always copy from original hours
+      // "Hores previstes" should always be the same as "Hores originals"
+      const final_estimated_hours = total_original_hours;
+      const final_estimated_hours_price = total_original_hours_price;
+      
       return {
         year: year,
-        total_incomes: sumBy(rows, (r) =>
-          r.total_incomes !== undefined ? parseFloat(r.total_incomes) : 0.0
-        ),
-        total_expenses: sumBy(rows, (r) =>
-          r.total_expenses !== undefined ? parseFloat(r.total_expenses) : 0.0
-        ),
-        total_expenses_vat: sumBy(rows, (r) =>
-          r.total_expenses_vat !== undefined
-            ? deductible_ratio * parseFloat(r.total_expenses_vat)
-            : 0.0
-        ),
-        total_real_incomes: sumBy(rows, (r) =>
-          r.total_real_incomes !== undefined
-            ? parseFloat(r.total_real_incomes)
-            : 0.0
-        ),
-        total_real_expenses: sumBy(rows, (r) =>
-          r.total_real_expenses !== undefined
-            ? parseFloat(r.total_real_expenses)
-            : 0.0
-        ),
-        total_real_expenses_vat: sumBy(rows, (r) =>
-          r.total_real_expenses_vat !== undefined
-            ? deductible_ratio * parseFloat(r.total_real_expenses_vat)
-            : 0.0
-        ),
-        total_estimated_hours: sumBy(rows, (r) =>
-          r.total_estimated_hours !== undefined
-            ? parseFloat(r.total_estimated_hours)
-            : 0.0
-        ),
-        total_estimated_hours_price: sumBy(rows, (r) =>
-          r.total_estimated_hours_price !== undefined
-            ? parseFloat(r.total_estimated_hours_price)
-            : 0.0
-        ),
-        total_real_hours: sumBy(rows, (r) =>
-          r.total_real_hours !== undefined
-            ? parseFloat(r.total_real_hours)
-            : 0.0
-        ),
-        total_real_hours_price: sumBy(rows, (r) =>
-          r.total_real_hours_price !== undefined
-            ? parseFloat(r.total_real_hours_price)
-            : 0.0
-        ),
-        total_real_incomes_expenses:
-          _.sumBy(rows, (r) =>
-            r.total_real_incomes !== undefined
-              ? parseFloat(r.total_real_incomes)
-              : 0.0
-          ) -
-          _.sumBy(rows, (r) =>
-            r.total_real_expenses !== undefined
-              ? parseFloat(r.total_real_expenses)
-              : 0.0
-          ) -
-          _.sumBy(rows, (r) =>
-            r.total_real_hours_price !== undefined
-              ? parseFloat(r.total_real_hours_price)
-              : 0.0
-          ),
-        incomes_expenses:
-          (_.sumBy(rows, (r) =>
-            r.total_incomes !== undefined ? parseFloat(r.total_incomes) : 0.0
-          ) ||
-            0.0) -
-          (_.sumBy(rows, (r) =>
-            r.total_expenses !== undefined ? parseFloat(r.total_expenses) : 0.0
-          ) ||
-            0.0) -
-          (_.sumBy(rows, (r) =>
-            r.total_estimated_hours_price !== undefined
-              ? parseFloat(r.total_estimated_hours_price)
-              : 0.0
-          ) ||
-            0.0),
+        // Original dimension (from project_original_phases)
+        total_original_incomes,
+        total_original_expenses,
+        total_original_expenses_vat,
+        total_original_hours,
+        total_original_hours_price,
+        original_incomes_expenses: total_original_incomes - total_original_expenses - total_original_hours_price - total_original_expenses_vat,
+        
+        // Estimated dimension (from project_phases - all lines)
+        // EXCEPTION: Hours always copy from original
+        total_estimated_incomes,
+        total_estimated_expenses,
+        total_estimated_expenses_vat,
+        total_estimated_hours: final_estimated_hours,
+        total_estimated_hours_price: final_estimated_hours_price,
+        estimated_incomes_expenses: total_estimated_incomes - total_estimated_expenses - final_estimated_hours_price - total_estimated_expenses_vat,
+        
+        // Real dimension (from paid invoices/expenses + activities)
+        total_real_incomes,
+        total_real_expenses,
+        total_real_expenses_vat,
+        total_real_hours,
+        total_real_hours_price,
+        total_real_incomes_expenses: total_real_incomes - total_real_expenses - total_real_hours_price - total_real_expenses_vat,
+        
+        // Backwards compatibility fields (use estimated as default)
+        total_incomes: total_estimated_incomes,
+        total_expenses: total_estimated_expenses,
+        total_expenses_vat: total_estimated_expenses_vat,
+        incomes_expenses: total_estimated_incomes - total_estimated_expenses - total_estimated_hours_price - total_estimated_expenses_vat,
       };
     });
   const allByYearPeriodificated = JSON.parse(JSON.stringify(allByYear)).map(
     (y) => {
       const periodificationData = data.periodification && data.periodification.find((p) => p.year === y.year);
       
-      const periodified_real_incomes = periodificationData ? periodificationData.real_incomes : 0;
-      const periodified_real_expenses = periodificationData ? periodificationData.real_expenses : 0;
-      const periodified_incomes = periodificationData ? periodificationData.incomes : 0;
-      const periodified_expenses = periodificationData ? periodificationData.expenses : 0;
+      // Periodification adjustments (manual corrections per year)
+      const periodified_real_incomes = periodificationData ? (periodificationData.real_incomes || 0) : 0;
+      const periodified_real_expenses = periodificationData ? (periodificationData.real_expenses || 0) : 0;
+      const periodified_incomes = periodificationData ? (periodificationData.incomes || 0) : 0;
+      const periodified_expenses = periodificationData ? (periodificationData.expenses || 0) : 0;
       
-      const new_total_real_incomes = y.total_real_incomes + periodified_real_incomes;
-      const new_total_real_expenses = y.total_real_expenses + periodified_real_expenses;
-      const new_total_incomes = (y.total_incomes ?? 0) + periodified_incomes;
-      const new_total_expenses = (y.total_expenses ?? 0) + periodified_expenses;
+      // Apply periodification to all three dimensions
+      const new_total_original_incomes = (y.total_original_incomes || 0) + periodified_incomes;
+      const new_total_original_expenses = (y.total_original_expenses || 0) + periodified_expenses;
       
-      // // Debug logging for periodification
-      // if (periodificationData && id) {
-      //   console.log(`[Project ${id}] Periodification for year ${y.year}:`);
-      //   console.log(`  - Periodified incomes: ${periodified_incomes}, expenses: ${periodified_expenses}`);
-      //   console.log(`  - Periodified real_incomes: ${periodified_real_incomes}, real_expenses: ${periodified_real_expenses}`);
-      //   console.log(`  - BEFORE: total_incomes=${y.total_incomes}, total_expenses=${y.total_expenses}`);
-      //   console.log(`  - BEFORE: incomes_expenses=${y.incomes_expenses}`);
-      //   console.log(`  - AFTER: total_incomes=${new_total_incomes}, total_expenses=${new_total_expenses}`);
-      //   console.log(`  - AFTER: incomes_expenses=${new_total_incomes - new_total_expenses - (y.total_estimated_hours_price || 0)}`);
-      //   console.log(`  - BEFORE: total_real_incomes=${y.total_real_incomes}, total_real_expenses=${y.total_real_expenses}`);
-      //   console.log(`  - BEFORE: total_real_incomes_expenses=${y.total_real_incomes_expenses}`);
-      //   console.log(`  - AFTER: total_real_incomes=${new_total_real_incomes}, total_real_expenses=${new_total_real_expenses}`);
-      //   console.log(`  - AFTER: total_real_incomes_expenses=${new_total_real_incomes - new_total_real_expenses - (y.total_real_hours_price || 0)}`);
-      // }
+      const new_total_estimated_incomes = (y.total_estimated_incomes || 0) + periodified_incomes;
+      const new_total_estimated_expenses = (y.total_estimated_expenses || 0) + periodified_expenses;
+      
+      const new_total_real_incomes = (y.total_real_incomes || 0) + periodified_real_incomes;
+      const new_total_real_expenses = (y.total_real_expenses || 0) + periodified_real_expenses;
       
       return {
         ...y,
+        // Original dimension (with periodification)
+        total_original_incomes: new_total_original_incomes,
+        total_original_expenses: new_total_original_expenses,
+        original_incomes_expenses: new_total_original_incomes - new_total_original_expenses - (y.total_original_hours_price || 0) - (y.total_original_expenses_vat || 0),
+        
+        // Estimated dimension (with periodification)
+        total_estimated_incomes: new_total_estimated_incomes,
+        total_estimated_expenses: new_total_estimated_expenses,
+        estimated_incomes_expenses: new_total_estimated_incomes - new_total_estimated_expenses - (y.total_estimated_hours_price || 0) - (y.total_estimated_expenses_vat || 0),
+        
+        // Real dimension (with periodification)
         total_real_incomes: new_total_real_incomes,
         total_real_expenses: new_total_real_expenses,
-        total_incomes: new_total_incomes,
-        total_expenses: new_total_expenses,
-        // Recalculate derived fields after applying periodification (base amounts only, no VAT)
-        total_real_incomes_expenses: new_total_real_incomes - new_total_real_expenses - (y.total_real_hours_price || 0),
-        incomes_expenses: new_total_incomes - new_total_expenses - (y.total_estimated_hours_price || 0),
+        total_real_incomes_expenses: new_total_real_incomes - new_total_real_expenses - (y.total_real_hours_price || 0) - (y.total_real_expenses_vat || 0),
+        
+        // Backwards compatibility fields (use estimated)
+        total_incomes: new_total_estimated_incomes,
+        total_expenses: new_total_estimated_expenses,
+        incomes_expenses: new_total_estimated_incomes - new_total_estimated_expenses - (y.total_estimated_hours_price || 0) - (y.total_estimated_expenses_vat || 0),
       };
     }
   );
@@ -282,70 +326,109 @@ const doProjectInfoCalculations = async (data, id) => {
            yearData.incomes_expenses !== 0;
   });
 
-  data.total_real_incomes_expenses =
-    data.total_real_incomes -
-    data.total_real_expenses -
-    data.total_real_hours_price;
-
-  if (data.structural_expenses_pct && false) {
-    data.total_expenses =
-      data.total_expenses +
-      (data.structural_expenses_pct / 100) * data.total_incomes;
-    data.incomes_expenses =
-      data.total_incomes -
-      data.total_expenses -
-      data.total_estimated_expenses -
-      data.total_expenses_vat;
-    data.total_real_expenses =
-      data.total_real_expenses +
-      (data.structural_expenses_pct / 100) * data.total_real_incomes;
-    data.total_real_incomes_expenses =
-      data.total_real_incomes -
-      data.total_real_expenses -
-      data.total_real_hours_price -
-      data.total_real_expenses_vat;
-  }
-
-  if (data.structural_expenses === true) {
-    const indirects = await strapi
-      .query("project")
-      .find({ structural_expenses_pct_gt: 0, published_at_null: false });
-    const indirectIncomes = _.sumBy(
-      indirects.map((i) => {
-        return {
-          indirect: (i.structural_expenses_pct / 100) * i.total_incomes,
-        };
-      }),
-      "indirect"
-    );
-    const indirectIncomesReal = _.sumBy(
-      indirects.map((i) => {
-        return {
-          indirect: (i.structural_expenses_pct / 100) * i.total_real_incomes,
-        };
-      }),
-      "indirect"
-    );
-    data.total_incomes = data.total_incomes + indirectIncomes;
-    data.incomes_expenses = data.incomes_expenses + indirectIncomes;
-    data.total_real_incomes = data.total_real_incomes + indirectIncomesReal;
-  }
-
+  // REFACTORED: Calculate project-level totals by summing yearly values
+  // This ensures perfect consistency between year-level and project-level numbers
+  
+  // Sum original dimension from years
+  data.total_original_incomes = _.sumBy(data.allByYear, 'total_original_incomes') || 0;
+  data.total_original_expenses = _.sumBy(data.allByYear, 'total_original_expenses') || 0;
+  data.total_original_hours = _.sumBy(data.allByYear, 'total_original_hours') || 0;
+  data.total_original_hours_price = _.sumBy(data.allByYear, 'total_original_hours_price') || 0;
+  data.total_original_expenses_vat = _.sumBy(data.allByYear, 'total_original_expenses_vat') || 0;
+  
+  // Sum estimated dimension from years
+  data.total_estimated_incomes = _.sumBy(data.allByYear, 'total_estimated_incomes') || 0;
+  data.total_estimated_expenses = _.sumBy(data.allByYear, 'total_estimated_expenses') || 0;
+  data.total_estimated_hours = _.sumBy(data.allByYear, 'total_estimated_hours') || 0;
+  data.total_estimated_hours_price = _.sumBy(data.allByYear, 'total_estimated_hours_price') || 0;
+  data.total_estimated_expenses_vat = _.sumBy(data.allByYear, 'total_estimated_expenses_vat') || 0;
+  
+  // Sum real dimension from years
+  data.total_real_incomes = _.sumBy(data.allByYear, 'total_real_incomes') || 0;
+  data.total_real_expenses = _.sumBy(data.allByYear, 'total_real_expenses') || 0;
+  data.total_real_hours = _.sumBy(data.allByYear, 'total_real_hours') || 0;
+  data.total_real_hours_price = _.sumBy(data.allByYear, 'total_real_hours_price') || 0;
+  data.total_real_expenses_vat = _.sumBy(data.allByYear, 'total_real_expenses_vat') || 0;
+  
+  // EXCEPTION: Estimated hours should always copy from original hours
+  // "Hores previstes" should always be the same as "Hores originals"
+  data.total_estimated_hours = data.total_original_hours;
+  data.total_estimated_hours_price = data.total_original_hours_price;
+  
+  // Calculate balances for all three dimensions
+  data.original_incomes_expenses =
+    data.total_original_incomes -
+    data.total_original_expenses -
+    data.total_original_hours_price -
+    data.total_original_expenses_vat;
+  
+  data.estimated_incomes_expenses =
+    data.total_estimated_incomes -
+    data.total_estimated_expenses -
+    data.total_estimated_hours_price -
+    data.total_estimated_expenses_vat;
+  
   data.total_real_incomes_expenses =
     data.total_real_incomes -
     data.total_real_expenses -
     data.total_real_hours_price -
     data.total_real_expenses_vat;
+  
+  // Backwards compatibility fields (use estimated as default)
+  data.total_incomes = data.total_estimated_incomes;
+  data.total_expenses = data.total_estimated_expenses;
+  data.total_expenses_vat = data.total_estimated_expenses_vat;
 
+  // Handle structural expenses if applicable
+  if (data.structural_expenses === true) {
+    const indirects = await strapi
+      .query("project")
+      .find({ structural_expenses_pct_gt: 0, published_at_null: false });
+    
+    const indirectIncomesOriginal = _.sumBy(
+      indirects.map((i) => ({
+        indirect: (i.structural_expenses_pct / 100) * (i.total_original_incomes || i.total_incomes || 0),
+      })),
+      "indirect"
+    );
+    
+    const indirectIncomesEstimated = _.sumBy(
+      indirects.map((i) => ({
+        indirect: (i.structural_expenses_pct / 100) * (i.total_estimated_incomes || i.total_incomes || 0),
+      })),
+      "indirect"
+    );
+    
+    const indirectIncomesReal = _.sumBy(
+      indirects.map((i) => ({
+        indirect: (i.structural_expenses_pct / 100) * (i.total_real_incomes || 0),
+      })),
+      "indirect"
+    );
+    
+    data.total_original_incomes += indirectIncomesOriginal;
+    data.original_incomes_expenses += indirectIncomesOriginal;
+    
+    data.total_estimated_incomes += indirectIncomesEstimated;
+    data.estimated_incomes_expenses += indirectIncomesEstimated;
+    
+    data.total_real_incomes += indirectIncomesReal;
+    data.total_real_incomes_expenses += indirectIncomesReal;
+    
+    // Update backwards compatibility fields
+    data.total_incomes += indirectIncomesEstimated;
+  }
+
+  // Backwards compatibility fields
   data.balance =
-    data.total_incomes - data.total_expenses - data.total_expenses_hours;
+    data.total_estimated_incomes - data.total_estimated_expenses - data.total_estimated_hours_price;
   data.estimated_balance =
-    data.total_incomes - data.total_expenses - data.total_estimated_expenses;
+    data.total_estimated_incomes - data.total_estimated_expenses - data.total_estimated_hours_price;
   data.incomes_expenses =
-    data.total_incomes -
-    data.total_expenses -
+    data.total_estimated_incomes -
+    data.total_estimated_expenses -
     data.total_estimated_hours_price -
-    data.total_expenses_vat;
+    data.total_estimated_expenses_vat;
 
   if (!data.leader || !data.leader.id) {
     delete data.leader;
@@ -503,9 +586,8 @@ const calculateEstimatedTotals = async (
             (subphase.amount ? subphase.amount : 0);
 
           const ey = getEstimateYear(subphase);
-          if (!real) {
-            rowsByYear.push({ year: ey, total_incomes: subphase.total_amount });
-          }
+          // Always add estimated incomes to yearly breakdown (all lines including paid + unpaid)
+          rowsByYear.push({ year: ey, total_incomes: subphase.total_amount });
 
           if (subphase.estimated_hours) {
             for (var k = 0; k < subphase.estimated_hours.length; k++) {
@@ -564,17 +646,16 @@ const calculateEstimatedTotals = async (
                         project_name: data.name,
                       });
 
-                      if (!real) {
-                        const yearStr = getFormattedDate(day, "YYYY");
-                        rowsByYear.push({
-                          year: yearStr,
-                          total_estimated_hours: q,
-                        });
-                        rowsByYear.push({
-                          year: yearStr,
-                          total_estimated_hours_price: q * costByHour,
-                        });
-                      }
+                      // Always add estimated hours to yearly breakdown
+                      const yearStr = getFormattedDate(day, "YYYY");
+                      rowsByYear.push({
+                        year: yearStr,
+                        total_estimated_hours: q,
+                      });
+                      rowsByYear.push({
+                        year: yearStr,
+                        total_estimated_hours_price: q * costByHour,
+                      });
                     }
                   }
                 } else if (
@@ -621,17 +702,16 @@ const calculateEstimatedTotals = async (
                         project_name: data.name,
                       });
 
-                      if (!real) {
-                        const yearStr = getFormattedDate(day, "YYYY");
-                        rowsByYear.push({
-                          year: yearStr,
-                          total_estimated_hours: q,
-                        });
-                        rowsByYear.push({
-                          year: yearStr,
-                          total_estimated_hours_price: q * costByHour,
-                        });
-                      }
+                      // Always add estimated hours to yearly breakdown
+                      const yearStr = getFormattedDate(day, "YYYY");
+                      rowsByYear.push({
+                        year: yearStr,
+                        total_estimated_hours: q,
+                      });
+                      rowsByYear.push({
+                        year: yearStr,
+                        total_estimated_hours_price: q * costByHour,
+                      });
                     }
                   }
                 } else {
@@ -669,18 +749,17 @@ const calculateEstimatedTotals = async (
                       project_name: data.name,
                     });
 
-                    if (!real) {
-                      const yearStr = getFormattedDate(day, "YYYY");
-                      rowsByYear.push({
-                        year: yearStr,
-                        total_estimated_hours: hours.quantity / mdiff,
-                      });
-                      rowsByYear.push({
-                        year: yearStr,
-                        total_estimated_hours_price:
-                          (hours.quantity / mdiff) * costByHour,
-                      });
-                    }
+                    // Always add estimated hours to yearly breakdown
+                    const yearStr = getFormattedDate(day, "YYYY");
+                    rowsByYear.push({
+                      year: yearStr,
+                      total_estimated_hours: hours.quantity / mdiff,
+                    });
+                    rowsByYear.push({
+                      year: yearStr,
+                      total_estimated_hours_price:
+                        (hours.quantity / mdiff) * costByHour,
+                    });
                   }
                 }
               }
@@ -730,14 +809,13 @@ const calculateEstimatedTotals = async (
 
           total_expenses_vat += expense.total_expenses_vat;
 
-          if (!real) {
-            const ey = getEstimateYear(expense);
-            rowsByYear.push({
-              year: ey,
-              total_expenses: expense.total_amount,
-              total_expenses_vat: expense.total_expenses_vat,
-            });
-          }
+          // Always add estimated expenses to yearly breakdown (all lines including paid + unpaid)
+          const ey = getEstimateYear(expense);
+          rowsByYear.push({
+            year: ey,
+            total_expenses: expense.total_amount,
+            total_expenses_vat: expense.total_expenses_vat,
+          });
 
           if (expense.paid) {
             // console.log('expense', expense)
@@ -757,6 +835,7 @@ const calculateEstimatedTotals = async (
               const realYear = getRealYear(
                 expense.invoice ? expense.invoice : expense.expense
               );
+              
               rowsByYear.push({
                 year: realYear,
                 total_real_expenses:
@@ -850,7 +929,37 @@ module.exports = {
       ]);
 
     const moreData = await doProjectInfoCalculations(dataPhases, id);
-    return { allByYear: moreData.allByYear };
+    
+    // Return both yearly breakdown and project-level totals
+    // This ensures frontend displays exactly what backend calculated
+    return {
+      allByYear: moreData.allByYear,
+      totals: {
+        // Original dimension
+        total_original_incomes: moreData.total_original_incomes,
+        total_original_expenses: moreData.total_original_expenses,
+        total_original_hours: moreData.total_original_hours,
+        total_original_hours_price: moreData.total_original_hours_price,
+        total_original_expenses_vat: moreData.total_original_expenses_vat,
+        original_incomes_expenses: moreData.original_incomes_expenses,
+        
+        // Estimated dimension
+        total_estimated_incomes: moreData.total_estimated_incomes,
+        total_estimated_expenses: moreData.total_estimated_expenses,
+        total_estimated_hours: moreData.total_estimated_hours,
+        total_estimated_hours_price: moreData.total_estimated_hours_price,
+        total_estimated_expenses_vat: moreData.total_estimated_expenses_vat,
+        estimated_incomes_expenses: moreData.estimated_incomes_expenses,
+        
+        // Real dimension
+        total_real_incomes: moreData.total_real_incomes,
+        total_real_expenses: moreData.total_real_expenses,
+        total_real_hours: moreData.total_real_hours,
+        total_real_hours_price: moreData.total_real_hours_price,
+        total_real_expenses_vat: moreData.total_real_expenses_vat,
+        total_real_incomes_expenses: moreData.total_real_incomes_expenses,
+      }
+    };
   },
   async reset() {
     // await strapi.query("project").delete({ _limit: -1 });
@@ -897,22 +1006,23 @@ module.exports = {
       .find({ entity: "project", _limit: -1 });
 
     const uniqueProjects = _.union(projectsQueue.map((p) => p.entityId));
-    const ids = uniqueProjects.map((p) => p.id);
+    const queueIds = projectsQueue.map((p) => p.id);
 
     if (uniqueProjects.length === 0) {
       await strapi.connections.default.raw("TRUNCATE TABLE dirty_queues;");
       return;
     }
 
-    // console.log('filtered', filtered)
-
     let ok = true;
+    let processed = 0;
 
     for await (const project of uniqueProjects) {
       try {
         const data = await strapi
           .query("project")
           .findOne({ id: project }, [
+            "activities",
+            "activities.activity_type",
             "project_phases",
             "project_phases.incomes",
             "project_phases.incomes.estimated_hours",
@@ -937,28 +1047,37 @@ module.exports = {
             "project_original_phases.expenses.expense",
           ]);
 
-        // const info = await doProjectInfoCalculations(data, project);
-
+        // Trigger update with minimal data to force recalculation via beforeUpdate hook
+        // The hook will calculate all financial fields and save them
         const projectDataToUpdate = {
+          activities: data.activities,
           project_phases: data.project_phases,
           project_original_phases: data.project_original_phases,
-          id: project,
+          periodification: data.periodification,
+          structural_expenses: data.structural_expenses,
+          dirty: false,
+          _forceCalculation: true, // Flag to indicate this is a recalculation update
         };
 
         await strapi
           .query("project")
           .update({ id: project }, projectDataToUpdate);
+        
+        processed++;
       } catch (e) {
-        console.error(e);
+        console.error(`[updateDirtyProjects] Error processing project ${project}:`, e);
         ok = false;
       }
     }
 
-    // // delete from dirty-queue
+    console.log(`[updateDirtyProjects] Processed ${processed} projects successfully`);
+
+    // delete from dirty-queue
     if (ok) {
-      for await (const id of ids) {
+      for await (const id of queueIds) {
         await strapi.query("dirty-queue").delete({ id: id });
       }
+      console.log(`[updateDirtyProjects] Cleared ${queueIds.length} items from dirty queue`);
     }
   },
   async findWithBasicInfo(ctx) {
@@ -1277,27 +1396,52 @@ module.exports = {
           const phaseInfo = { phase: ph.name, subphase: sph.concept };
 
           if (sph.quantity && sph.amount) {
-            const document = sph.income || sph.invoice;
-            const date =
-              sph.paid && document
-                ? document.emitted
-                : sph.date_estimate_document;
+            // Match the document selection priority from calculateEstimatedTotals
+            const document = sph.income || sph.expense || sph.invoice;
+            
+            // For estimated incomes, always use estimate date priority
+            const estimate_date = sph.date_estimate_document || sph.date;
+            
+            // Row for estimated income (all lines, paid or unpaid)
             projectResponse.push({
               ...projectInfo,
               ...phaseInfo,
               type: "income",
               paid: sph.paid,
-              date: date,
-              income_esti: 0,
-              income_real: sph.paid ? sph.quantity * sph.amount : 0,
-              year: moment(date, "YYYY-MM-DD").format("YYYY"),
-              month: moment(date, "YYYY-MM-DD").format("MM"),
+              date: estimate_date,
+              income_orig: 0,
+              income_esti: sph.quantity * sph.amount,
+              income_real: 0,
+              year: moment(estimate_date, "YYYY-MM-DD").format("YYYY"),
+              month: moment(estimate_date, "YYYY-MM-DD").format("MM"),
               row_type:
                 sph.income_type && sph.income_type.name
                   ? sph.income_type.name
                   : "",
               document,
             });
+            
+            // Separate row for real income (only if paid)
+            if (sph.paid && document && document.emitted) {
+              const real_date = document.emitted;
+              projectResponse.push({
+                ...projectInfo,
+                ...phaseInfo,
+                type: "income",
+                paid: sph.paid,
+                date: real_date,
+                income_orig: 0,
+                income_esti: 0,
+                income_real: sph.quantity * sph.amount,
+                year: moment(real_date, "YYYY-MM-DD").format("YYYY"),
+                month: moment(real_date, "YYYY-MM-DD").format("MM"),
+                row_type:
+                  sph.income_type && sph.income_type.name
+                    ? sph.income_type.name
+                    : "",
+                document,
+              });
+            }
           }
         }
 
@@ -1305,31 +1449,71 @@ module.exports = {
           const sph = ph.expenses[k];
           const phaseInfo = { phase: ph.name, subphase: sph.concept };
           if (sph.quantity && sph.amount) {
-            const document = sph.expense || sph.invoice;
-            const date =
-              sph.paid && document
-                ? document.emitted
-                : sph.date_estimate_document;
+            // Match the document selection priority from calculateEstimatedTotals
+            // This ensures consistent VAT values between pivot and project form
+            const document = sph.invoice || sph.expense;
+            
+            // For estimated expenses, always use estimate date priority
+            const estimate_date = sph.date_estimate_document || sph.date;
+            
+            const vat_pct = sph.expense_type && sph.expense_type.vat_pct
+              ? sph.expense_type.vat_pct
+              : 21;
+            
+            // Row for estimated expense (all lines, paid or unpaid)
             projectResponse.push({
               ...projectInfo,
               ...phaseInfo,
               type: "expense",
               paid: sph.paid,
-              expense_esti: 0,
-              expense_real: sph.paid ? -1 * sph.quantity * sph.amount : 0,
-              expense_real_vat:
-                sph.paid && document
-                  ? -1 * document.total_vat * deductible_ratio
-                  : 0,
-              date,
-              year: moment(date, "YYYY-MM-DD").format("YYYY"),
-              month: moment(date, "YYYY-MM-DD").format("MM"),
+              expense_orig: 0,
+              expense_orig_vat: 0,
+              expense_esti: -1 * sph.quantity * sph.amount,
+              expense_esti_vat: (-1 * deductible_ratio * sph.quantity * sph.amount * vat_pct) / 100.0,
+              expense_real: 0,
+              expense_real_vat: 0,
+              date: estimate_date,
+              year: moment(estimate_date, "YYYY-MM-DD").format("YYYY"),
+              month: moment(estimate_date, "YYYY-MM-DD").format("MM"),
               row_type:
                 sph.expense_type && sph.expense_type.name
                   ? sph.expense_type.name
                   : "",
               document,
             });
+            
+            // Separate row for real expense (only if paid)
+            if (sph.paid && document && document.emitted) {
+              const real_date = document.emitted;
+              
+              // Match VAT calculation logic from calculateEstimatedTotals
+              // Use invoice.total_vat if available, otherwise fall back to calculated VAT
+              const calculated_vat = (sph.quantity * sph.amount * vat_pct) / 100.0;
+              const expense_vat = sph.invoice && sph.invoice.total_vat !== undefined
+                ? sph.invoice.total_vat
+                : calculated_vat;
+              
+              projectResponse.push({
+                ...projectInfo,
+                ...phaseInfo,
+                type: "expense",
+                paid: sph.paid,
+                expense_orig: 0,
+                expense_orig_vat: 0,
+                expense_esti: 0,
+                expense_esti_vat: 0,
+                expense_real: -1 * sph.quantity * sph.amount,
+                expense_real_vat: -1 * expense_vat * deductible_ratio,
+                date: real_date,
+                year: moment(real_date, "YYYY-MM-DD").format("YYYY"),
+                month: moment(real_date, "YYYY-MM-DD").format("MM"),
+                row_type:
+                  sph.expense_type && sph.expense_type.name
+                    ? sph.expense_type.name
+                    : "",
+                document,
+              });
+            }
           }
         }
       }
@@ -1340,7 +1524,8 @@ module.exports = {
           const sph = ph.incomes[k];
           const phaseInfo = { phase: ph.name, subphase: sph.concept };
           if (sph.quantity && sph.amount) {
-            const document = sph.income || sph.invoice;
+            // Match the document selection priority from calculateEstimatedTotals
+            const document = sph.income || sph.expense || sph.invoice;
             const date = sph.date_estimate_document || sph.date;
             projectResponse.push({
               ...projectInfo,
@@ -1348,7 +1533,8 @@ module.exports = {
               type: "income",
               // paid: sph.paid,
               date: date,
-              income_esti: sph.quantity * sph.amount,
+              income_orig: sph.quantity * sph.amount,
+              income_esti: 0,
               income_real: 0,
               year: moment(date, "YYYY-MM-DD").format("YYYY"),
               month: moment(date, "YYYY-MM-DD").format("MM"),
@@ -1364,24 +1550,30 @@ module.exports = {
           const sph = ph.expenses[k];
           const phaseInfo = { phase: ph.name, subphase: sph.concept };
           if (sph.quantity && sph.amount) {
-            const document = sph.expense || sph.invoice;
+            // Match the document selection priority from calculateEstimatedTotals
+            const document = sph.invoice || sph.expense;
             const date = sph.date_estimate_document || sph.date;
+            
+            const vat_pct = sph.expense_type && sph.expense_type.vat_pct
+              ? sph.expense_type.vat_pct
+              : 21;
+            
             projectResponse.push({
               ...projectInfo,
               ...phaseInfo,
               type: "expense",
               // paid: sph.paid,
-              expense_esti: -1 * Math.abs(sph.quantity * sph.amount),
-              expense_esti_vat:
+              expense_orig: -1 * Math.abs(sph.quantity * sph.amount),
+              expense_orig_vat:
                 (-1 *
                   deductible_ratio *
                   Math.abs(sph.quantity * sph.amount) *
-                  (sph.expense_type && sph.expense_type.vat_pct
-                    ? sph.expense_type.vat_pct
-                    : 21)) /
+                  vat_pct) /
                 100.0,
+              expense_esti: 0,
+              expense_esti_vat: 0,
               expense_real: 0,
-              date: sph.date,
+              date: date,
               year: moment(date, "YYYY-MM-DD").format("YYYY"),
               month: moment(date, "YYYY-MM-DD").format("MM"),
               row_type:
@@ -1402,6 +1594,7 @@ module.exports = {
             ...projectInfo,
             ...noPhaseInfo,
             type: "income",
+            income_orig: 0,
             income_esti: pp.incomes,
             income_real: pp.real_incomes,
             date: `${pp.year}-12-31`,
@@ -1414,8 +1607,12 @@ module.exports = {
             ...projectInfo,
             ...noPhaseInfo,
             type: "expense",
+            expense_orig: 0,
+            expense_orig_vat: 0,
             expense_esti: pp.expenses,
+            expense_esti_vat: 0,
             expense_real: pp.real_expenses,
+            expense_real_vat: 0,
             date: `${pp.year}-12-31`,
             year: pp.year.toString(),
             month: "12",
@@ -1433,6 +1630,7 @@ module.exports = {
           ...noPhaseInfo,
           type: "real_hours",
           date: pa.year.toString() + "-" + pa.month.toString().padStart(2, "0") + "-01",
+          total_original_hours_price: 0,
           total_estimated_hours_price: 0,
           total_real_hours_price: -1 * (pa.cost || 0),
           total_real_hours: pa.hours || 0,
@@ -1479,14 +1677,32 @@ module.exports = {
         projectResponse.push({
           ...projectInfo,
           ...noPhaseInfo,
+          type: "original_hours",
+          date: g.year.toString() + "-" + g.month.toString().padStart(2, "0") + "-01",
+          total_original_hours_price: -1 * (g.cost || 0),
+          total_original_hours: g.q || 0,
+          total_estimated_hours_price: 0,
+          total_real_hours_price: 0,
+          year: g.year.toString(),
+          month: g.month.toString().padStart(2, "0"),
+          row_type: "Hores originals",
+          // document: "0",
+        });
+
+        // Hores prev should match hores originals
+        projectResponse.push({
+          ...projectInfo,
+          ...noPhaseInfo,
           type: "estimated_hours",
           date: g.year.toString() + "-" + g.month.toString().padStart(2, "0") + "-01",
+          total_original_hours_price: 0,
+          total_original_hours: 0,
           total_estimated_hours_price: -1 * (g.cost || 0),
           total_estimated_hours: g.q || 0,
           total_real_hours_price: 0,
           year: g.year.toString(),
           month: g.month.toString().padStart(2, "0"),
-          row_type: "Hores estimades",
+          row_type: "Hores previstes",
           // document: "0",
         });
       }
@@ -1497,16 +1713,9 @@ module.exports = {
     // Flatten all project responses into a single array
     response = _.flatten(projectResponses);
 
-    
-
-    const distinct_project = _.uniq(response.map((r) => r.project_name));
-    console.log('distinct_project', distinct_project)
-
     if (year) {
       response = response.filter((r) => r.year === year);
     }
-
-    console.log('ctx.query._where.year_eq', ctx.query && ctx.query._where && ctx.query._where.year_eq ? ctx.query._where.year_eq : 'no year filter')
 
     if (ctx.query && ctx.query._where && ctx.query._where.year_eq) {
       response = response.filter(
@@ -1609,22 +1818,35 @@ module.exports = {
 
       // Store the children's values BEFORE calling doProjectInfoCalculations
       // because that function might modify the child objects
-      // These values are stored because they might be project-level totals
-      // that aren't properly distributed across years in allByYear
+      // Store all three dimensions: original, estimated, real
       const childrenStoredValues = children.map(c => ({
         id: c.id,
-        total_estimated_hours_price: parseFloat(c.total_estimated_hours_price || 0),
+        // Original dimension
+        total_original_incomes: parseFloat(c.total_original_incomes || 0),
+        total_original_expenses: parseFloat(c.total_original_expenses || 0),
+        total_original_expenses_vat: parseFloat(c.total_original_expenses_vat || 0),
+        total_original_hours: parseFloat(c.total_original_hours || 0),
+        total_original_hours_price: parseFloat(c.total_original_hours_price || 0),
+        original_incomes_expenses: parseFloat(c.original_incomes_expenses || 0),
+        // Estimated dimension
+        total_estimated_incomes: parseFloat(c.total_estimated_incomes || 0),
+        total_estimated_expenses: parseFloat(c.total_estimated_expenses || 0),
+        total_estimated_expenses_vat: parseFloat(c.total_estimated_expenses_vat || 0),
         total_estimated_hours: parseFloat(c.total_estimated_hours || 0),
+        total_estimated_hours_price: parseFloat(c.total_estimated_hours_price || 0),
+        estimated_incomes_expenses: parseFloat(c.estimated_incomes_expenses || 0),
+        // Real dimension
+        total_real_incomes: parseFloat(c.total_real_incomes || 0),
+        total_real_expenses: parseFloat(c.total_real_expenses || 0),
         total_real_expenses_vat: parseFloat(c.total_real_expenses_vat || 0),
+        total_real_hours: parseFloat(c.total_real_hours || 0),
+        total_real_hours_price: parseFloat(c.total_real_hours_price || 0),
+        total_real_incomes_expenses: parseFloat(c.total_real_incomes_expenses || 0),
+        // Backwards compatibility
         total_incomes: parseFloat(c.total_incomes || 0),
         total_expenses: parseFloat(c.total_expenses || 0),
         total_expenses_vat: parseFloat(c.total_expenses_vat || 0),
-        total_real_hours: parseFloat(c.total_real_hours || 0),
-        total_real_incomes: parseFloat(c.total_real_incomes || 0),
-        total_real_expenses: parseFloat(c.total_real_expenses || 0),
-        total_real_hours_price: parseFloat(c.total_real_hours_price || 0),
         incomes_expenses: parseFloat(c.incomes_expenses || 0),
-        total_real_incomes_expenses: parseFloat(c.total_real_incomes_expenses || 0)
       }));
 
       // Aggregate phases from all children
@@ -1640,24 +1862,42 @@ module.exports = {
         }
       }
 
-      // Group by year and sum all values
+      // Group by year and sum all three dimensions separately
       const aggregatedAllByYear = _(allChildrenByYear)
         .groupBy("year")
         .map((rows, year) => {
+          const original_hours = sumBy(rows, (r) => parseFloat(r.total_original_hours || 0));
+          const original_hours_price = sumBy(rows, (r) => parseFloat(r.total_original_hours_price || 0));
+          
           return {
             year: year,
-            total_incomes: sumBy(rows, (r) => parseFloat(r.total_incomes || 0)),
-            total_expenses: sumBy(rows, (r) => parseFloat(r.total_expenses || 0)),
-            total_expenses_vat: sumBy(rows, (r) => parseFloat(r.total_expenses_vat || 0)),
+            // Original dimension
+            total_original_incomes: sumBy(rows, (r) => parseFloat(r.total_original_incomes || 0)),
+            total_original_expenses: sumBy(rows, (r) => parseFloat(r.total_original_expenses || 0)),
+            total_original_expenses_vat: sumBy(rows, (r) => parseFloat(r.total_original_expenses_vat || 0)),
+            total_original_hours: original_hours,
+            total_original_hours_price: original_hours_price,
+            original_incomes_expenses: sumBy(rows, (r) => parseFloat(r.original_incomes_expenses || 0)),
+            // Estimated dimension
+            // EXCEPTION: Estimated hours always copy from original hours
+            total_estimated_incomes: sumBy(rows, (r) => parseFloat(r.total_estimated_incomes || 0)),
+            total_estimated_expenses: sumBy(rows, (r) => parseFloat(r.total_estimated_expenses || 0)),
+            total_estimated_expenses_vat: sumBy(rows, (r) => parseFloat(r.total_estimated_expenses_vat || 0)),
+            total_estimated_hours: original_hours,
+            total_estimated_hours_price: original_hours_price,
+            estimated_incomes_expenses: sumBy(rows, (r) => parseFloat(r.estimated_incomes_expenses || 0)),
+            // Real dimension
             total_real_incomes: sumBy(rows, (r) => parseFloat(r.total_real_incomes || 0)),
             total_real_expenses: sumBy(rows, (r) => parseFloat(r.total_real_expenses || 0)),
             total_real_expenses_vat: sumBy(rows, (r) => parseFloat(r.total_real_expenses_vat || 0)),
-            total_estimated_hours: sumBy(rows, (r) => parseFloat(r.total_estimated_hours || 0)),
-            total_estimated_hours_price: sumBy(rows, (r) => parseFloat(r.total_estimated_hours_price || 0)),
             total_real_hours: sumBy(rows, (r) => parseFloat(r.total_real_hours || 0)),
             total_real_hours_price: sumBy(rows, (r) => parseFloat(r.total_real_hours_price || 0)),
             total_real_incomes_expenses: sumBy(rows, (r) => parseFloat(r.total_real_incomes_expenses || 0)),
-            incomes_expenses: sumBy(rows, (r) => parseFloat(r.incomes_expenses || 0)),
+            // Backwards compatibility
+            total_incomes: sumBy(rows, (r) => parseFloat(r.total_estimated_incomes || r.total_incomes || 0)),
+            total_expenses: sumBy(rows, (r) => parseFloat(r.total_estimated_expenses || r.total_expenses || 0)),
+            total_expenses_vat: sumBy(rows, (r) => parseFloat(r.total_estimated_expenses_vat || r.total_expenses_vat || 0)),
+            incomes_expenses: sumBy(rows, (r) => parseFloat(r.estimated_incomes_expenses || r.incomes_expenses || 0)),
           };
         })
         .value();
@@ -1675,65 +1915,95 @@ module.exports = {
         const periodified_incomes = periodificationData.incomes || 0;
         const periodified_expenses = periodificationData.expenses || 0;
         
+        // Apply to all three dimensions
+        const new_total_original_incomes = y.total_original_incomes + periodified_incomes;
+        const new_total_original_expenses = y.total_original_expenses + periodified_expenses;
+        
+        const new_total_estimated_incomes = y.total_estimated_incomes + periodified_incomes;
+        const new_total_estimated_expenses = y.total_estimated_expenses + periodified_expenses;
+        
         const new_total_real_incomes = y.total_real_incomes + periodified_real_incomes;
         const new_total_real_expenses = y.total_real_expenses + periodified_real_expenses;
-        const new_total_incomes = (y.total_incomes ?? 0) + periodified_incomes;
-        const new_total_expenses = (y.total_expenses ?? 0) + periodified_expenses;
         
         return {
           ...y,
+          // Original dimension (with periodification)
+          total_original_incomes: new_total_original_incomes,
+          total_original_expenses: new_total_original_expenses,
+          original_incomes_expenses: new_total_original_incomes - new_total_original_expenses - (y.total_original_hours_price || 0) - (y.total_original_expenses_vat || 0),
+          // Estimated dimension (with periodification)
+          total_estimated_incomes: new_total_estimated_incomes,
+          total_estimated_expenses: new_total_estimated_expenses,
+          estimated_incomes_expenses: new_total_estimated_incomes - new_total_estimated_expenses - (y.total_estimated_hours_price || 0) - (y.total_estimated_expenses_vat || 0),
+          // Real dimension (with periodification)
           total_real_incomes: new_total_real_incomes,
           total_real_expenses: new_total_real_expenses,
-          total_incomes: new_total_incomes,
-          total_expenses: new_total_expenses,
-          total_real_incomes_expenses: new_total_real_incomes - new_total_real_expenses - (y.total_real_hours_price || 0),
-          incomes_expenses: new_total_incomes - new_total_expenses - (y.total_estimated_hours_price || 0),
+          total_real_incomes_expenses: new_total_real_incomes - new_total_real_expenses - (y.total_real_hours_price || 0) - (y.total_real_expenses_vat || 0),
+          // Backwards compatibility
+          total_incomes: new_total_estimated_incomes,
+          total_expenses: new_total_estimated_expenses,
+          incomes_expenses: new_total_estimated_incomes - new_total_estimated_expenses - (y.total_estimated_hours_price || 0) - (y.total_estimated_expenses_vat || 0),
         };
       });
 
-      // Calculate totals from aggregated allByYear (which includes periodification)
-      // This ensures that the "TOTS" view reflects the periodified values
-      // However, some fields are not properly year-based so we need to sum them from stored values
-      
-      const summedEstimatedHoursPrice = _.sumBy(childrenStoredValues, 'total_estimated_hours_price');
-      const summedEstimatedHours = _.sumBy(childrenStoredValues, 'total_estimated_hours');
-      const summedRealExpensesVat = _.sumBy(childrenStoredValues, 'total_real_expenses_vat');
-      const summedIncomes = _.sumBy(childrenStoredValues, 'total_incomes');
-      const summedExpenses = _.sumBy(childrenStoredValues, 'total_expenses');
-      const summedExpensesVat = _.sumBy(childrenStoredValues, 'total_expenses_vat');
-      const summedRealHours = _.sumBy(childrenStoredValues, 'total_real_hours');
-      const summedRealIncomes = _.sumBy(childrenStoredValues, 'total_real_incomes');
-      const summedRealExpenses = _.sumBy(childrenStoredValues, 'total_real_expenses');
-      const summedRealHoursPrice = _.sumBy(childrenStoredValues, 'total_real_hours_price');
-      const summedIncomesExpenses = _.sumBy(childrenStoredValues, 'incomes_expenses');
-      const summedRealIncomesExpenses = _.sumBy(childrenStoredValues, 'total_real_incomes_expenses');
-      
+      // REFACTORED: Calculate mother project totals by summing yearly values
+      // This ensures perfect consistency between year-level and project-level numbers
       const totals = {
-        total_estimated_hours: summedEstimatedHours,
-        total_real_hours: summedRealHours, // Use stored value
-        total_expenses: summedExpenses, // Use stored value instead of aggregated
-        total_incomes: summedIncomes, // Use stored value instead of aggregated
+        // Original dimension
+        total_original_incomes: _.sumBy(aggregatedAllByYearWithPeriodification, 'total_original_incomes'),
+        total_original_expenses: _.sumBy(aggregatedAllByYearWithPeriodification, 'total_original_expenses'),
+        total_original_expenses_vat: _.sumBy(aggregatedAllByYearWithPeriodification, 'total_original_expenses_vat'),
+        total_original_hours: _.sumBy(aggregatedAllByYearWithPeriodification, 'total_original_hours'),
+        total_original_hours_price: _.sumBy(aggregatedAllByYearWithPeriodification, 'total_original_hours_price'),
+        original_incomes_expenses: _.sumBy(aggregatedAllByYearWithPeriodification, 'original_incomes_expenses'),
+        // Estimated dimension
+        total_estimated_incomes: _.sumBy(aggregatedAllByYearWithPeriodification, 'total_estimated_incomes'),
+        total_estimated_expenses: _.sumBy(aggregatedAllByYearWithPeriodification, 'total_estimated_expenses'),
+        total_estimated_expenses_vat: _.sumBy(aggregatedAllByYearWithPeriodification, 'total_estimated_expenses_vat'),
+        total_estimated_hours: _.sumBy(aggregatedAllByYearWithPeriodification, 'total_estimated_hours'),
+        total_estimated_hours_price: _.sumBy(aggregatedAllByYearWithPeriodification, 'total_estimated_hours_price'),
+        estimated_incomes_expenses: _.sumBy(aggregatedAllByYearWithPeriodification, 'estimated_incomes_expenses'),
+        // Real dimension
+        total_real_incomes: _.sumBy(aggregatedAllByYearWithPeriodification, 'total_real_incomes'),
+        total_real_expenses: _.sumBy(aggregatedAllByYearWithPeriodification, 'total_real_expenses'),
+        total_real_expenses_vat: _.sumBy(aggregatedAllByYearWithPeriodification, 'total_real_expenses_vat'),
+        total_real_hours: _.sumBy(aggregatedAllByYearWithPeriodification, 'total_real_hours'),
+        total_real_hours_price: _.sumBy(aggregatedAllByYearWithPeriodification, 'total_real_hours_price'),
+        total_real_incomes_expenses: _.sumBy(aggregatedAllByYearWithPeriodification, 'total_real_incomes_expenses'),
+      };
+      
+      // EXCEPTION: Estimated hours should always copy from original hours
+      // "Hores previstes" should always be the same as "Hores originals"
+      totals.total_estimated_hours = totals.total_original_hours;
+      totals.total_estimated_hours_price = totals.total_original_hours_price;
+      
+      // Recalculate estimated balance with corrected hours
+      totals.estimated_incomes_expenses = 
+        totals.total_estimated_incomes - 
+        totals.total_estimated_expenses - 
+        totals.total_estimated_hours_price - 
+        totals.total_estimated_expenses_vat;
+      
+      // Update backwards compatibility fields
+      totals.total_incomes = totals.total_estimated_incomes;
+      totals.total_expenses = totals.total_estimated_expenses;
+      totals.total_expenses_vat = totals.total_estimated_expenses_vat;
+      totals.incomes_expenses = totals.estimated_incomes_expenses;
+      totals.balance = totals.estimated_incomes_expenses;
+      totals.estimated_balance = totals.estimated_incomes_expenses;
+      
+      // Continue with other legacy fields
+      Object.assign(totals, {
+        // Other legacy fields
         total_expenses_hours: _.sumBy(children, "total_expenses_hours"),
-        balance: _.sumBy(children, "balance"),
-        total_estimated_expenses: _.sumBy(children, "total_estimated_expenses"),
-        estimated_balance: _.sumBy(children, "estimated_balance"),
-        incomes_expenses: summedIncomesExpenses, // Use stored value instead of aggregated
         dedicated_hours: _.sumBy(children, "dedicated_hours"),
         invoice_hours: _.sumBy(children, "invoice_hours"),
         invoice_hours_price: _.sumBy(children, "invoice_hours_price"),
         total_dedicated_hours: _.sumBy(children, "total_dedicated_hours"),
-        total_real_incomes: summedRealIncomes, // Use stored value
-        total_real_expenses: summedRealExpenses, // Use stored value
-        total_real_incomes_expenses: summedRealIncomesExpenses, // Use stored value instead of aggregated
         structural_expenses: _.sumBy(children, "structural_expenses"),
-        // These fields should be summed from stored values before doProjectInfoCalculations
-        total_estimated_hours_price: summedEstimatedHoursPrice,
-        total_real_hours_price: summedRealHoursPrice, // Use stored value
-        total_expenses_vat: summedExpensesVat, // Use stored value
-        total_real_expenses_vat: summedRealExpensesVat,
         grantable_amount: _.sumBy(children, "grantable_amount"),
         grantable_amount_total: _.sumBy(children, "grantable_amount_total"),
-      };
+      });
 
       return { 
         children, 
@@ -1837,8 +2107,9 @@ module.exports = {
   },
 
   async findOne(ctx) {
+
     const { id } = ctx.params;
-    // const data = await strapi.query("project").findOne({ id });
+    // Load project with all necessary relations for calculation
     const data = await strapi
       .query("project")
       .findOne({ id: id }, [
@@ -1860,10 +2131,39 @@ module.exports = {
         "received_expenses",
         "global_activity_types",
         "treasury_annotations",
-        "global_activity_types",
+        "activities",
+        "activities.activity_type",
         "project_phases",
+        "project_phases.incomes",
+        "project_phases.incomes.estimated_hours",
+        "project_phases.incomes.estimated_hours.users_permissions_user",
+        "project_phases.incomes.income_type",
+        "project_phases.incomes.invoice",
+        "project_phases.incomes.income",
+        "project_phases.expenses",
+        "project_phases.expenses.expense_type",
+        "project_phases.expenses.invoice",
+        "project_phases.expenses.expense",
         "project_original_phases",
+        "project_original_phases.incomes",
+        "project_original_phases.incomes.estimated_hours",
+        "project_original_phases.incomes.estimated_hours.users_permissions_user",
+        "project_original_phases.incomes.income_type",
+        "project_original_phases.incomes.invoice",
+        "project_original_phases.incomes.income",
+        "project_original_phases.expenses",
+        "project_original_phases.expenses.expense_type",
+        "project_original_phases.expenses.invoice",
+        "project_original_phases.expenses.expense",
       ]);
+
+    // Calculate fresh totals to ensure consistency with calculate endpoint
+    // This ensures reports and lists get accurate totals from find/findOne methods
+    if (data && data.id) {
+      const calculatedData = await doProjectInfoCalculations(data, id);
+      delete calculatedData.activities;
+      return calculatedData;
+    }
 
     return data;
   },
@@ -1954,6 +2254,11 @@ module.exports = {
       await strapi
         .query("dirty-queue")
         .create({ entityId: id, entity: "project" });
+      
+      // Also set the dirty flag on the project
+      await strapi
+        .query("project")
+        .update({ id: id }, { dirty: true, _internal: true });
     }
   },
 

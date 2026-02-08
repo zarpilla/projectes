@@ -10,7 +10,9 @@ module.exports = {
     const projectPhases = await strapi
       .query("project-phases")
       .find(ctx.query, [
-        "incomes",        
+        "incomes",
+        "incomes.estimated_hours",
+        "incomes.estimated_hours.users_permissions_user",
         "incomes.income_type",
         "incomes.invoice",
         "incomes.income",

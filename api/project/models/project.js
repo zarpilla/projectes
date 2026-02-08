@@ -80,42 +80,56 @@ module.exports = {
         );
       }
 
-      if (updatedPhases) {
-        const project_phases = await strapi
-          .query("project-phases")
-          .find({ project: id }, [
-            "incomes",
-            "incomes.estimated_hours",
-            "incomes.income_type",
-            "incomes.estimated_hours.users_permissions_user",
-            "incomes.invoice",
-            "incomes.income",
-            "expenses",
-            "expenses.expense_type",
-            "expenses.invoice",
-            "expenses.expense",
-          ]);
+      // Load the FULL project with all relations to ensure accurate calculation
+      // The 'data' parameter only contains fields being updated, not the complete project
+      const fullProject = await strapi
+        .query("project")
+        .findOne({ id: id }, [
+          "activities",
+          "activities.activity_type",
+          "project_phases",
+          "project_phases.incomes",
+          "project_phases.incomes.estimated_hours",
+          "project_phases.incomes.income_type",
+          "project_phases.incomes.estimated_hours.users_permissions_user",
+          "project_phases.incomes.invoice",
+          "project_phases.incomes.income",
+          "project_phases.expenses",
+          "project_phases.expenses.expense_type",
+          "project_phases.expenses.invoice",
+          "project_phases.expenses.expense",
+          "project_original_phases",
+          "project_original_phases.incomes",
+          "project_original_phases.incomes.estimated_hours",
+          "project_original_phases.incomes.income_type",
+          "project_original_phases.incomes.estimated_hours.users_permissions_user",
+          "project_original_phases.incomes.invoice",
+          "project_original_phases.incomes.income",
+          "project_original_phases.expenses",
+          "project_original_phases.expenses.expense_type",
+          "project_original_phases.expenses.invoice",
+          "project_original_phases.expenses.expense",
+        ]);
 
-        const project_original_phases = await strapi
-          .query("project-original-phases")
-          .find({ project: id }, [
-            "incomes",
-            "incomes.estimated_hours",
-            "incomes.income_type",
-            "incomes.estimated_hours.users_permissions_user",
-            "incomes.invoice",
-            "incomes.income",
-            "expenses",
-            "expenses.expense_type",
-            "expenses.invoice",
-            "expenses.expense",
-          ]);
+      // Merge updated fields from 'data' into fullProject for calculation
+      // IMPORTANT: Don't overwrite relations (phases, activities) unless they were explicitly updated
+      // This prevents stale frontend data from being used in calculations
+      const { 
+        project_phases, 
+        project_original_phases, 
+        activities,
+        project_phases_info,
+        project_original_phases_info,
+        _project_phases_updated,
+        _project_original_phases_updated,
+        ...dataToMerge 
+      } = data;
+      
+      Object.assign(fullProject, dataToMerge);
 
-        data.project_phases = project_phases;
-        data.project_original_phases = project_original_phases;
-      }
-
-      data = await projectController.calculateProject(data, id);
+      // Calculate all financial fields based on complete project data
+      const calculatedData = await projectController.calculateProject(fullProject, id);
+      Object.assign(data, calculatedData);
     },
     async afterUpdate(result, params, data) {
       if (data._internal) {

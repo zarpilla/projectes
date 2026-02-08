@@ -11,20 +11,20 @@ module.exports = {
     lifecycles: {
         async beforeCreate(data) {
             data = await calculatePrice(0, data)            
-            await projectController.setDirty(data.project)
+            // await projectController.setDirty(data.project)
         },        
         async beforeUpdate(params, data) {
             data = await calculatePrice(params.id, data)
             if (data && data.project) {
-                await projectController.setDirty(data.project)
+                // await projectController.setDirty(data.project)
             }
         },        
-        // async beforeDelete(params) {        
-        //     const activity = await strapi.query('activity').findOne(params);   
-        //     if (activity.project && activity.project.id) {
-        //         await projectController.setDirty(activity.project.id)
-        //     }                
-        // },        
+        async beforeDelete(params) {        
+            const activity = await strapi.query('activity').findOne(params);   
+            if (activity.project && activity.project.id) {
+                // await projectController.setDirty(activity.project.id)
+            }                
+        },        
       },
 };
 

@@ -64,6 +64,30 @@
     "incomes_expenses": {
       "type": "decimal"
     },
+    "total_original_incomes": {
+      "type": "decimal"
+    },
+    "total_original_expenses": {
+      "type": "decimal"
+    },
+    "total_original_hours_price": {
+      "type": "decimal"
+    },
+    "total_original_expenses_vat": {
+      "type": "decimal"
+    },
+    "original_incomes_expenses": {
+      "type": "decimal"
+    },
+    "total_estimated_incomes": {
+      "type": "decimal"
+    },
+    "total_estimated_expenses_vat": {
+      "type": "decimal"
+    },
+    "estimated_incomes_expenses": {
+      "type": "decimal"
+    },
     "project_state": {
       "model": "project-state"
     },

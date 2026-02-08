@@ -22,11 +22,15 @@ module.exports = {
   },
 
   /**
-   * Every 4 minutes.
+   * Every 2 minutes.
    */
 
   '*/2 * * * *': async () => {
-    await projectController.updateDirtyProjects()
+    try {
+      await projectController.updateDirtyProjects();
+    } catch (error) {
+      console.error('[CRON] Error in updateDirtyProjects:', error);
+    }
   },
 
   
