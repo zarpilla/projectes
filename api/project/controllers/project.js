@@ -2280,6 +2280,80 @@ module.exports = {
   //   }
   // },
 
+  createPhaseWithNested: async (projectId, entity, phase) => {
+    console.log('createPhaseWithNested:', entity, phase.name);
+    
+    // Extract nested data
+    const { incomes, expenses, ...phaseData } = phase;
+    
+    // Create the phase
+    const createdPhase = await strapi
+      .query(entity)
+      .create({ project: projectId, name: phaseData.name });
+    
+    console.log('  - Phase created with id:', createdPhase.id);
+    
+    // Create incomes
+    if (incomes && incomes.length > 0) {
+      console.log('  - Creating', incomes.length, 'incomes');
+      for (const income of incomes) {
+        const { estimated_hours, ...incomeData } = income;
+        
+        // Calculate total_amount
+        incomeData.total_amount = incomeData.quantity * incomeData.amount;
+        
+        // Clean up bank_account - ensure it's either a valid ID or null
+        if (incomeData.bank_account && typeof incomeData.bank_account === 'object') {
+          incomeData.bank_account = incomeData.bank_account.id || null;
+        }
+        
+        // Link to phase
+        if (entity === "project-original-phases") {
+          incomeData.project_original_phase = createdPhase.id;
+        } else {
+          incomeData.project_phase = createdPhase.id;
+        }
+        
+        const createdIncome = await strapi.query("phase-income").create(incomeData);
+        
+        // Create estimated_hours (only for original phases)
+        if (entity === "project-original-phases" && estimated_hours && estimated_hours.length > 0) {
+          console.log('    - Creating', estimated_hours.length, 'estimated_hours for income');
+          for (const hour of estimated_hours) {
+            await strapi.query("estimated-hours").create({
+              ...hour,
+              phase_income: createdIncome.id,
+            });
+          }
+        }
+      }
+    }
+    
+    // Create expenses
+    if (expenses && expenses.length > 0) {
+      console.log('  - Creating', expenses.length, 'expenses');
+      for (const expense of expenses) {
+        // Calculate total_amount
+        expense.total_amount = expense.quantity * expense.amount;
+        
+        // Clean up bank_account - ensure it's either a valid ID or null
+        if (expense.bank_account && typeof expense.bank_account === 'object') {
+          expense.bank_account = expense.bank_account.id || null;
+        }
+        
+        // Link to phase
+        if (entity === "project-original-phases") {
+          expense.project_original_phase = createdPhase.id;
+        } else {
+          expense.project_phase = createdPhase.id;
+        }
+        
+        await strapi.query("phase-expense").create(expense);
+      }
+    }
+    
+    return createdPhase;
+  },
   updatePhases: async (
     id,
     entity,

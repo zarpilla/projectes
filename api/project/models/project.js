@@ -10,7 +10,34 @@ const projectController = require("../controllers/project");
 
 module.exports = {
   lifecycles: {
-    async afterCreate(result) {
+    async afterCreate(result, params) {
+      
+      // Check if we have phases to create (extracted in beforeCreate)
+      if (params._originalPhases || params._executionPhases) {
+        
+        // Create project_original_phases
+        if (params._originalPhases && params._originalPhases.length > 0) {
+          for (const phase of params._originalPhases) {
+            await projectController.createPhaseWithNested(
+              result.id,
+              'project-original-phases',
+              phase
+            );
+          }
+        }
+        
+        // Create project_phases
+        if (params._executionPhases && params._executionPhases.length > 0) {
+          for (const phase of params._executionPhases) {
+            await projectController.createPhaseWithNested(
+              result.id,
+              'project-phases',
+              phase
+            );
+          }
+        }        
+      }
+      
       // If the new project has a mother, update the mother's is_mother field
       if (result.mother) {
         const motherId = result.mother.id || result.mother;
@@ -32,9 +59,28 @@ module.exports = {
       // await projectController.updateQueuedProjects();
     },
     async beforeCreate(params, data) {
+      
+      // In Strapi 3.x beforeCreate, data is in params, not data parameter
+      const actualData = params;
+      
+      
+      // CRITICAL FIX: Extract phases before Strapi processes the create
+      // Strapi's ORM can't handle complex nested creates, so we handle them manually in afterCreate
+      if (actualData.project_original_phases && actualData.project_original_phases.length > 0) {
+        params._originalPhases = actualData.project_original_phases;
+        delete params.project_original_phases;
+        delete params.project_original_phases_info;
+      }
+      
+      if (actualData.project_phases && actualData.project_phases.length > 0) {
+        params._executionPhases = actualData.project_phases;
+        delete params.project_phases;
+        delete params.project_phases_info;
+      }      
       // await projectController.enqueueProjects({ current: params.id, previous: null })
     },
     async beforeUpdate(params, data) {
+      
       const id = params.id || data.id;
       let updatedPhases = false;
       
