@@ -962,9 +962,219 @@ async function calculateMotherProjects() {
   }
 }
 
+async function recalculatePhaseWarnings() {
+  try {
+    console.log("Starting phase warnings recalculation...");
+
+    // Get all phase-incomes with null warning
+    const nullWarningIncomes = await strapi.query("phase-income").find({
+      _limit: -1,
+      warning_null: true,
+    });
+
+    console.log(`Found ${nullWarningIncomes.length} phase-incomes with null warnings`);
+
+    let incomesUpdated = 0;
+    const processedDocuments = new Set(); // Track processed documents to avoid duplicates
+
+    // Process each income
+    for (const income of nullWarningIncomes) {
+      try {
+        let documentId = null;
+        let documentType = null;
+        let document = null;
+
+        // Determine which document this income is linked to
+        if (income.invoice) {
+          documentId = typeof income.invoice === 'object' ? income.invoice.id : income.invoice;
+          documentType = 'emitted-invoice';
+          document = await strapi.query("emitted-invoice").findOne({ id: documentId });
+        } else if (income.grant) {
+          documentId = typeof income.grant === 'object' ? income.grant.id : income.grant;
+          documentType = 'received-grant';
+          document = await strapi.query("received-grant").findOne({ id: documentId });
+        } else if (income.income) {
+          documentId = typeof income.income === 'object' ? income.income.id : income.income;
+          documentType = 'received-income';
+          document = await strapi.query("received-income").findOne({ id: documentId });
+        }
+
+        // Skip if no document linked or already processed
+        if (!documentId || !document || !document.total_base) {
+          continue;
+        }
+
+        const docKey = `${documentType}-${documentId}`;
+        if (processedDocuments.has(docKey)) {
+          continue; // Already processed this document
+        }
+        processedDocuments.add(docKey);
+
+        // Find ALL phase-incomes that reference this document across all projects
+        let allRelatedIncomes = [];
+        
+        if (documentType === 'emitted-invoice') {
+          allRelatedIncomes = await strapi.query("phase-income").find({
+            _limit: -1,
+            invoice: documentId
+          });
+        } else if (documentType === 'received-grant') {
+          allRelatedIncomes = await strapi.query("phase-income").find({
+            _limit: -1,
+            grant: documentId
+          });
+        } else if (documentType === 'received-income') {
+          allRelatedIncomes = await strapi.query("phase-income").find({
+            _limit: -1,
+            income: documentId
+          });
+        }
+
+        if (allRelatedIncomes.length === 0) {
+          continue;
+        }
+
+        // Sum up all assigned amounts
+        let totalAssigned = 0;
+        allRelatedIncomes.forEach(relatedIncome => {
+          const lineTotal = (relatedIncome.quantity || 0) * (relatedIncome.amount || 0);
+          totalAssigned += lineTotal;
+        });
+
+        // Calculate warning
+        const diff = Math.abs(document.total_base - totalAssigned);
+        const hasWarning = diff > 0.01;
+
+        // Update ALL related incomes with the same warning value
+        for (const relatedIncome of allRelatedIncomes) {
+          if (relatedIncome.warning === null || relatedIncome.warning === undefined) {
+            await strapi.query("phase-income").update(
+              { id: relatedIncome.id },
+              { warning: hasWarning }
+            );
+            incomesUpdated++;
+          }
+        }
+
+        console.log(`Updated ${allRelatedIncomes.length} incomes for ${documentType} #${documentId} (total: ${document.total_base}, assigned: ${totalAssigned}, warning: ${hasWarning})`);
+
+      } catch (error) {
+        console.error(`Error processing income ${income.id}:`, error.message);
+      }
+    }
+
+    console.log(`Phase-income warnings recalculation completed: ${incomesUpdated} records updated`);
+
+    // Get all phase-expenses with null warning
+    const nullWarningExpenses = await strapi.query("phase-expense").find({
+      _limit: -1,
+      warning_null: true,
+    });
+
+    console.log(`Found ${nullWarningExpenses.length} phase-expenses with null warnings`);
+
+    let expensesUpdated = 0;
+    const processedExpenseDocuments = new Set(); // Track processed documents to avoid duplicates
+
+    // Process each expense
+    for (const expense of nullWarningExpenses) {
+      try {
+        let documentId = null;
+        let documentType = null;
+        let document = null;
+
+        // Determine which document this expense is linked to
+        if (expense.invoice) {
+          documentId = typeof expense.invoice === 'object' ? expense.invoice.id : expense.invoice;
+          documentType = 'received-invoice';
+          document = await strapi.query("received-invoice").findOne({ id: documentId });
+        } else if (expense.expense) {
+          documentId = typeof expense.expense === 'object' ? expense.expense.id : expense.expense;
+          documentType = 'received-expense';
+          document = await strapi.query("received-expense").findOne({ id: documentId });
+        } else if (expense.grant) {
+          documentId = typeof expense.grant === 'object' ? expense.grant.id : expense.grant;
+          documentType = 'received-grant';
+          document = await strapi.query("received-grant").findOne({ id: documentId });
+        }
+
+        // Skip if no document linked or already processed
+        if (!documentId || !document || !document.total_base) {
+          continue;
+        }
+
+        const docKey = `${documentType}-${documentId}`;
+        if (processedExpenseDocuments.has(docKey)) {
+          continue; // Already processed this document
+        }
+        processedExpenseDocuments.add(docKey);
+
+        // Find ALL phase-expenses that reference this document across all projects
+        let allRelatedExpenses = [];
+        
+        if (documentType === 'received-invoice') {
+          allRelatedExpenses = await strapi.query("phase-expense").find({
+            _limit: -1,
+            invoice: documentId
+          });
+        } else if (documentType === 'received-expense') {
+          allRelatedExpenses = await strapi.query("phase-expense").find({
+            _limit: -1,
+            expense: documentId
+          });
+        } else if (documentType === 'received-grant') {
+          allRelatedExpenses = await strapi.query("phase-expense").find({
+            _limit: -1,
+            grant: documentId
+          });
+        }
+
+        if (allRelatedExpenses.length === 0) {
+          continue;
+        }
+
+        // Sum up all assigned amounts
+        let totalAssigned = 0;
+        allRelatedExpenses.forEach(relatedExpense => {
+          const lineTotal = (relatedExpense.quantity || 0) * (relatedExpense.amount || 0);
+          totalAssigned += lineTotal;
+        });
+
+        // Calculate warning
+        const diff = Math.abs(document.total_base - totalAssigned);
+        const hasWarning = diff > 0.01;
+
+        // Update ALL related expenses with the same warning value
+        for (const relatedExpense of allRelatedExpenses) {
+          if (relatedExpense.warning === null || relatedExpense.warning === undefined) {
+            await strapi.query("phase-expense").update(
+              { id: relatedExpense.id },
+              { warning: hasWarning }
+            );
+            expensesUpdated++;
+          }
+        }
+
+        console.log(`Updated ${allRelatedExpenses.length} expenses for ${documentType} #${documentId} (total: ${document.total_base}, assigned: ${totalAssigned}, warning: ${hasWarning})`);
+
+      } catch (error) {
+        console.error(`Error processing expense ${expense.id}:`, error.message);
+      }
+    }
+
+    console.log(`Phase-expense warnings recalculation completed: ${expensesUpdated} records updated`);
+    console.log(`Total warnings recalculated: ${incomesUpdated + expensesUpdated} records`);
+
+  } catch (error) {
+    console.error("Error during phase warnings recalculation:", error);
+    console.log("Recalculation will be retried next time the server starts");
+  }
+}
+
 module.exports = async () => {
   await importSeedData();
   // await migrateGrantableDataToYears();
   // await migrateContactInfo();
   // await calculateMotherProjects();
+  await recalculatePhaseWarnings();
 };

@@ -61,6 +61,9 @@
     },
     "bank_account": {
       "model": "bank-accounts"
+    },
+    "warning": {
+      "type": "boolean"
     }
   }
 }
