@@ -2,6 +2,27 @@
 const _ = require("lodash");
 const moment = require("moment");
 
+/**
+ * Safely extract ID from a value that could be a number, string, or object with an id property
+ * Returns null if the value is not a valid ID
+ */
+const extractId = (value) => {
+  if (value === null || value === undefined) {
+    return null;
+  }
+  // If it's already a number or numeric string, use it
+  if (typeof value === 'number' || (typeof value === 'string' && value !== '')) {
+    const numValue = typeof value === 'number' ? value : parseInt(value, 10);
+    return !isNaN(numValue) && numValue > 0 ? numValue : null;
+  }
+  // If it's an object, try to extract the id property
+  if (typeof value === 'object' && value.id !== undefined) {
+    return extractId(value.id);
+  }
+  // Otherwise, it's not a valid ID
+  return null;
+};
+
 // --- VOLUME DISCOUNT LOGIC ---
 const checkVolumeDiscount = async (
   id,
@@ -139,17 +160,15 @@ const processVolumeDiscountForOtherOrders = async (
       previousOrder.estimated_delivery_date !==
       currentData.estimated_delivery_date;
     const routeChanged =
-      (previousOrder.route?.id || previousOrder.route) !==
-      (currentData.route?.id || currentData.route);
+      extractId(previousOrder.route) !== extractId(currentData.route);
     const ownerChanged =
-      (previousOrder.owner?.id || previousOrder.owner) !==
-      (currentData.owner?.id || currentData.owner);
+      extractId(previousOrder.owner) !== extractId(currentData.owner);
     const statusChanged = previousOrder.status !== currentData.status;
     if (dateChanged || routeChanged || ownerChanged || statusChanged) {
       if (dateChanged || routeChanged || ownerChanged) {
         // Check previous group
-        const prevRouteId = previousOrder.route?.id || previousOrder.route;
-        const prevOwnerId = previousOrder.owner?.id || previousOrder.owner;
+        const prevRouteId = extractId(previousOrder.route);
+        const prevOwnerId = extractId(previousOrder.owner);
         const prevGroup = await checkVolumeDiscount(
           orderId,
           previousOrder.estimated_delivery_date,
@@ -399,7 +418,7 @@ const checkTransferNeededForCollectionOrder = async (pickupId, routeId) => {
     return {
       transfer: true,
       transfer_pickup_origin: pickupId,
-      transfer_pickup_destination: route.transfer_pickup?.id || route.transfer_pickup || null
+      transfer_pickup_destination: extractId(route.transfer_pickup)
     };
   }
 
@@ -415,8 +434,8 @@ const processCollectionOrder = async (orderId, orderData) => {
     return;
   }
 
-  const collectionPointId = orderData.collection_point.id || orderData.collection_point;
-  const ownerId = orderData.owner?.id || orderData.owner;
+  const collectionPointId = extractId(orderData.collection_point);
+  const ownerId = extractId(orderData.owner);
 
   if (!collectionPointId || !ownerId) {
     return;
@@ -451,8 +470,8 @@ const processCollectionOrder = async (orderId, orderData) => {
   const estimatedDeliveryDate = calculateEstimatedDeliveryDate(route);
 
   // Get pickup from original order (inherit collection_point for the collection order)
-  const pickupId = orderData.pickup?.id || orderData.pickup;
-  const originalCollectionPoint = orderData.collection_point?.id || orderData.collection_point;
+  const pickupId = extractId(orderData.pickup);
+  const originalCollectionPoint = extractId(orderData.collection_point);
 
   // Check if transfer is needed
   const transferInfo = await checkTransferNeededForCollectionOrder(pickupId, route.id);
@@ -474,7 +493,7 @@ const processCollectionOrder = async (orderId, orderData) => {
 
     // Copy delivery_type from original order if available
     if (orderData.delivery_type) {
-      updateData.delivery_type = orderData.delivery_type.id || orderData.delivery_type;
+      updateData.delivery_type = extractId(orderData.delivery_type);
     }
 
     // Add current order to collection_orders if not already there
@@ -501,7 +520,7 @@ const processCollectionOrder = async (orderId, orderData) => {
       contact_postcode: collectionPointContact.postcode,
       contact_city: collectionPointContact.city,
       contact_phone: collectionPointContact.phone,
-      contact_legal_form: collectionPointContact.legal_form?.id || collectionPointContact.legal_form,
+      contact_legal_form: extractId(collectionPointContact.legal_form),
       contact_notes: collectionPointContact.notes,
       contact_time_slot_1_ini: collectionPointContact.time_slot_1_ini,
       contact_time_slot_1_end: collectionPointContact.time_slot_1_end,
@@ -522,7 +541,7 @@ const processCollectionOrder = async (orderId, orderData) => {
 
     // Copy delivery_type from original order if available
     if (orderData.delivery_type) {
-      createData.delivery_type = orderData.delivery_type.id || orderData.delivery_type;
+      createData.delivery_type = extractId(orderData.delivery_type);
     }
 
     if (transferInfo.transfer) {
@@ -611,7 +630,7 @@ const updateCollectionOrderAggregates = async (collectionOrderId) => {
   }
 
   // Get the collection point contact to refresh discount
-  const collectionPointId = collectionOrder.contact?.id || collectionOrder.contact;
+  const collectionPointId = extractId(collectionOrder.contact);
   let updatedPickupDiscount = 0;
   
   if (collectionPointId) {
@@ -928,9 +947,14 @@ const processMultideliveryDiscountForCurrentOrder = async (orderId, data) => {
   }
 
   // Get owner information for discount factor
+  const ownerId = extractId(data.owner);
+  if (!ownerId) {
+    return;
+  }
+  
   const owner = await strapi
     .query("user", "users-permissions")
-    .findOne({ id: data.owner.id });
+    .findOne({ id: ownerId });
   const ownerFactor = owner?.multidelivery_discount === false ? 0 : 1;
 
   // Normalize multidelivery_discount
@@ -939,10 +963,11 @@ const processMultideliveryDiscountForCurrentOrder = async (orderId, data) => {
   }
 
   // Process current order multidelivery
+  const dataContactId = extractId(data.contact);
   const { multidelivery } = await checkMultidelivery(
     orderId,
     data.estimated_delivery_date,
-    data.contact && data.contact.id ? data.contact.id : data.contact,
+    dataContactId,
     data.status
   );
 
@@ -980,19 +1005,23 @@ const processMultideliveryDiscountForOtherOrders = async (
   }
 
   // Get owner information for discount factor
+  const ownerId = extractId(currentData.owner);
+  if (!ownerId) {
+    return;
+  }
+  
   const owner = await strapi
     .query("user", "users-permissions")
-    .findOne({ id: currentData.owner.id });
+    .findOne({ id: ownerId });
 
   const ownerFactor = owner?.multidelivery_discount === false ? 0 : 1;
 
   // Process current group - update other orders in the same group
+  const contactId = extractId(currentData.contact);
   const { multidelivery, others } = await checkMultidelivery(
     orderId,
     currentData.estimated_delivery_date,
-    currentData.contact && currentData.contact.id
-      ? currentData.contact.id
-      : currentData.contact,
+    contactId,
     currentData.status
   );
 
@@ -1019,8 +1048,7 @@ const processMultideliveryDiscountForOtherOrders = async (
       previousOrder.estimated_delivery_date !==
       currentData.estimated_delivery_date;
     const contactChanged =
-      (previousOrder.contact?.id || previousOrder.contact) !==
-      (currentData.contact?.id || currentData.contact);
+      extractId(previousOrder.contact) !== extractId(currentData.contact);
     const statusChanged = previousOrder.status !== currentData.status;
 
     // Special handling for status changes from/to cancelled
@@ -1034,10 +1062,11 @@ const processMultideliveryDiscountForOtherOrders = async (
       // Only check previous group if the order moved away from its previous group
       if (dateChanged || contactChanged) {
         // Check previous date/contact group
+        const prevContactId = extractId(previousOrder.contact);
         const previousGroup = await checkMultidelivery(
           orderId,
           previousOrder.estimated_delivery_date,
-          previousOrder.contact?.id || previousOrder.contact,
+          prevContactId,
           "active" // Use active status to check remaining orders
         );
 
@@ -1068,10 +1097,11 @@ const processMultideliveryDiscountForOtherOrders = async (
         }
       } else if (statusChangeToCancelled) {
         // Order was cancelled, check if remaining orders in same group still qualify
+        const currentContactId = extractId(currentData.contact);
         const remainingGroup = await checkMultidelivery(
           orderId,
           currentData.estimated_delivery_date,
-          currentData.contact?.id || currentData.contact,
+          currentContactId,
           "active" // Check remaining active orders
         );
 
