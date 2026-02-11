@@ -13,6 +13,7 @@
         "projects",
         "orders",
         "orders_admin",
+        "orders_delivery",
         "hours"
       ]
     }
