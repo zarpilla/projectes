@@ -18,6 +18,14 @@
     },
     {
       "method": "GET",
+      "path": "/incidences/infoall",
+      "handler": "incidences.infoAll",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "GET",
       "path": "/incidences/:id",
       "handler": "incidences.findOne",
       "config": {

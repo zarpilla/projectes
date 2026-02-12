@@ -367,11 +367,15 @@ module.exports = class MicroinvoiceOrder {
     } else if (type === "provider") {      
       
       this.setCursor("x", this.options.style.header.textPositionProvider);
+      // Adjust maxWidth to prevent text overflow: pageWidth(595) - textPosition(330) - marginRight(20) - extraMargin(8)
+      _maxWidth = 237;
       _fontSize = "regular"
     } else if (type === "transfer") {      
       // Start from where provider ended
       this.setCursor("y", this.storage.provider.height);
       this.setCursor("x", this.options.style.header.textPositionProvider);
+      // Same width adjustment for transfer section
+      _maxWidth = 237;
       _fontSize = "regular"
     } else {
       this.setCursor("x", this.options.style.header.textPositionSeller);

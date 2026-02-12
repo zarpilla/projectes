@@ -531,13 +531,52 @@ module.exports = {
 
     const invoiceHeaderBoxes = [...invoiceHeader];
 
-    // Build transfer pickup text if both origin and destination exist
+    // Build movement chain showing all steps from pickup to delivery
     let transferPickupText = null;
-    if (invoice.transfer_pickup_origin && invoice.transfer_pickup_destination) {
-      const originAlias = invoice.transfer_pickup_origin.alias || invoice.transfer_pickup_origin.name;
-      const destinationAlias = invoice.transfer_pickup_destination.alias || invoice.transfer_pickup_destination.name;
-      transferPickupText = `${originAlias} -> ${destinationAlias}`;
+    const movements = [];
+
+    // Add pickup if exists
+    if (invoice.pickup) {
+      const pickupAlias = invoice.pickup.alias || invoice.pickup.name;
+      if (pickupAlias) {
+        movements.push(pickupAlias);
+      }
     }
+
+    // Add transfer origin if exists (and different from pickup)
+    if (invoice.transfer_pickup_origin) {
+      const originAlias = invoice.transfer_pickup_origin.alias || invoice.transfer_pickup_origin.name;
+      // Only add if it's not empty and not already the last item
+      if (originAlias && (movements.length === 0 || movements[movements.length - 1] !== originAlias)) {
+        movements.push(originAlias);
+      }
+    }
+
+    // Add transfer destination if exists
+    if (invoice.transfer_pickup_destination) {
+      const destinationAlias = invoice.transfer_pickup_destination.alias || invoice.transfer_pickup_destination.name;
+      // Only add if it's not empty and not already the last item
+      if (destinationAlias && (movements.length === 0 || movements[movements.length - 1] !== destinationAlias)) {
+        movements.push(destinationAlias);
+      }
+    }
+
+    // Add route name at the end
+    if (invoice.route) {
+      const routeName = invoice.route.short_name || invoice.route.name;
+      if (routeName) {
+        movements.push(routeName);
+      }
+    }
+
+    // Create the transfer text if there are multiple movements
+    if (movements.length > 1) {
+      transferPickupText = movements.join(' -> ');
+    }
+
+    // Determine label based on whether there's a transfer involved
+    const isTransfer = invoice.transfer_pickup_origin || invoice.transfer_pickup_destination;
+    const routeLabel = isTransfer ? "RUTA (TRANSFER)" : "RUTA";
 
     let myInvoice = new MicroInvoiceOrder({
       style: {
@@ -604,7 +643,7 @@ module.exports = {
 
           transfer: transferPickupText ? [
             {
-              label: "TRANSFER",
+              label: routeLabel,
               value: [transferPickupText],
             },
           ] : null,
@@ -799,13 +838,52 @@ module.exports = {
 
       const invoiceHeaderBoxes = [...invoiceHeader];
 
-      // Build transfer pickup text if both origin and destination exist
+      // Build movement chain showing all steps from pickup to delivery
       let transferPickupText = null;
-      if (order.transfer_pickup_origin && order.transfer_pickup_destination) {
-        const originAlias = order.transfer_pickup_origin.alias || order.transfer_pickup_origin.name;
-        const destinationAlias = order.transfer_pickup_destination.alias || order.transfer_pickup_destination.name;
-        transferPickupText = `${originAlias} -> ${destinationAlias}`;
+      const movements = [];
+
+      // Add pickup if exists
+      if (order.pickup) {
+        const pickupAlias = order.pickup.alias || order.pickup.name;
+        if (pickupAlias) {
+          movements.push(pickupAlias);
+        }
       }
+
+      // Add transfer origin if exists (and different from pickup)
+      if (order.transfer_pickup_origin) {
+        const originAlias = order.transfer_pickup_origin.alias || order.transfer_pickup_origin.name;
+        // Only add if it's not empty and not already the last item
+        if (originAlias && (movements.length === 0 || movements[movements.length - 1] !== originAlias)) {
+          movements.push(originAlias);
+        }
+      }
+
+      // Add transfer destination if exists
+      if (order.transfer_pickup_destination) {
+        const destinationAlias = order.transfer_pickup_destination.alias || order.transfer_pickup_destination.name;
+        // Only add if it's not empty and not already the last item
+        if (destinationAlias && (movements.length === 0 || movements[movements.length - 1] !== destinationAlias)) {
+          movements.push(destinationAlias);
+        }
+      }
+
+      // Add route name at the end
+      if (order.route) {
+        const routeName = order.route.short_name || order.route.name;
+        if (routeName) {
+          movements.push(routeName);
+        }
+      }
+
+      // Create the transfer text if there are multiple movements
+      if (movements.length > 1) {
+        transferPickupText = movements.join(' -> ');
+      }
+
+      // Determine label based on whether there's a transfer involved
+      const isTransfer = order.transfer_pickup_origin || order.transfer_pickup_destination;
+      const routeLabel = isTransfer ? "RUTA (TRANSFER)" : "RUTA";
 
       let myInvoice = new MicroInvoiceOrder({
         style: {
@@ -878,7 +956,7 @@ module.exports = {
 
             transfer: transferPickupText ? [
               {
-                label: "TRANSFER",
+                label: routeLabel,
                 value: [transferPickupText],
               },
             ] : null,
