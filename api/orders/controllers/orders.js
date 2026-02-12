@@ -379,7 +379,7 @@ module.exports = {
     const config = await strapi.query("config").findOne();
 
     const qrCodeImage = await QRCode.toDataURL(
-      `${config.front_url}order/${id}`
+      `${config.front_url}order/view/${id}`
     );
 
     var qr = qrCodeImage;
@@ -663,7 +663,7 @@ module.exports = {
 
     for await (const order of ordersEntities) {
       const qrCodeImage = await QRCode.toDataURL(
-        `${config.front_url}order/${order.id}`
+        `${config.front_url}order/view/${order.id}`
       );
 
       const qr = qrCodeImage;
