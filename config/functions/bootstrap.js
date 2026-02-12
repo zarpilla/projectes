@@ -1171,10 +1171,186 @@ async function recalculatePhaseWarnings() {
   }
 }
 
+async function migrateEstimatedHoursToExecutionPhases() {
+  try {
+    console.log("Starting estimated_hours migration with per-project checking...");
+
+    // Get all projects with their phases and estimated hours
+    const allProjects = await strapi.query("project").find(
+      { _limit: -1, published_at_null: false },
+      [
+        "project_original_phases",
+        "project_original_phases.incomes",
+        "project_original_phases.incomes.estimated_hours",
+        "project_original_phases.incomes.estimated_hours.users_permissions_user",
+        "project_phases",
+        "project_phases.incomes",
+        "project_phases.incomes.estimated_hours",
+      ]
+    );
+
+    console.log(`Found ${allProjects.length} projects to process`);
+
+    let projectsProcessed = 0;
+    let hoursCopied = 0;
+    let hoursSkipped = 0;
+    let projectsSkipped = 0;
+    let projectsAlreadyMigrated = 0;
+
+    for (const project of allProjects) {
+      // Skip if no original phases
+      if (!project.project_original_phases || project.project_original_phases.length === 0) {
+        projectsSkipped++;
+        continue;
+      }
+
+      // Skip if no execution phases
+      if (!project.project_phases || project.project_phases.length === 0) {
+        projectsSkipped++;
+        continue;
+      }
+
+      // Check if THIS specific project already has hours in execution phases
+      const existingProjectHours = await strapi.connections.default.raw(`
+        SELECT COUNT(*) as count
+        FROM estimated_hours eh
+        JOIN phase_incomes pi ON eh.phase_income = pi.id
+        JOIN project_phases pp ON pi.project_phase = pp.id
+        WHERE pp.project = ?
+      `, [project.id]);
+
+      const projectHoursCount = existingProjectHours[0][0].count;
+      
+      if (projectHoursCount > 0) {
+        console.log(`Project ${project.id} "${project.name}" already has ${projectHoursCount} hours in execution phases - skipping`);
+        projectsAlreadyMigrated++;
+        continue;
+      }
+
+      let projectHadUpdates = false;
+
+      // Iterate through original phases
+      for (const originalPhase of project.project_original_phases) {
+        // Find matching execution phase by name
+        let executionPhase = project.project_phases.find(
+          ep => ep.name === originalPhase.name
+        );
+
+        // If no matching phase exists, create a new one for migrated hours
+        if (!executionPhase) {
+          executionPhase = await strapi.query("project-phases").create({
+            name: "Hores previstes migrades",
+            project: project.id,
+            order: 999, // Put it at the end
+          });
+          // Add to project's phases array so subsequent iterations can find it
+          project.project_phases.push(executionPhase);
+          projectHadUpdates = true;
+        }
+
+        // Skip if original phase has no incomes
+        if (!originalPhase.incomes || originalPhase.incomes.length === 0) {
+          continue;
+        }
+
+        // Iterate through incomes with estimated_hours
+        for (const originalIncome of originalPhase.incomes) {
+          if (!originalIncome.estimated_hours || originalIncome.estimated_hours.length === 0) {
+            continue;
+          }
+
+          // Find matching execution income by concept
+          let executionIncome = executionPhase.incomes?.find(
+            ei => ei.concept === originalIncome.concept
+          );
+
+          // If no matching income exists, create one
+          if (!executionIncome) {
+            executionIncome = await strapi.query("phase-income").create({
+              concept: originalIncome.concept || "Ingrés migrat",
+              quantity: originalIncome.quantity || 0,
+              amount: originalIncome.amount || 0,
+              total_amount: originalIncome.total_amount || 0,
+              project_phase: executionPhase.id,
+            });
+            // Initialize incomes array if it doesn't exist
+            if (!executionPhase.incomes) {
+              executionPhase.incomes = [];
+            }
+            executionPhase.incomes.push(executionIncome);
+            projectHadUpdates = true;
+          }
+
+          // Check if execution income already has estimated_hours
+          if (executionIncome.estimated_hours && executionIncome.estimated_hours.length > 0) {
+            hoursSkipped += originalIncome.estimated_hours.length;
+            // Don't skip - still need to recalculate aggregate!
+          } else {
+            // Clone estimated_hours to execution phase income
+            for (const hour of originalIncome.estimated_hours) {
+              // Extract user ID safely - handle null, undefined, empty objects, or numeric IDs
+              let userId = null;
+              if (hour.users_permissions_user) {
+                if (typeof hour.users_permissions_user === 'number') {
+                  userId = hour.users_permissions_user;
+                } else if (typeof hour.users_permissions_user === 'object' && hour.users_permissions_user.id) {
+                  userId = hour.users_permissions_user.id;
+                }
+              }
+
+              const newHour = {
+                users_permissions_user: userId,
+                quantity: hour.quantity,
+                amount: hour.amount,
+                total_amount: hour.total_amount,
+                comment: hour.comment || null,
+                from: hour.from,
+                to: hour.to,
+                monthly_quantity: hour.monthly_quantity,
+                quantity_type: hour.quantity_type,
+                phase_income: executionIncome.id,
+              };
+
+              await strapi.query("estimated-hours").create(newHour);
+              hoursCopied++;
+              projectHadUpdates = true;
+            }
+          }
+
+          // ALWAYS recalculate total_estimated_hours aggregate field
+          const copiedHours = await strapi.query("estimated-hours").find({ phase_income: executionIncome.id });
+          const totalHours = copiedHours.reduce((sum, h) => sum + (parseFloat(h.quantity) || 0), 0);
+          await strapi.query("phase-income").update(
+            { id: executionIncome.id },
+            { total_estimated_hours: totalHours }
+          );
+          projectHadUpdates = true;
+        }
+      }
+
+      if (projectHadUpdates) {
+        projectsProcessed++;
+      }
+    }
+
+    console.log("Estimated hours migration completed:");
+    console.log(`  - Projects processed: ${projectsProcessed}`);
+    console.log(`  - Projects already migrated: ${projectsAlreadyMigrated}`);
+    console.log(`  - Projects skipped (no phases): ${projectsSkipped}`);
+    console.log(`  - Hours copied: ${hoursCopied}`);
+    console.log(`  - Hours skipped (already exist): ${hoursSkipped}`);
+
+  } catch (error) {
+    console.error("Error during estimated_hours migration:", error);
+    console.log("Migration will be retried next time the server starts");
+  }
+}
+
 module.exports = async () => {
   await importSeedData();
   // await migrateGrantableDataToYears();
   // await migrateContactInfo();
   // await calculateMotherProjects();
   await recalculatePhaseWarnings();
+  await migrateEstimatedHoursToExecutionPhases();
 };

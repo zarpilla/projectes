@@ -221,11 +221,6 @@ const doProjectInfoCalculations = async (data, id) => {
           : 0.0
       );
       
-      // EXCEPTION: Estimated hours should always copy from original hours
-      // "Hores previstes" should always be the same as "Hores originals"
-      const final_estimated_hours = total_original_hours;
-      const final_estimated_hours_price = total_original_hours_price;
-      
       return {
         year: year,
         // Original dimension (from project_original_phases)
@@ -237,13 +232,12 @@ const doProjectInfoCalculations = async (data, id) => {
         original_incomes_expenses: total_original_incomes - total_original_expenses - total_original_hours_price - total_original_expenses_vat,
         
         // Estimated dimension (from project_phases - all lines)
-        // EXCEPTION: Hours always copy from original
         total_estimated_incomes,
         total_estimated_expenses,
         total_estimated_expenses_vat,
-        total_estimated_hours: final_estimated_hours,
-        total_estimated_hours_price: final_estimated_hours_price,
-        estimated_incomes_expenses: total_estimated_incomes - total_estimated_expenses - final_estimated_hours_price - total_estimated_expenses_vat,
+        total_estimated_hours,
+        total_estimated_hours_price,
+        estimated_incomes_expenses: total_estimated_incomes - total_estimated_expenses - total_estimated_hours_price - total_estimated_expenses_vat,
         
         // Real dimension (from paid invoices/expenses + activities)
         total_real_incomes,
@@ -349,11 +343,6 @@ const doProjectInfoCalculations = async (data, id) => {
   data.total_real_hours = _.sumBy(data.allByYear, 'total_real_hours') || 0;
   data.total_real_hours_price = _.sumBy(data.allByYear, 'total_real_hours_price') || 0;
   data.total_real_expenses_vat = _.sumBy(data.allByYear, 'total_real_expenses_vat') || 0;
-  
-  // EXCEPTION: Estimated hours should always copy from original hours
-  // "Hores previstes" should always be the same as "Hores originals"
-  data.total_estimated_hours = data.total_original_hours;
-  data.total_estimated_hours_price = data.total_original_hours_price;
   
   // Calculate balances for all three dimensions
   data.original_incomes_expenses =
@@ -2316,8 +2305,8 @@ module.exports = {
         
         const createdIncome = await strapi.query("phase-income").create(incomeData);
         
-        // Create estimated_hours (only for original phases)
-        if (entity === "project-original-phases" && estimated_hours && estimated_hours.length > 0) {
+        // Create estimated_hours for both original and execution phases
+        if (estimated_hours && estimated_hours.length > 0) {
           console.log('    - Creating', estimated_hours.length, 'estimated_hours for income');
           for (const hour of estimated_hours) {
             await strapi.query("estimated-hours").create({
@@ -2449,21 +2438,36 @@ module.exports = {
             await strapi.query("phase-income").update({ id: income.id }, item);
           }
 
-          if (entity === "project-original-phases") {
-            if (income.estimated_hours) {
-              for await (const estimated_hours of income.estimated_hours) {
-                if (!estimated_hours.id) {
-                  await strapi.query("estimated-hours").create({
-                    ...estimated_hours,
-                    phase_income: income.id,
-                  });
-                } else if (estimated_hours.dirty) {
-                  await strapi
-                    .query("estimated-hours")
-                    .update({ id: estimated_hours.id }, estimated_hours);
-                }
+          // Handle estimated_hours for both original and execution phases
+          if (income.estimated_hours) {
+            for await (const estimated_hours of income.estimated_hours) {
+              if (!estimated_hours.id) {
+                await strapi.query("estimated-hours").create({
+                  ...estimated_hours,
+                  phase_income: income.id,
+                });
+              } else if (estimated_hours.dirty) {
+                await strapi
+                  .query("estimated-hours")
+                  .update({ id: estimated_hours.id }, estimated_hours);
               }
             }
+            
+            // Recalculate total_estimated_hours aggregate for this income
+            // This ensures the aggregate is always up-to-date after editing hours
+            const allHours = await strapi.query("estimated-hours").find({
+              phase_income: income.id,
+              _limit: -1
+            });
+            
+            const totalEstimatedHours = allHours.reduce((sum, h) => {
+              return sum + (h.quantity || 0);
+            }, 0);
+            
+            await strapi.query("phase-income").update(
+              { id: income.id },
+              { total_estimated_hours: totalEstimatedHours }
+            );
           }
         }
       }
