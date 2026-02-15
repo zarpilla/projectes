@@ -296,6 +296,16 @@
     },
     "is_mother": {
       "type": "boolean"
+    },
+    "creation_step": {
+      "type": "enumeration",
+      "enum": [
+        "basic_data",
+        "phases_budget",
+        "planning",
+        "confirmation",
+        "completed"
+      ]
     }
   }
 }
