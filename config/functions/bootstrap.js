@@ -1352,5 +1352,5 @@ module.exports = async () => {
   // await migrateContactInfo();
   // await calculateMotherProjects();
   await recalculatePhaseWarnings();
-  await migrateEstimatedHoursToExecutionPhases();
+  // await migrateEstimatedHoursToExecutionPhases();
 };

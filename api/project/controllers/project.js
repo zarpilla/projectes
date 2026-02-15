@@ -2289,7 +2289,7 @@ module.exports = {
         const { estimated_hours, ...incomeData } = income;
         
         // Calculate total_amount
-        incomeData.total_amount = incomeData.quantity * incomeData.amount;
+        incomeData.total_amount = (incomeData.quantity || 0) * (incomeData.amount || 0);
         
         // Clean up bank_account - ensure it's either a valid ID or null
         if (incomeData.bank_account && typeof incomeData.bank_account === 'object') {
@@ -2323,7 +2323,7 @@ module.exports = {
       console.log('  - Creating', expenses.length, 'expenses');
       for (const expense of expenses) {
         // Calculate total_amount
-        expense.total_amount = expense.quantity * expense.amount;
+        expense.total_amount = (expense.quantity || 0) * (expense.amount || 0);
         
         // Clean up bank_account - ensure it's either a valid ID or null
         if (expense.bank_account && typeof expense.bank_account === 'object') {
@@ -2409,7 +2409,7 @@ module.exports = {
 
       if (incomes) {
         for await (const income of incomes) {
-          income.total_amount = income.quantity * income.amount;
+          income.total_amount = (income.quantity || 0) * (income.amount || 0);
           
           // Clean up bank_account - ensure it's either a valid ID or null
           if (income.bank_account && typeof income.bank_account === 'object' && !income.bank_account.id) {
@@ -2474,7 +2474,7 @@ module.exports = {
 
       if (expenses) {
         for await (const expense of expenses) {
-          expense.total_amount = expense.quantity * expense.amount;
+          expense.total_amount = (expense.quantity || 0) * (expense.amount || 0);
           
           // Clean up bank_account - ensure it's either a valid ID or null
           if (expense.bank_account && typeof expense.bank_account === 'object' && !expense.bank_account.id) {
