@@ -381,7 +381,7 @@ module.exports = {
     const me = await strapi.query("me").findOne();
     const config = await strapi.query("config").findOne();
 
-    const qrWidth = 84;
+    const qrWidth = 96;
     const logoWidth = 100;
     const ratio = me.logo.width / logoWidth;
 
@@ -617,12 +617,12 @@ module.exports = {
               {
                 label: "",
                 value: [order.estimated_delivery_date],
-                fontSize: 16,
+                fontSize: 20,
               },
               {
                 label: "",
                 value: [order.contact.trade_name],
-                fontSize: 24,
+                fontSize: 28,
               },
               {
                 label: "",
@@ -630,7 +630,7 @@ module.exports = {
                   order.contact.address,
                   order.contact.postcode + " " + order.contact.city,
                 ],
-                fontSize: 14,
+                fontSize: 18,
               },
               {
                 label: "",
@@ -640,7 +640,7 @@ module.exports = {
                     (order.refrigerated ? " - Refrigerada" : "") +
                     (order.refrigerated ? " Refrigerada" : ""),
                 ],
-                fontSize: 12,
+                fontSize: 16,
               },
             ],
 
