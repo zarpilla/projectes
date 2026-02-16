@@ -994,7 +994,9 @@ module.exports = {
     await new Promise((resolve) => setTimeout(resolve, 0));
 
     // get all pdfs and merge them
-    const fileName = orders.join("-");
+    const fileName = orders.length === 1 
+      ? orders[0] 
+      : crypto.createHash("md5").update(orders.join("-")).digest("hex");
     const mergedPdf = await PDFMerge(urls, { output: "Buffer" });
     const mergedPdfPath = `./public/uploads/orders/orders-${fileName}.pdf`;
     fs.writeFileSync(mergedPdfPath, mergedPdf);

@@ -553,7 +553,6 @@ module.exports = class MicroinvoiceOrder {
     
     // get details.parts and show only the index of details.parts[pageNumber]
     const part = this.options.data.invoice.details.parts[pageNumber] || [];
-    console.log('part', part)
     if (part) {
       this.setText(part.value, {
           colorCode : "secondary",          
