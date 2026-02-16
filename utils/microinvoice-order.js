@@ -54,7 +54,9 @@ module.exports = class MicroinvoiceOrder {
           height          : 112,
           image           : null,
           qr              : {
-            left: 465
+            left: 465,
+            width: 120,
+            height: 120
           },
           textPosition    : 330,
           textPositionSeller: 430,
@@ -133,6 +135,12 @@ module.exports = class MicroinvoiceOrder {
         height : 0
       },
       transfer : {
+        height : 0
+      },
+      notes : {
+        height : 0
+      },
+      detalls : {
         height : 0
       },
       fonts : {
@@ -297,14 +305,14 @@ module.exports = class MicroinvoiceOrder {
       color      : this.options.style.text.secondaryColor
     });
 
-    this.setCursor("y", this.options.style.document.marginTop + 20);
+    this.setCursor("y", this.options.style.document.marginTop + 30);
 
     const lines = [...this.options.data.invoice.header]
 
     this.setCursor("x", this.options.style.header.textPosition);
 
     lines.forEach(line => {
-      this.setText(`${line.label}:`, {
+      line.label && this.setText(`${line.label}:`, {
         fontWeight : "bold",
         color      : this.options.style.header.regularColor,
         marginTop  : _fontMargin
@@ -322,7 +330,8 @@ module.exports = class MicroinvoiceOrder {
         this.setText(value, {
           colorCode : "secondary",
           color     : this.options.style.header.secondaryColor,
-          marginTop : _fontMargin
+          marginTop : _fontMargin,
+          fontSize  : line.fontSize
         });
       });
     });
@@ -365,7 +374,7 @@ module.exports = class MicroinvoiceOrder {
       this.setCursor("x", this.options.style.document.marginLeft);
       _fontSize = "big"
     } else if (type === "provider") {      
-      
+      this.setCursor("y", this.options.style.header.height + 1 - 20);
       this.setCursor("x", this.options.style.header.textPositionProvider);
       // Adjust maxWidth to prevent text overflow: pageWidth(595) - textPosition(330) - marginRight(20) - extraMargin(8)
       _maxWidth = 237;
@@ -377,12 +386,27 @@ module.exports = class MicroinvoiceOrder {
       // Same width adjustment for transfer section
       _maxWidth = 237;
       _fontSize = "regular"
+    } else if (type === "notes") {
+      // Start from where transfer ended (or provider if no transfer)
+      this.setCursor("y", this.storage.transfer.height > 0 ? this.storage.transfer.height : this.storage.provider.height);
+      this.setCursor("x", this.options.style.header.textPositionProvider);
+      _maxWidth = 237;
+      _fontSize = "regular"
+    } else if (type === "detalls") {
+      // Start from where notes ended (or transfer/provider if no notes)
+      const startY = this.storage.notes.height > 0 
+        ? this.storage.notes.height 
+        : (this.storage.transfer.height > 0 ? this.storage.transfer.height : this.storage.provider.height);
+      this.setCursor("y", startY);
+      this.setCursor("x", this.options.style.header.textPositionProvider);
+      _maxWidth = 237;
+      _fontSize = "regular"
     } else {
       this.setCursor("x", this.options.style.header.textPositionSeller);
     }
 
     this.options.data.invoice[type].forEach(line => {
-      this.setText(`${line.label}:`, {
+      line.label && this.setText(`${line.label}:`, {
         colorCode  : "primary",
         fontWeight : "bold",
         marginTop  : 8,
@@ -402,7 +426,7 @@ module.exports = class MicroinvoiceOrder {
           colorCode : "secondary",
           marginTop : _fontMargin,
           maxWidth  : _maxWidth,
-          fontSize: _fontSize
+          fontSize: line.fontSize || _fontSize
         });
       });
     });
@@ -691,9 +715,12 @@ module.exports = class MicroinvoiceOrder {
     }
     else if (_fontSize === "big") {
       _fontSizeValue = this.options.style.text.bigSize || 10;
-    } else {
-      _fontSizeValue = this.options.style.text.headingSize;
     }
+    else if (_fontSize === "heading") {
+      _fontSizeValue = this.options.style.text.headingSize || 20;
+    } else {      
+      _fontSizeValue = _fontSize;
+    } 
 
     this.document.font(this.getFontOrFallback(_fontWeight, text));
 
@@ -752,9 +779,15 @@ module.exports = class MicroinvoiceOrder {
       if (this.options.data.invoice.transfer) {
         this.generateDetails("transfer");
       }
+      if (this.options.data.invoice.notes) {
+        this.generateDetails("notes");
+      }
+      if (this.options.data.invoice.detalls) {
+        this.generateDetails("detalls");
+      }
       this.generateLegal();    
       this.generatePartsLines(i);
-      this.generateRectangle(330, 260, 222, 80, this.options.style.text.primaryColor);  
+      this.generateRectangle(20, 260, 222, 80, this.options.style.text.primaryColor);  
       this.generateFooter();
       if (i < this.options.data.pages - 1) {
         this.storage.cursor.y = 0;

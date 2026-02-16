@@ -6,6 +6,7 @@ const moment = require("moment");
 const crypto = require("crypto");
 const QRCode = require("qrcode");
 const PDFMerge = require("pdf-merge");
+const { font, fontSize } = require("pdfkit");
 /**
  * Read the documentation (https://strapi.io/documentation/developer-docs/latest/development/backend-customization.html#core-controllers)
  * to customize this controller
@@ -34,15 +35,15 @@ module.exports = {
     if (month && !isNaN(month)) {
       query["estimated_delivery_date_gte"] = `${year}-${String(month).padStart(
         2,
-        "0"
+        "0",
       )}-01`;
       const lastDayNumberOfMonth = moment(
         `${year}-${month}`,
-        "YYYY-MM"
+        "YYYY-MM",
       ).daysInMonth();
       query["estimated_delivery_date_lte"] = `${year}-${String(month).padStart(
         2,
-        "0"
+        "0",
       )}-${String(lastDayNumberOfMonth).padStart(2, "0")}`;
     }
 
@@ -89,7 +90,7 @@ module.exports = {
     }
     if (month) {
       ordersInfoFiltered = ordersInfoFiltered.filter(
-        (o) => parseInt(o.month) === parseInt(month)
+        (o) => parseInt(o.month) === parseInt(month),
       );
     }
     ctx.send(ordersInfoFiltered);
@@ -170,7 +171,7 @@ module.exports = {
     if (serial.length === 0) {
       ctx.send(
         { done: false, message: "ERROR. No hi ha sèrie per a l'any " + year },
-        500
+        500,
       );
       return;
     }
@@ -189,7 +190,8 @@ module.exports = {
       .filter((value, index, self) => self.indexOf(value) === index);
 
     const payment_methods = await strapi.query("payment-method").find({});
-    const payment_method = payment_methods.length > 0 ? payment_methods[0].id : null;
+    const payment_method =
+      payment_methods.length > 0 ? payment_methods[0].id : null;
 
     const allContacts = [];
     for await (const owner of uniqueOwners) {
@@ -202,7 +204,7 @@ module.exports = {
             done: false,
             message: "ERROR. No hi ha contactes per a l'usuari " + owner,
           },
-          500
+          500,
         );
         return;
       }
@@ -213,7 +215,7 @@ module.exports = {
     const invoices = [];
     for await (const owner of uniqueOwners) {
       const contact = allContacts.find(
-        (c) => c.users_permissions_user.id === owner
+        (c) => c.users_permissions_user.id === owner,
       );
       const contactOrders = ordersEntities.filter((o) => o.owner.id === owner);
       // const uniqueProjects = ordersEntities
@@ -261,7 +263,7 @@ module.exports = {
               done: false,
               message: "ERROR. No hi ha fases per al projecte " + project.name,
             },
-            500
+            500,
           );
           return;
         } else {
@@ -274,7 +276,7 @@ module.exports = {
                 message:
                   "ERROR. No hi ha fases per al projecte " + project.name,
               },
-              500
+              500,
             );
             return;
           }
@@ -306,7 +308,7 @@ module.exports = {
               done: false,
               message: "ERROR. No hi ha fases per al projecte " + project.name,
             },
-            500
+            500,
           );
         }
 
@@ -345,7 +347,7 @@ module.exports = {
             project_phases: project.project_phases,
             project_phases_info: {},
             _project_phases_updated: true,
-          }
+          },
         );
       }
 
@@ -355,7 +357,7 @@ module.exports = {
           {
             emitted_invoice: invoice.id,
             emitted_invoice_datetime: new Date(),
-          }
+          },
         );
       }
     }
@@ -370,313 +372,6 @@ module.exports = {
     });
   },
 
-  pdf: async (ctx) => {
-    const { id, doc } = ctx.params;
-
-    const invoice = await strapi.query("orders").findOne({ id });
-
-    const me = await strapi.query("me").findOne();
-    const config = await strapi.query("config").findOne();
-
-    const qrCodeImage = await QRCode.toDataURL(
-      `${config.front_url}order/view/${id}`
-    );
-
-    var qr = qrCodeImage;
-
-    const qrWidth = 100;
-
-    const logoWidth = 100;
-    const ratio = me.logo.width / logoWidth;
-
-    // console.log('invoice', invoice)
-
-    const contacts = await strapi
-      .query("contacts")
-      .find({ users_permissions_user: invoice.owner.id });
-    if (contacts.length === 0) {
-      ctx.send(
-        {
-          done: false,
-          message: `ERROR. L'usuària ${invoice.owner.username} no te cap contacte associat. Ves a contactes i crea un nou contacte associat a l'usuària a través del camp 'Persona'.`,
-        },
-        500
-      );
-      return;
-    }
-    const provider = contacts[0];
-
-    const invoiceHeader = [
-      {
-        label: "NÚMERO",
-        value: invoice.id.toString().padStart(4, "0"),
-      },
-      {
-        label: "DATA",
-        value: moment(invoice.estimated_delivery_date, "YYYY-MM-DD").format(
-          "DD-MM-YYYY"
-        ),
-      },
-    ];
-
-    const logoUrl = `./public${me.logo.url}`;
-
-    var logo = logoUrl;
-
-    if (logoUrl.endsWith(".svg")) {
-      logo = "./public/uploads/invoice-logo.jpg";
-      await sharp(logoUrl).png().toFile(logo);
-    }
-
-    const legal = [];
-
-    legal.push({
-      value: "NOTES:",
-      color: "primary",
-      weight: "bold",
-    });
-    let more = "";
-
-    more =
-      invoice.contact && invoice.contact.notes
-        ? invoice.contact.notes + "\n"
-        : invoice.contact_notes
-        ? invoice.contact_notes + "\n"
-        : "";
-
-    more += invoice.contact_legal_form
-      ? invoice.contact_legal_form.name + " - "
-      : "";
-    if (invoice.fragile) {
-      more += "Fràgil" + " - ";
-    }
-
-    if (invoice.contact_time_slot_1_ini && invoice.contact_time_slot_1_end) {
-      more +=
-        "De " +
-        invoice.contact_time_slot_1_ini +
-        "h a " +
-        invoice.contact_time_slot_1_end +
-        "h" +
-        " - ";
-    }
-    if (invoice.contact_time_slot_2_ini && invoice.contact_time_slot_2_end) {
-      more +=
-        "De " +
-        invoice.contact_time_slot_2_ini +
-        "h a " +
-        invoice.contact_time_slot_2_end +
-        "h";
-    }
-
-    if (more.endsWith(" - ")) {
-      more = more.substring(0, more.length - 3);
-    }
-    invoice.comments = more + "\n" + (invoice.comments ? invoice.comments : "");
-
-    legal.push({
-      value: invoice.comments,
-      color: "secondary",
-    });
-
-    legal.push({
-      value: "DETALLS:",
-      color: "primary",
-      weight: "bold",
-    });
-
-    var concept = `${invoice.route.name.trim()}${
-      invoice.estimated_delivery_date
-        ? " - " + invoice.estimated_delivery_date
-        : ""
-    } - ${invoice.pickup.name} ${invoice.refrigerated ? "Refrigerada" : ""} - ${
-      invoice.units
-    } ${invoice.units > 1 ? "caixes" : "caixa"} - ${invoice.kilograms} kg`;
-
-    legal.push({
-      value: concept,
-      color: "secondary",
-    });
-    const parts = [];
-    if (invoice.lines && invoice.lines.length > 0) {
-      legal.push({
-        value: "RECOLLIDA:",
-        color: "primary",
-        weight: "bold",
-      });
-      // each lines can contain N boxes, ie. lines = [{units: 3, name: "name of the person 1", nif: "NIF of the person 1"}, {units: 1, name: "name of the person 2", nif: "NIF of the person 2"}]
-      // In the first page, the order will show:
-      // CAIXA 1/3 - name of the person 1 - NIF of the person 1
-      // In the 2nd page, the order will show:
-      // CAIXA 2/3 - name of the person 1 - NIF of the person 1
-      // In the 3rd page, the order will show:
-      // CAIXA 3/3 - name of the person 1 - NIF of the person 1
-      // In the 4th page, the order will show:
-      // CAIXA 1/1 - name of the person 2 - NIF of the person 2
-      for (const line of invoice.lines) {
-        if (line.units && line.units > 0) {
-          for (let i = 0; i < line.units; i++) {
-            parts.push({
-              value: `CAIXA ${i + 1}/${line.units} - ${line.name} - ${
-                line.nif
-              }`,
-              color: "secondary",
-            });
-          }
-        }
-      }
-    }
-
-    const urls = [];
-
-    const invoiceHeaderBoxes = [...invoiceHeader];
-
-    // Build movement chain showing all steps from pickup to delivery
-    let transferPickupText = null;
-    const movements = [];
-
-    // Add pickup if exists
-    if (invoice.pickup) {
-      const pickupAlias = invoice.pickup.alias || invoice.pickup.name;
-      if (pickupAlias) {
-        movements.push(pickupAlias);
-      }
-    }
-
-    // Add transfer origin if exists (and different from pickup)
-    if (invoice.transfer_pickup_origin) {
-      const originAlias = invoice.transfer_pickup_origin.alias || invoice.transfer_pickup_origin.name;
-      // Only add if it's not empty and not already the last item
-      if (originAlias && (movements.length === 0 || movements[movements.length - 1] !== originAlias)) {
-        movements.push(originAlias);
-      }
-    }
-
-    // Add transfer destination if exists
-    if (invoice.transfer_pickup_destination) {
-      const destinationAlias = invoice.transfer_pickup_destination.alias || invoice.transfer_pickup_destination.name;
-      // Only add if it's not empty and not already the last item
-      if (destinationAlias && (movements.length === 0 || movements[movements.length - 1] !== destinationAlias)) {
-        movements.push(destinationAlias);
-      }
-    }
-
-    // Add route name at the end
-    if (invoice.route) {
-      const routeName = invoice.route.short_name || invoice.route.name;
-      if (routeName) {
-        movements.push(routeName);
-      }
-    }
-
-    // Create the transfer text if there are multiple movements
-    if (movements.length > 1) {
-      transferPickupText = movements.join(' -> ');
-    }
-
-    // Determine label based on whether there's a transfer involved
-    const isTransfer = invoice.transfer_pickup_origin || invoice.transfer_pickup_destination;
-    const routeLabel = isTransfer ? "RUTA (TRANSFER)" : "RUTA";
-
-    let myInvoice = new MicroInvoiceOrder({
-      style: {
-        header: {
-          image: {
-            path: logo,
-            width: logoWidth,
-            height: me.logo.height / ratio,
-          },
-          qr: {
-            path: qr,
-            width: qrWidth,
-            height: qrWidth,
-          },
-        },
-      },
-      data: {
-        pages: invoice.units,
-        invoice: {
-          name: "COMANDA",
-
-          header: invoiceHeaderBoxes,
-
-          currency: "EUR",
-
-          customer: [
-            {
-              label: "ENTREGA",
-              value: [
-                invoice.contact.trade_name + " - " + invoice.contact.name,
-                invoice.contact.nif,
-                invoice.contact.address,
-                invoice.contact.postcode + " " + invoice.contact.city,
-                `Tel: ${invoice.contact.phone}`,
-              ],
-            },
-          ],
-
-          seller: [
-            {
-              label: "EMISSORA",
-              value: [
-                me.name,
-                me.phone,
-                // me.address,
-                // me.postcode + " " + me.city,
-                me.email,
-              ],
-            },
-          ],
-
-          provider: [
-            {
-              label: "PROVEÏDORA",
-              value: [
-                provider.name,
-                // provider.nif,
-                // provider.address,
-                // provider.postcode + " " + provider.city,
-                provider.phone,
-              ],
-            },
-          ],
-
-          transfer: transferPickupText ? [
-            {
-              label: routeLabel,
-              value: [transferPickupText],
-            },
-          ] : null,
-
-          legal: legal,
-
-          details: {
-            // header: detailsHeader,
-            parts: parts,
-            // total: total,
-          },
-        },
-      },
-    });
-
-    if (!fs.existsSync("./public/uploads/orders")) {
-      fs.mkdirSync("./public/uploads/orders");
-    }
-    const hash = crypto
-      .createHash("md5")
-      .update(
-        `${myInvoice.options.data.invoice.name}-${invoice.createdAt}-${id}`
-      )
-      .digest("hex");
-    const docName = `./public/uploads/orders/${id}-H${hash.substring(16)}.pdf`;
-    await myInvoice.generate(docName);
-
-    urls.push(docName.substring("./public".length));
-    //}
-
-    return { urls };
-  },
-
   pdfmultiple: async (ctx) => {
     const { orders } = ctx.request.body;
 
@@ -686,7 +381,7 @@ module.exports = {
     const me = await strapi.query("me").findOne();
     const config = await strapi.query("config").findOne();
 
-    const qrWidth = 60;
+    const qrWidth = 84;
     const logoWidth = 100;
     const ratio = me.logo.width / logoWidth;
 
@@ -702,7 +397,7 @@ module.exports = {
 
     for await (const order of ordersEntities) {
       const qrCodeImage = await QRCode.toDataURL(
-        `${config.front_url}order/view/${order.id}`
+        `${config.front_url}order/view/${order.id}`,
       );
 
       const qr = qrCodeImage;
@@ -716,7 +411,7 @@ module.exports = {
             done: false,
             message: `ERROR. L'usuària ${order.owner.username} no te cap contacte associat. Ves a contactes i crea un nou contacte associat a l'usuària a través del camp 'Persona'.`,
           },
-          500
+          500,
         );
         return;
       }
@@ -727,29 +422,23 @@ module.exports = {
           label: "COMANDA",
           value: order.id.toString().padStart(4, "0"),
         },
-        {
-          label: "DATA",
-          value: moment(order.estimated_delivery_date, "YYYY-MM-DD").format(
-            "DD-MM-YYYY"
-          ),
-        },
+        // {
+        //   label: "DATA",
+        //   value: moment(order.estimated_delivery_date, "YYYY-MM-DD").format(
+        //     "DD-MM-YYYY",
+        //   ),
+        // },
       ];
 
-      const legal = [];
-
-      legal.push({
-        value: "NOTES:",
-        color: "primary",
-        weight: "bold",
-      });
+      // Build notes array (right side)
       let more = "";
 
       more =
         order.contact && order.contact.notes
           ? order.contact.notes + "\n"
           : order.contact_notes
-          ? order.contact_notes + "\n"
-          : "";
+            ? order.contact_notes + "\n"
+            : "";
 
       more += order.contact_legal_form
         ? order.contact_legal_form.name + " - "
@@ -782,17 +471,14 @@ module.exports = {
 
       order.comments = more + "\n" + (order.comments ? order.comments : "");
 
-      legal.push({
-        value: order.comments,
-        color: "secondary",
-      });
+      const notes = [
+        {
+          label: "NOTES",
+          value: order.comments,
+        },
+      ];
 
-      legal.push({
-        value: "DETALLS:",
-        color: "primary",
-        weight: "bold",
-      });
-
+      // Build detalls array (right side)
       var concept = `${order.route.name.trim()}${
         order.estimated_delivery_date
           ? " - " + order.estimated_delivery_date
@@ -801,10 +487,15 @@ module.exports = {
         order.units
       } ${order.units > 1 ? "caixes" : "caixa"} - ${order.kilograms} kg`;
 
-      legal.push({
-        value: concept,
-        color: "secondary",
-      });
+      const detalls = [
+        {
+          label: "DETALLS",
+          value: concept,
+        },
+      ];
+
+      // Build legal array (left side, for RECOLLIDA)
+      const legal = [];
 
       const parts = [];
       if (order.lines && order.lines.length > 0) {
@@ -852,18 +543,30 @@ module.exports = {
 
       // Add transfer origin if exists (and different from pickup)
       if (order.transfer_pickup_origin) {
-        const originAlias = order.transfer_pickup_origin.alias || order.transfer_pickup_origin.name;
+        const originAlias =
+          order.transfer_pickup_origin.alias ||
+          order.transfer_pickup_origin.name;
         // Only add if it's not empty and not already the last item
-        if (originAlias && (movements.length === 0 || movements[movements.length - 1] !== originAlias)) {
+        if (
+          originAlias &&
+          (movements.length === 0 ||
+            movements[movements.length - 1] !== originAlias)
+        ) {
           movements.push(originAlias);
         }
       }
 
       // Add transfer destination if exists
       if (order.transfer_pickup_destination) {
-        const destinationAlias = order.transfer_pickup_destination.alias || order.transfer_pickup_destination.name;
+        const destinationAlias =
+          order.transfer_pickup_destination.alias ||
+          order.transfer_pickup_destination.name;
         // Only add if it's not empty and not already the last item
-        if (destinationAlias && (movements.length === 0 || movements[movements.length - 1] !== destinationAlias)) {
+        if (
+          destinationAlias &&
+          (movements.length === 0 ||
+            movements[movements.length - 1] !== destinationAlias)
+        ) {
           movements.push(destinationAlias);
         }
       }
@@ -878,11 +581,12 @@ module.exports = {
 
       // Create the transfer text if there are multiple movements
       if (movements.length > 1) {
-        transferPickupText = movements.join(' -> ');
+        transferPickupText = movements.join(" -> ");
       }
 
       // Determine label based on whether there's a transfer involved
-      const isTransfer = order.transfer_pickup_origin || order.transfer_pickup_destination;
+      const isTransfer =
+        order.transfer_pickup_origin || order.transfer_pickup_destination;
       const routeLabel = isTransfer ? "RUTA (TRANSFER)" : "RUTA";
 
       let myInvoice = new MicroInvoiceOrder({
@@ -911,18 +615,32 @@ module.exports = {
 
             customer: [
               {
-                label: "ENTREGA",
+                label: "",
+                value: [order.estimated_delivery_date],
+                fontSize: 16,
+              },
+              {
+                label: "",
+                value: [order.contact.trade_name],
+                fontSize: 24,
+              },
+              {
+                label: "",
                 value: [
-                  order.contact.trade_name +
-                    (order.contact.name &&
-                    order.contact.name !== order.contact.trade_name
-                      ? " - " + order.contact.name
-                      : ""),
-                  order.contact.nif,
                   order.contact.address,
                   order.contact.postcode + " " + order.contact.city,
-                  `Tel: ${order.contact.phone}`,
                 ],
+                fontSize: 14,
+              },
+              {
+                label: "",
+                value: [
+                  order.units +
+                    `${order.units > 1 ? " caixes" : " caixa"} - ${order.kilograms} kg` +
+                    (order.refrigerated ? " - Refrigerada" : "") +
+                    (order.refrigerated ? " Refrigerada" : ""),
+                ],
+                fontSize: 12,
               },
             ],
 
@@ -943,23 +661,23 @@ module.exports = {
               {
                 label: "PROVEÏDORA",
                 value: [
-                  provider.name,
-                  // provider.nif,
-                  // provider.address,
-                  // provider.postcode + " " + provider.city,
-                  provider.contact_phone
-                    ? "Tel: " + provider.contact_phone
-                    : "",
+                  provider.name
                 ],
               },
             ],
 
-            transfer: transferPickupText ? [
-              {
-                label: routeLabel,
-                value: [transferPickupText],
-              },
-            ] : null,
+            transfer: transferPickupText
+              ? [
+                  {
+                    label: routeLabel,
+                    value: [transferPickupText],
+                  },
+                ]
+              : null,
+
+            notes: notes,
+
+            detalls: [],
 
             legal: legal,
 
@@ -978,11 +696,11 @@ module.exports = {
       const hash = crypto
         .createHash("md5")
         .update(
-          `${myInvoice.options.data.invoice.name}-${order.createdAt}-${order.id}`
+          `${myInvoice.options.data.invoice.name}-${order.createdAt}-${order.id}`,
         )
         .digest("hex");
       const docName = `./public/uploads/orders/${order.id}-H${hash.substring(
-        16
+        16,
       )}.pdf`;
       await myInvoice.generate(docName);
 
@@ -994,9 +712,10 @@ module.exports = {
     await new Promise((resolve) => setTimeout(resolve, 0));
 
     // get all pdfs and merge them
-    const fileName = orders.length === 1 
-      ? orders[0] 
-      : crypto.createHash("md5").update(orders.join("-")).digest("hex");
+    const fileName =
+      orders.length === 1
+        ? orders[0]
+        : crypto.createHash("md5").update(orders.join("-")).digest("hex");
     const mergedPdf = await PDFMerge(urls, { output: "Buffer" });
     const mergedPdfPath = `./public/uploads/orders/orders-${fileName}.pdf`;
     fs.writeFileSync(mergedPdfPath, mergedPdf);
@@ -1022,13 +741,15 @@ module.exports = {
 
     const others = id
       ? ordersOfDateAndContact.filter(
-          (o) => o.id.toString() !== id.toString() && o.status !== "cancelled"
+          (o) => o.id.toString() !== id.toString() && o.status !== "cancelled",
         )
       : ordersOfDateAndContact;
 
     return {
       multidelivery_discount:
-        others.length > 0 ? ownerFactor * me.orders_options.multidelivery_discount : 0,
+        others.length > 0
+          ? ownerFactor * me.orders_options.multidelivery_discount
+          : 0,
     };
   },
 
@@ -1049,7 +770,10 @@ module.exports = {
     }
     const { id } = ctx.params;
     // Call the core update service
-    const entity = await strapi.services.orders.update({ id }, ctx.request.body);
+    const entity = await strapi.services.orders.update(
+      { id },
+      ctx.request.body,
+    );
     return entity;
   },
 };
