@@ -1346,6 +1346,459 @@ async function migrateEstimatedHoursToExecutionPhases() {
   }
 }
 
+async function cleanupDuplicateExecutionPhaseHours() {
+  try {
+    console.log("Starting cleanup of duplicate execution phase hours...");
+
+    // Get all projects with both original and execution phases
+    const allProjects = await strapi.query("project").find(
+      { _limit: -1, published_at_null: false },
+      [
+        "project_original_phases",
+        "project_original_phases.incomes",
+        "project_original_phases.incomes.estimated_hours",
+        "project_phases",
+        "project_phases.incomes",
+        "project_phases.incomes.estimated_hours",
+      ]
+    );
+
+    console.log(`Found ${allProjects.length} projects to check`);
+
+    let projectsProcessed = 0;
+    let hoursDeleted = 0;
+    let incomesCleared = 0;
+
+    for (const project of allProjects) {
+      if (!project.project_original_phases || !project.project_phases) {
+        continue;
+      }
+
+      const isProject236 = project.id === 236;
+      if (isProject236) {
+        console.log(`\n=== DETAILED LOG FOR PROJECT 236 "${project.name}" ===`);
+        console.log(`Original phases (${project.project_original_phases.length}):`);
+        project.project_original_phases.forEach(op => {
+          console.log(`  - "${op.name}" (raw: "${op.name}", trimmed: "${op.name ? op.name.trim() : ''}", incomes: ${op.incomes?.length || 0})`);
+        });
+        console.log(`Execution phases (${project.project_phases.length}):`);
+        project.project_phases.forEach(ep => {
+          console.log(`  - "${ep.name}" (raw: "${ep.name}", trimmed: "${ep.name ? ep.name.trim() : ''}", incomes: ${ep.incomes?.length || 0})`);
+        });
+      }
+
+      let projectHadChanges = false;
+
+      // Check each execution phase against original phases
+      for (const executionPhase of project.project_phases) {
+        const executionPhaseName = executionPhase.name ? executionPhase.name.trim() : '';
+        
+        // Find matching original phase by name
+        const matchingOriginalPhase = project.project_original_phases.find(
+          op => op.name && op.name.trim() === executionPhaseName
+        );
+
+        if (isProject236) {
+          console.log(`\n  Checking execution phase "${executionPhase.name}" (trimmed: "${executionPhaseName}")`);
+          if (matchingOriginalPhase) {
+            console.log(`    -> Found matching original phase: "${matchingOriginalPhase.name}"`);
+          } else {
+            console.log(`    -> No matching original phase found`);
+          }
+        }
+
+        if (!matchingOriginalPhase || !executionPhase.incomes || !matchingOriginalPhase.incomes) {
+          continue;
+        }
+
+        // Check each income in execution phase
+        for (const executionIncome of executionPhase.incomes) {
+          const executionConcept = executionIncome.concept ? executionIncome.concept.trim() : '';
+          
+          // Find matching original income by concept
+          const matchingOriginalIncome = matchingOriginalPhase.incomes.find(
+            oi => oi.concept && oi.concept.trim() === executionConcept
+          );
+
+          if (isProject236) {
+            console.log(`    Checking income "${executionIncome.concept}" (trimmed: "${executionConcept}")`);
+            if (matchingOriginalIncome) {
+              console.log(`      -> Found matching original income: "${matchingOriginalIncome.concept}"`);
+            } else {
+              console.log(`      -> No matching original income found`);
+            }
+          }
+
+          if (!matchingOriginalIncome) {
+            continue;
+          }
+
+          // Get hours from both incomes
+          const executionHours = await strapi.query("estimated-hours").find({
+            phase_income: executionIncome.id,
+            _limit: -1
+          });
+
+          const originalHours = await strapi.query("estimated-hours").find({
+            phase_income: matchingOriginalIncome.id,
+            _limit: -1
+          });
+
+          if (isProject236) {
+            console.log(`      Execution hours: ${executionHours.length}, Original hours: ${originalHours.length}`);
+          }
+
+          if (executionHours.length === 0 || originalHours.length === 0) {
+            if (isProject236) {
+              console.log(`      Skipping - not enough hours to compare`);
+            }
+            continue;
+          }
+
+          // Check if hours are duplicates (same users, quantities, dates)
+          let areDuplicates = executionHours.length === originalHours.length;
+          
+          if (areDuplicates) {
+            for (const execHour of executionHours) {
+              const userId = typeof execHour.users_permissions_user === 'object' 
+                ? execHour.users_permissions_user?.id 
+                : execHour.users_permissions_user;
+              
+              const matchingOrigHour = originalHours.find(oh => {
+                const origUserId = typeof oh.users_permissions_user === 'object'
+                  ? oh.users_permissions_user?.id
+                  : oh.users_permissions_user;
+                
+                return origUserId === userId &&
+                  oh.quantity === execHour.quantity &&
+                  oh.amount === execHour.amount &&
+                  oh.from === execHour.from &&
+                  oh.to === execHour.to;
+              });
+
+              if (!matchingOrigHour) {
+                areDuplicates = false;
+                break;
+              }
+            }
+          }
+
+          if (isProject236) {
+            console.log(`      Are duplicates? ${areDuplicates}`);
+          }
+
+          // If duplicates found, delete hours from execution phase
+          if (areDuplicates) {
+            console.log(`  Project ${project.id} "${project.name}": Removing ${executionHours.length} duplicate hours from "${executionPhaseName}" > "${executionConcept}"`);
+            
+            for (const hour of executionHours) {
+              await strapi.query("estimated-hours").delete({ id: hour.id });
+              hoursDeleted++;
+            }
+
+            // Clear total_estimated_hours
+            await strapi.query("phase-income").update(
+              { id: executionIncome.id },
+              { total_estimated_hours: 0 }
+            );
+            
+            incomesCleared++;
+            projectHadChanges = true;
+          }
+        }
+      }
+
+      if (isProject236) {
+        console.log(`\n=== END PROJECT 236 LOG ===\n`);
+      }
+
+      if (projectHadChanges) {
+        projectsProcessed++;
+      }
+    }
+
+    console.log("Duplicate hours cleanup completed:");
+    console.log(`  - Projects processed: ${projectsProcessed}`);
+    console.log(`  - Hours deleted: ${hoursDeleted}`);
+    console.log(`  - Incomes cleared: ${incomesCleared}`);
+
+  } catch (error) {
+    console.error("Error during duplicate hours cleanup:", error);
+    console.log("Cleanup will be retried next time the server starts");
+  }
+}
+
+async function consolidateMigratedHoursPhases() {
+  try {
+    console.log("Starting consolidation of 'Hores previstes migrades' phases...");
+
+    // Find all execution phases named "Hores previstes migrades"
+    const migratedPhases = await strapi.query("project-phases").find(
+      { name: "Hores previstes migrades", _limit: -1 },
+      ["incomes", "incomes.estimated_hours", "project"]
+    );
+
+    console.log(`Found ${migratedPhases.length} 'Hores previstes migrades' phases to consolidate`);
+
+    let phasesProcessed = 0;
+    let hoursMoved = 0;
+    let phasesDeleted = 0;
+    let incomesProcessed = 0;
+
+    for (const migratedPhase of migratedPhases) {
+      try {
+        const projectId = typeof migratedPhase.project === 'object' ? migratedPhase.project.id : migratedPhase.project;
+        
+        // Get full project data with all phases
+        const project = await strapi.query("project").findOne(
+          { id: projectId },
+          [
+            "project_original_phases",
+            "project_original_phases.incomes",
+            "project_phases",
+            "project_phases.incomes",
+            "project_phases.incomes.estimated_hours"
+          ]
+        );
+
+        if (!project) {
+          console.log(`Project ${projectId} not found, skipping phase ${migratedPhase.id}`);
+          continue;
+        }
+
+        const isProject236 = project.id === 236;
+
+        console.log(`\nProcessing project ${project.id} "${project.name}"`);
+        
+        if (isProject236) {
+          console.log(`\n=== DETAILED CONSOLIDATION LOG FOR PROJECT 236 ===`);
+          console.log(`Original phases:`);
+          project.project_original_phases?.forEach(op => {
+            console.log(`  - "${op.name}" (trimmed: "${op.name ? op.name.trim() : ''}")`);
+            op.incomes?.forEach(income => {
+              console.log(`    > "${income.concept}" (trimmed: "${income.concept ? income.concept.trim() : ''}")`);
+            });
+          });
+          console.log(`Execution phases (excluding migrated):`);
+          project.project_phases?.filter(ep => ep.id !== migratedPhase.id).forEach(ep => {
+            console.log(`  - "${ep.name}" (trimmed: "${ep.name ? ep.name.trim() : ''}")`);
+            ep.incomes?.forEach(income => {
+              console.log(`    > "${income.concept}" (trimmed: "${income.concept ? income.concept.trim() : ''}")`);
+            });
+          });
+          console.log(`Migrated phase incomes:`);
+          migratedPhase.incomes?.forEach(income => {
+            console.log(`  - "${income.concept}" (trimmed: "${income.concept ? income.concept.trim() : ''}")`);
+          });
+        }
+        
+        // Skip if no incomes in migrated phase
+        if (!migratedPhase.incomes || migratedPhase.incomes.length === 0) {
+          console.log(`  Phase ${migratedPhase.id} has no incomes, deleting empty phase`);
+          await strapi.query("project-phases").delete({ id: migratedPhase.id });
+          phasesDeleted++;
+          continue;
+        }
+
+        let phaseHadChanges = false;
+
+        // Process each income in the migrated phase
+        for (const migratedIncome of migratedPhase.incomes) {
+          // Get all estimated hours for this income
+          const estimatedHours = await strapi.query("estimated-hours").find({
+            phase_income: migratedIncome.id,
+            _limit: -1
+          });
+
+          if (isProject236) {
+            console.log(`\n  Processing migrated income "${migratedIncome.concept}" (has ${estimatedHours?.length || 0} hours)`);
+          }
+
+          if (!estimatedHours || estimatedHours.length === 0) {
+            console.log(`  Income ${migratedIncome.id} "${migratedIncome.concept}" has no hours, skipping`);
+            continue;
+          }
+
+          console.log(`  Processing income "${migratedIncome.concept}" with ${estimatedHours.length} hour entries`);
+
+          // Group estimated hours by year (based on 'from' date)
+          const hoursByYear = {};
+          for (const hour of estimatedHours) {
+            if (hour.from) {
+              const year = hour.from.substring(0, 4); // Extract YYYY from date
+              if (!hoursByYear[year]) {
+                hoursByYear[year] = [];
+              }
+              hoursByYear[year].push(hour);
+            } else {
+              // If no 'from' date, put in special group
+              if (!hoursByYear['unknown']) {
+                hoursByYear['unknown'] = [];
+              }
+              hoursByYear['unknown'].push(hour);
+            }
+          }
+
+          if (isProject236) {
+            console.log(`    -> Hours grouped by year:`, Object.keys(hoursByYear).map(y => `${y}: ${hoursByYear[y].length}`).join(', '));
+          }
+
+          // Process each year group separately
+          for (const [year, yearHours] of Object.entries(hoursByYear)) {
+            if (isProject236) {
+              console.log(`    -> Processing ${yearHours.length} hours for year ${year}`);
+            }
+
+            // Find execution phase matching this year
+            let targetExecutionPhase = null;
+            const migratedConceptTrimmed = migratedIncome.concept ? migratedIncome.concept.trim() : '';
+
+            // If year is 'unknown', try to use the first matching phase
+            if (year === 'unknown') {
+              // Find the best matching original phase income by concept (with trim)
+              for (const originalPhase of project.project_original_phases || []) {
+                if (originalPhase.incomes) {
+                  const found = originalPhase.incomes.find(
+                    oi => oi.concept && oi.concept.trim() === migratedConceptTrimmed
+                  );
+                  if (found) {
+                    const targetPhaseName = originalPhase.name.trim();
+                    targetExecutionPhase = project.project_phases.find(
+                      ep => ep.name && ep.name.trim() === targetPhaseName && ep.id !== migratedPhase.id
+                    );
+                    if (targetExecutionPhase) break;
+                  }
+                }
+              }
+            } else {
+              // Try to find execution phase by year name
+              targetExecutionPhase = project.project_phases.find(
+                ep => ep.name && ep.name.trim() === year && ep.id !== migratedPhase.id
+              );
+
+              if (isProject236) {
+                if (targetExecutionPhase) {
+                  console.log(`      -> Found execution phase "${targetExecutionPhase.name}" for year ${year}`);
+                } else {
+                  console.log(`      -> No execution phase found for year ${year}`);
+                }
+              }
+
+              // If no execution phase with that year name exists, create it
+              if (!targetExecutionPhase) {
+                console.log(`  Creating new execution phase "${year}" for year-based hours`);
+                targetExecutionPhase = await strapi.query("project-phases").create({
+                  name: year,
+                  project: project.id,
+                  order: parseInt(year) - 2020 // Order by year
+                });
+              }
+            }
+
+            if (!targetExecutionPhase) {
+              console.log(`  Warning: Could not find or create target phase for year ${year}, skipping ${yearHours.length} hours`);
+              continue;
+            }
+
+            // Find or create matching income in target phase (with trim)
+            const migratedConcept = migratedIncome.concept ? migratedIncome.concept.trim() : '';
+            let targetIncome = targetExecutionPhase.incomes?.find(
+              ei => ei.concept && ei.concept.trim() === migratedConcept
+            );
+
+            if (!targetIncome) {
+              console.log(`  Creating new income "${migratedConcept}" in phase "${targetExecutionPhase.name}"`);
+              targetIncome = await strapi.query("phase-income").create({
+                concept: migratedConcept,
+                quantity: migratedIncome.quantity || 0,
+                amount: migratedIncome.amount || 0,
+                total_amount: migratedIncome.total_amount || 0,
+                project_phase: targetExecutionPhase.id,
+              });
+            }
+
+            // Move estimated hours for this year to target income
+            for (const hour of yearHours) {
+              await strapi.query("estimated-hours").update(
+                { id: hour.id },
+                { phase_income: targetIncome.id }
+              );
+              hoursMoved++;
+            }
+
+            // Recalculate total_estimated_hours for target income
+            const allTargetHours = await strapi.query("estimated-hours").find({ 
+              phase_income: targetIncome.id,
+              _limit: -1 
+            });
+            const totalHours = allTargetHours.reduce((sum, h) => sum + (parseFloat(h.quantity) || 0), 0);
+            await strapi.query("phase-income").update(
+              { id: targetIncome.id },
+              { total_estimated_hours: totalHours }
+            );
+
+            console.log(`  Moved ${yearHours.length} hour entries to "${targetExecutionPhase.name}" > "${targetIncome.concept}"`);
+            incomesProcessed++;
+            phaseHadChanges = true;
+          }
+        }
+
+        if (phaseHadChanges) {
+          phasesProcessed++;
+          
+          // Check if migrated phase is now empty and delete if so
+          const remainingIncomes = await strapi.query("phase-income").find({
+            project_phase: migratedPhase.id,
+            _limit: -1
+          });
+
+          let hasRemainingHours = false;
+          for (const income of remainingIncomes) {
+            const hours = await strapi.query("estimated-hours").find({
+              phase_income: income.id,
+              _limit: 1
+            });
+            if (hours.length > 0) {
+              hasRemainingHours = true;
+              break;
+            }
+          }
+
+          if (!hasRemainingHours) {
+            // Delete all incomes (they should be empty)
+            for (const income of remainingIncomes) {
+              await strapi.query("phase-income").delete({ id: income.id });
+            }
+            // Delete the phase itself
+            await strapi.query("project-phases").delete({ id: migratedPhase.id });
+            console.log(`  Deleted empty migrated phase ${migratedPhase.id}`);
+            phasesDeleted++;
+          } else {
+            console.log(`  Note: Migrated phase still has some hours that couldn't be moved`);
+          }
+        }
+
+        if (isProject236) {
+          console.log(`\n=== END PROJECT 236 CONSOLIDATION LOG ===\n`);
+        }
+
+      } catch (error) {
+        console.error(`Error processing migrated phase ${migratedPhase.id}:`, error);
+      }
+    }
+
+    console.log("\nConsolidation completed:");
+    console.log(`  - Phases processed: ${phasesProcessed}`);
+    console.log(`  - Incomes processed: ${incomesProcessed}`);
+    console.log(`  - Hours moved: ${hoursMoved}`);
+    console.log(`  - Empty phases deleted: ${phasesDeleted}`);
+
+  } catch (error) {
+    console.error("Error during consolidation of migrated hours phases:", error);
+    console.log("Consolidation will be retried next time the server starts");
+  }
+}
+
 module.exports = async () => {
   await importSeedData();
   // await migrateGrantableDataToYears();
@@ -1353,4 +1806,5 @@ module.exports = async () => {
   // await calculateMotherProjects();
   await recalculatePhaseWarnings();
   // await migrateEstimatedHoursToExecutionPhases();
+  await consolidateMigratedHoursPhases();
 };
