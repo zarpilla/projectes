@@ -753,6 +753,75 @@ module.exports = {
     };
   },
 
+  collectionPointRoutes: async (ctx) => {
+    const { collection_point } = ctx.query;
+
+    if (!collection_point) {
+      return ctx.badRequest("collection_point parameter is required");
+    }
+
+    try {
+      // Get collection point contact details
+      const collectionPointContact = await strapi
+        .query("contacts")
+        .findOne({ id: collection_point });
+
+      if (!collectionPointContact || !collectionPointContact.city) {
+        return ctx.send([]);
+      }
+
+      // Find city object by name
+      const cities = await strapi.query("city").find({
+        name: collectionPointContact.city,
+        _limit: 1,
+      });
+
+      if (!cities || cities.length === 0) {
+        return ctx.send([]);
+      }
+
+      const cityId = cities[0].id;
+
+      // Find routes that serve this city
+      const cityRoutes = await strapi.query("city-route").find({
+        city: cityId,
+        _limit: -1,
+      });
+
+      if (!cityRoutes || cityRoutes.length === 0) {
+        return ctx.send([]);
+      }
+
+      // Extract route IDs
+      const routeIds = cityRoutes
+        .map((cr) => {
+          if (typeof cr.route === "object" && cr.route !== null) {
+            return cr.route.id;
+          }
+          return cr.route;
+        })
+        .filter(
+          (id) => id !== null && id !== undefined && typeof id === "number"
+        );
+
+      if (routeIds.length === 0) {
+        return ctx.send([]);
+      }
+
+      // Get all active routes
+      const routes = await strapi.query("route").find({
+        id_in: routeIds,
+        active: true,
+        _limit: -1,
+      });
+
+      return ctx.send(routes || []);
+    } catch (error) {
+      console.error("Error fetching collection point routes:", error);
+      return ctx.badRequest("Error fetching collection point routes");
+    }
+  },
+
   async create(ctx) {
     // If _tracking_user is not provided (e.g., from Strapi admin UI), get it from context
     if (!ctx.request.body._tracking_user && ctx.state.user) {

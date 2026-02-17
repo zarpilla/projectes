@@ -34,6 +34,14 @@
     },
     {
       "method": "GET",
+      "path": "/orders/collection-point-routes",
+      "handler": "orders.collectionPointRoutes",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "GET",
       "path": "/orders/:id",
       "handler": "orders.findOne",
       "config": {

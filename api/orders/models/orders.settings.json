@@ -198,6 +198,12 @@
     },
     "is_collection_order": {
       "type": "boolean"
+    },
+    "collection_pickup_route": {
+      "model": "route"
+    },
+    "collection_pickup_date": {
+      "type": "date"
     }
   }
 }

@@ -448,26 +448,49 @@ const processCollectionOrder = async (orderId, orderData) => {
     return;
   }
 
-  // Find existing pending or deposited collection order for this owner and collection point
-  const existingCollectionOrders = await strapi.query("orders").find({
-    is_collection_order: true,
-    owner: ownerId,
-    contact: collectionPointId,
-    status_in: ["pending", "deposited"],
-    _limit: 1
-  });
+  // Determine route and date for collection order
+  let route = null;
+  let estimatedDeliveryDate = null;
 
-  let collectionOrder = existingCollectionOrders && existingCollectionOrders.length > 0 ? existingCollectionOrders[0] : null;
+  if (orderData.collection_pickup_route) {
+    // Use the route specified by the frontend
+    const routeId = extractId(orderData.collection_pickup_route);
+    route = await strapi.query("route").findOne({ id: routeId });
+    
+    // Use date from frontend if provided, otherwise calculate
+    if (orderData.collection_pickup_date) {
+      estimatedDeliveryDate = moment(orderData.collection_pickup_date).format("YYYY-MM-DD");
+    } else {
+      estimatedDeliveryDate = calculateEstimatedDeliveryDate(route);
+    }
+  } else {
+    // Fallback to automatic calculation
+    route = await calculateRouteForCollectionPoint(collectionPointContact);
+    if (route) {
+      estimatedDeliveryDate = calculateEstimatedDeliveryDate(route);
+    }
+  }
 
-  // Calculate route for collection point
-  const route = await calculateRouteForCollectionPoint(collectionPointContact);
   if (!route) {
     console.error(`Could not find route for collection point ${collectionPointId}`);
     return;
   }
 
-  // Calculate estimated delivery date
-  const estimatedDeliveryDate = calculateEstimatedDeliveryDate(route);
+  // Find existing collection order for this owner, collection point, route, and date
+  // Only reuse if the date is in the future and matches the desired route and date
+  const today = moment().format("YYYY-MM-DD");
+  const existingCollectionOrders = await strapi.query("orders").find({
+    is_collection_order: true,
+    owner: ownerId,
+    contact: collectionPointId,
+    route: route.id,
+    estimated_delivery_date: estimatedDeliveryDate,
+    estimated_delivery_date_gte: today,
+    status_in: ["pending", "deposited"],
+    _limit: 1
+  });
+
+  let collectionOrder = existingCollectionOrders && existingCollectionOrders.length > 0 ? existingCollectionOrders[0] : null;
 
   // Get pickup from original order (inherit collection_point for the collection order)
   const pickupId = extractId(orderData.pickup);
@@ -664,13 +687,13 @@ const updateCollectionOrderAggregates = async (collectionOrderId) => {
       isRefrigerated = true;
     }
     // Collect comments from orders that have them
-    if (order.comments && order.comments.trim() !== '') {
-      commentsArray.push(`#${order.id} ${order.comments}`);
-    }
+    // if (order.comments && order.comments.trim() !== '') {
+    //   commentsArray.push(`#${order.id} ${order.comments}`);
+    // }
   });
 
   // Concatenate comments with newlines
-  const concatenatedComments = commentsArray.join('\n');
+  // const concatenatedComments = commentsArray.join('\n');
 
   // Calculate route rate excluding "Pickup" rates
   const routeRate = await calculateCollectionOrderRouteRate(collectionOrder, totalKilograms);
@@ -680,7 +703,7 @@ const updateCollectionOrderAggregates = async (collectionOrderId) => {
     units: totalUnits,
     kilograms: totalKilograms,
     refrigerated: isRefrigerated,
-    comments: concatenatedComments,
+    // comments: concatenatedComments,
     contact_pickup_discount: updatedPickupDiscount,
     _internal: true
   };
