@@ -19,32 +19,79 @@ module.exports = {
 
     // Removing some info
     const basicContacts = contacts.map(
-      ({ projects, projectes, ...item }) => item
+      ({ projects, projectes, ...item }) => item,
     );
 
     return basicContacts.map((entity) =>
-      sanitizeEntity(entity, { model: strapi.models.contacts })
+      sanitizeEntity(entity, { model: strapi.models.contacts }),
     );
   },
   async orders(ctx) {
     // Calling the default core action
-    const contacts = [];
+    const contactsWithOwnerNotNull = await strapi
+      .query("contacts")
+      .find({ owner_null: false, _limit: -1 });
 
-    const orders = await strapi.query("orders").find({ _limit: -1 }, ["contact"]);
+    const orders = await strapi
+      .query("orders")
+      .find({ _limit: -1, estimated_delivery_date_gte: new Date(new Date().setFullYear(new Date().getFullYear() - 1)) }, ["contact"]);
+
+
+    const owners = await strapi
+      .query("user", "users-permissions")
+      .find({ _limit: -1 });
 
     for (const order of orders) {
       if (order.contact) {
-        const contact = contacts.find((c) => c.id === order.contact.id);
+        const contact = contactsWithOwnerNotNull.find(
+          (c) => c.id === order.contact.id,
+        );
         if (!contact) {
-          contacts.push({ id: order.contact.id, num_orders: 1 });
+          // contactsWithOwnerNotNull.push({ id: order.contact.id, num_orders: 1 });
           // order.contact.num_orders = 1;
+          console.warn(
+            `Order ${order.id} has contact ${order.contact.id} which is not in contactsWithOwnerNotNull`,
+          );
         } else {
-          contact.num_orders = contact.num_orders + 1;
+          contact.num_orders = (contact.num_orders || 0) + 1;
+
+          if (order.owner) {
+            contact.owners = contact.owners || [];
+            if (!contact.owners.find(o => o.id === order.owner)) {
+              // owners            
+              contact.owners.push({ id: order.owner, name: owners.find(o => o.id === order.owner)?.username || "Unknown" });
+            }
+          }
         }
       }
     }
 
-    return contacts;
+    // get the routes that passes for the city of the contact
+    const cityRoute = await strapi
+      .query("city-route")
+      .find({ _limit: -1 }, ["city", "route"]);
+
+    for (const contact of contactsWithOwnerNotNull) {
+      contact.routes = cityRoute
+        .filter((route) => route.city && route.city.name === contact.city)
+        .map((route) => route.route.name)
+        .filter(v => v);
+    }
+
+    // console.log("cityRoute", cityRoute);
+
+    return contactsWithOwnerNotNull
+      .map((entity) => ({
+        id: entity.id,
+        trade_name: entity.trade_name,
+        num_orders: entity.num_orders || 0,
+        routes: entity.routes || [],
+        routes_flattened: entity.routes ? entity.routes.join(", ") : "",
+        owners: entity.owners || [],
+        owners_flattened: entity.owners ? entity.owners.map(o => o.name).join(", ") : "",
+
+      }))
+      //.filter((c, i) => i < 10);
   },
   async withorders(ctx) {
     // Calling the default core action
@@ -57,7 +104,9 @@ module.exports = {
 
     const orders = await strapi
       .query("orders")
-      .find({ owner: ctx.state.user.id, ...contactFilter, _limit: -1 }, ["contact"]);
+      .find({ owner: ctx.state.user.id, ...contactFilter, _limit: -1 }, [
+        "contact",
+      ]);
 
     for (const order of orders) {
       if (order.contact) {
@@ -81,41 +130,50 @@ module.exports = {
 
     // Validation
     if (!sourceContactId || !targetContactId) {
-      return ctx.badRequest('Both sourceContactId and targetContactId are required');
+      return ctx.badRequest(
+        "Both sourceContactId and targetContactId are required",
+      );
     }
 
     if (sourceContactId === targetContactId) {
-      return ctx.badRequest('Source and target contacts cannot be the same');
+      return ctx.badRequest("Source and target contacts cannot be the same");
     }
 
     try {
       // Verify both contacts exist
-      const sourceContact = await strapi.query('contacts').findOne({ id: sourceContactId });
-      const targetContact = await strapi.query('contacts').findOne({ id: targetContactId });
+      const sourceContact = await strapi
+        .query("contacts")
+        .findOne({ id: sourceContactId });
+      const targetContact = await strapi
+        .query("contacts")
+        .findOne({ id: targetContactId });
 
       if (!sourceContact) {
-        return ctx.notFound('Source contact not found');
+        return ctx.notFound("Source contact not found");
       }
 
       if (!targetContact) {
-        return ctx.notFound('Target contact not found');
+        return ctx.notFound("Target contact not found");
       }
 
       // Get all orders from the source contact
-      const orders = await strapi.query('orders').find({ contact: sourceContactId, _limit: -1 });
+      const orders = await strapi
+        .query("orders")
+        .find({ contact: sourceContactId, _limit: -1 });
 
       // Update all orders to point to the target contact
       let movedCount = 0;
       for (const order of orders) {
-        await strapi.query('orders').update(
-          { id: order.id },
-          { contact: targetContactId }
-        );
+        await strapi
+          .query("orders")
+          .update({ id: order.id }, { contact: targetContactId });
         movedCount++;
       }
 
       // Log the action for audit purposes
-      console.log(`[UNIFY CONTACTS] User ${ctx.state.user.id} moved ${movedCount} orders from contact ${sourceContactId} to ${targetContactId}`);
+      console.log(
+        `[UNIFY CONTACTS] User ${ctx.state.user.id} moved ${movedCount} orders from contact ${sourceContactId} to ${targetContactId}`,
+      );
 
       // Return result
       ctx.send({
@@ -123,12 +181,13 @@ module.exports = {
         movedOrders: movedCount,
         sourceContactId,
         targetContactId,
-        message: `Successfully moved ${movedCount} orders from contact ${sourceContactId} to contact ${targetContactId}`
+        message: `Successfully moved ${movedCount} orders from contact ${sourceContactId} to contact ${targetContactId}`,
       });
-
     } catch (error) {
-      console.error('Error unifying contacts:', error);
-      return ctx.badRequest('Error unifying contacts', { error: error.message });
+      console.error("Error unifying contacts:", error);
+      return ctx.badRequest("Error unifying contacts", {
+        error: error.message,
+      });
     }
   },
 };
