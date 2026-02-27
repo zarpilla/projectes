@@ -19,11 +19,17 @@ const doProjectInfoCalculations = async (data, id) => {
   const festives = await getFestives();
 
   const me = await strapi.query("me").findOne();
-  const deductible_vat_pct =
+  const fallback_deductible_vat_pct =
     me.options && me.options.deductible_vat_pct
       ? me.options.deductible_vat_pct
       : 100.0;
-  const deductible_ratio = (100.0 - deductible_vat_pct) / 100.0;
+  const yearEntities = await strapi.query("year").find({ _limit: -1 });
+  const deductibleVatPctByYear = new Map(
+    (yearEntities || [])
+      .filter((y) => y && y.year)
+      .map((y) => [String(y.year), parseFloat(y.deductible_vat_pct || 100)])
+  );
+  const projectDefaultYear = getProjectDefaultYear(data);
 
   // Initialize all three dimensions: original, estimated (current plan), real (executed)
   data.total_original_incomes = 0;
@@ -150,6 +156,13 @@ const doProjectInfoCalculations = async (data, id) => {
   const allByYear = _(_.values(allByYearArrayJSON.filter((a) => a !== null)))
     .groupBy("year")
     .map((rows, year) => {
+      const sourceYear = String(year);
+      const vatYear = sourceYear === "9999" ? projectDefaultYear : sourceYear;
+      const deductible_vat_pct = deductibleVatPctByYear.has(vatYear)
+        ? deductibleVatPctByYear.get(vatYear)
+        : parseFloat(fallback_deductible_vat_pct || 100);
+      const deductible_ratio = (100.0 - deductible_vat_pct) / 100.0;
+
       // Aggregate three separate dimensions
       const total_original_incomes = sumBy(rows, (r) =>
         r.total_original_incomes !== undefined ? parseFloat(r.total_original_incomes) : 0.0
@@ -464,14 +477,47 @@ const doProjectInfoCalculations = async (data, id) => {
 //   return years;
 // };
 
-const getEstimateYear = (item) => {
+const getProjectDefaultYear = (project) => {
+  if (!project) {
+    return String(moment().format("YYYY"));
+  }
+
+  const extractYear = (value) => {
+    if (!value) {
+      return null;
+    }
+
+    if (value instanceof Date && !isNaN(value.getTime())) {
+      return String(value.getFullYear());
+    }
+
+    if (typeof value === "string") {
+      const yearMatch = value.match(/\d{4}/);
+      return yearMatch ? yearMatch[0] : null;
+    }
+
+    if (value && typeof value === "object" && typeof value.toISOString === "function") {
+      return String(value.toISOString().substring(0, 4));
+    }
+
+    return null;
+  };
+
+  return (
+    extractYear(project.date_start) ||
+    extractYear(project.date_end) ||
+    String(moment().format("YYYY"))
+  );
+};
+
+const getEstimateYear = (item, fallbackYear = "9999") => {
   if (item && item.date_estimate_document) {
     return item.date_estimate_document.substring(0, 4);
   }
   if (item && item.date) {
     return item.date.substring(0, 4);
   }
-  return "9999";
+  return fallbackYear;
 };
 
 const getRealYear = (item) => {
@@ -558,6 +604,8 @@ const calculateEstimatedTotals = async (
   };
 
   if (phases && phases.length) {
+    const projectDefaultYear = getProjectDefaultYear(data);
+
     for (var i = 0; i < phases.length; i++) {
       const phase = phases[i];
       if (phase.incomes && phase.incomes.length) {
@@ -574,7 +622,7 @@ const calculateEstimatedTotals = async (
             (subphase.quantity ? subphase.quantity : 0) *
             (subphase.amount ? subphase.amount : 0);
 
-          const ey = getEstimateYear(subphase);
+          const ey = getEstimateYear(subphase, projectDefaultYear);
           // Always add estimated incomes to yearly breakdown (all lines including paid + unpaid)
           rowsByYear.push({ year: ey, total_incomes: subphase.total_amount });
 
@@ -799,7 +847,7 @@ const calculateEstimatedTotals = async (
           total_expenses_vat += expense.total_expenses_vat;
 
           // Always add estimated expenses to yearly breakdown (all lines including paid + unpaid)
-          const ey = getEstimateYear(expense);
+          const ey = getEstimateYear(expense, projectDefaultYear);
           rowsByYear.push({
             year: ey,
             total_expenses: expense.total_amount,
@@ -1352,15 +1400,33 @@ module.exports = {
     const noPhaseInfo = { phase: "-", subphase: "-" };
 
     const me = await strapi.query("me").findOne();
-    const deductible_vat_pct =
+    const fallback_deductible_vat_pct =
       me.options && me.options.deductible_vat_pct
         ? me.options.deductible_vat_pct
         : 100.0;
-    const deductible_ratio = (100.0 - deductible_vat_pct) / 100.0;
+    const yearEntities = await strapi.query("year").find({ _limit: -1 });
+    const deductibleVatPctByYear = new Map(
+      (yearEntities || [])
+        .filter((y) => y && y.year)
+        .map((y) => [String(y.year), parseFloat(y.deductible_vat_pct || 100)])
+    );
+
+    const getDeductibleRatioForDate = (dateValue, projectDefaultYear, projectId, scope) => {
+      const extractedYear = (dateValue && String(dateValue).substring(0, 4)) || null;
+      const appliedYear = extractedYear || projectDefaultYear;
+      const deductible_vat_pct = deductibleVatPctByYear.has(appliedYear)
+        ? deductibleVatPctByYear.get(appliedYear)
+        : parseFloat(fallback_deductible_vat_pct || 100);
+      const deductible_ratio = (100.0 - deductible_vat_pct) / 100.0;
+
+      return deductible_ratio;
+    };
 
     
     // Parallelize project processing instead of sequential for loop
     const projectResponses = await Promise.all(projects.map(async (p) => {
+      const projectDefaultYear = getProjectDefaultYear(p);
+
       const projectInfo = {
         id: p.id,
         project_name: p.name,
@@ -1448,6 +1514,12 @@ module.exports = {
             const vat_pct = sph.expense_type && sph.expense_type.vat_pct
               ? sph.expense_type.vat_pct
               : 21;
+            const estimatedDeductibleRatio = getDeductibleRatioForDate(
+              estimate_date,
+              projectDefaultYear,
+              p.id,
+              "estimated_expense"
+            );
             
             // Row for estimated expense (all lines, paid or unpaid)
             projectResponse.push({
@@ -1458,7 +1530,7 @@ module.exports = {
               expense_orig: 0,
               expense_orig_vat: 0,
               expense_esti: -1 * sph.quantity * sph.amount,
-              expense_esti_vat: (-1 * deductible_ratio * sph.quantity * sph.amount * vat_pct) / 100.0,
+              expense_esti_vat: (-1 * estimatedDeductibleRatio * sph.quantity * sph.amount * vat_pct) / 100.0,
               expense_real: 0,
               expense_real_vat: 0,
               date: estimate_date,
@@ -1481,6 +1553,12 @@ module.exports = {
               const expense_vat = sph.invoice && sph.invoice.total_vat !== undefined
                 ? sph.invoice.total_vat
                 : calculated_vat;
+              const realDeductibleRatio = getDeductibleRatioForDate(
+                real_date,
+                projectDefaultYear,
+                p.id,
+                "real_expense"
+              );
               
               projectResponse.push({
                 ...projectInfo,
@@ -1492,7 +1570,7 @@ module.exports = {
                 expense_esti: 0,
                 expense_esti_vat: 0,
                 expense_real: -1 * sph.quantity * sph.amount,
-                expense_real_vat: -1 * expense_vat * deductible_ratio,
+                expense_real_vat: -1 * expense_vat * realDeductibleRatio,
                 date: real_date,
                 year: moment(real_date, "YYYY-MM-DD").format("YYYY"),
                 month: moment(real_date, "YYYY-MM-DD").format("MM"),
@@ -1546,6 +1624,12 @@ module.exports = {
             const vat_pct = sph.expense_type && sph.expense_type.vat_pct
               ? sph.expense_type.vat_pct
               : 21;
+            const originalDeductibleRatio = getDeductibleRatioForDate(
+              date,
+              projectDefaultYear,
+              p.id,
+              "original_expense"
+            );
             
             projectResponse.push({
               ...projectInfo,
@@ -1555,7 +1639,7 @@ module.exports = {
               expense_orig: -1 * Math.abs(sph.quantity * sph.amount),
               expense_orig_vat:
                 (-1 *
-                  deductible_ratio *
+                  originalDeductibleRatio *
                   Math.abs(sph.quantity * sph.amount) *
                   vat_pct) /
                 100.0,
