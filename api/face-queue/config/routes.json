@@ -1,0 +1,52 @@
+{
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/face-queues",
+      "handler": "face-queue.find",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/face-queues/count",
+      "handler": "face-queue.count",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/face-queues/:id",
+      "handler": "face-queue.findOne",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/face-queues",
+      "handler": "face-queue.create",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "PUT",
+      "path": "/face-queues/:id",
+      "handler": "face-queue.update",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "DELETE",
+      "path": "/face-queues/:id",
+      "handler": "face-queue.delete",
+      "config": {
+        "policies": []
+      }
+    }
+  ]
+}

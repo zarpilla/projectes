@@ -129,6 +129,14 @@
       "plugin": "upload",
       "required": false,
       "pluginOptions": {}
+    },
+    "face": {
+      "type": "enumeration",
+      "enum": [
+        "no",
+        "test",
+        "real"
+      ]
     }
   }
 }

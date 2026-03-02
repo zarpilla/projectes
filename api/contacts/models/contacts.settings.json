@@ -132,6 +132,18 @@
     },
     "collection_points": {
       "collection": "contacts"
+    },
+    "face_dir3_oc": {
+      "type": "string"
+    },
+    "face_dir3_og": {
+      "type": "string"
+    },
+    "face_dir3_ut": {
+      "type": "string"
+    },
+    "face": {
+      "type": "boolean"
     }
   }
 }

@@ -1,0 +1,46 @@
+{
+  "kind": "collectionType",
+  "collectionName": "face_queues",
+  "info": {
+    "name": "Face Queue",
+    "description": ""
+  },
+  "options": {
+    "increments": true,
+    "timestamps": true,
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "emitted_invoice": {
+      "model": "emitted-invoice"
+    },
+    "mode": {
+      "type": "enumeration",
+      "enum": [
+        "test",
+        "real"
+      ]
+    },
+    "request_url": {
+      "type": "string"
+    },
+    "request_body": {
+      "type": "text"
+    },
+    "response_body": {
+      "type": "text"
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": [
+        "pending",
+        "error",
+        "warning",
+        "ok"
+      ]
+    },
+    "invoice": {
+      "type": "json"
+    }
+  }
+}

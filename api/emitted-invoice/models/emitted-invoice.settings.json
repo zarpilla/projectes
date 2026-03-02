@@ -147,6 +147,9 @@
       "type": "component",
       "repeatable": false,
       "component": "contact.contact-data"
+    },
+    "face": {
+      "type": "boolean"
     }
   }
 }

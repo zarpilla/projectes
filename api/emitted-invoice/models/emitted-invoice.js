@@ -11,13 +11,31 @@ let previousProjectId = 0;
 
 module.exports = {
   lifecycles: {
-    // async afterFindOne(result, params, populate) {
-    //   if (result && !result.pdf) {
-    //     const config = await strapi.query("config").findOne();
-    //     const pdf = `${config.front_url}invoice/${params.id}`;
-    //     result.pdf = pdf;
-    //   }
-    // },
+    async afterFindOne(result, params, populate) {
+      const me = await strapi.query("me").findOne();
+      if (me.face === "test" || me.face === "real") {
+        if (result && result.id) {
+          const faceQueue = await strapi.query("face-queue").findOne({ mode: me.face, emitted_invoice: result.id });
+          if (faceQueue) {
+            result.face_queue = faceQueue.status;
+          }
+          else {
+            result.face_queue = 'missing';
+          }
+        }
+      }
+      if (me.verifactu === "test" || me.verifactu === "real") {
+        if (result && result.id) {
+          const verifactuChain = await strapi.query("verifactu-chain").findOne({ mode: me.verifactu, emitted_invoice: result.id });
+          if (verifactuChain) {
+            result.verifactu_chain = verifactuChain.state;
+          }
+          else {
+            result.verifactu_chain = 'missing';
+          }
+        }
+      }
+    },
     async beforeCreate(data) {
       data.state = "draft";
       data.code = `ESBORRANY`;
@@ -149,6 +167,41 @@ module.exports = {
             };
             await strapi.query("verifactu-chain").create(chain);
           }
+        }
+      }
+
+      const me = await strapi.query("me").findOne();
+      const faceEnabled =
+        me && (me.face === "test" || me.face === "real");
+      let contact = null;
+      if (invoice && invoice.contact) {
+        const contactId =
+          typeof invoice.contact === "object" ? invoice.contact.id : invoice.contact;
+        if (contactId) {
+          contact = await strapi.query("contacts").findOne({ id: contactId });
+        }
+      }
+
+      if (
+        faceEnabled &&
+        invoice &&
+        invoice.state === "real" &&
+        invoice.face !== true &&
+        contact &&
+        contact.face === true
+      ) {
+        const mode = me && (me.face === "real" ? "real" : "test");
+        const queue = await strapi.query("face-queue").find({
+          emitted_invoice: invoice.id,
+          _limit: 1,
+        });
+
+        if (!queue || queue.length === 0) {
+          await strapi.query("face-queue").create({
+            emitted_invoice: invoice.id,
+            mode,
+            status: "pending",
+          });
         }
       }
 
