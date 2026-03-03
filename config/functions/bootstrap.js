@@ -1853,13 +1853,26 @@ async function backfillCollectionGroupingFields() {
   try {
     console.log("Starting backfill for missing collection grouping fields...");
 
+    const pickupEnabledRecords = await strapi.query("pickups").find({
+      pickup: true,
+      _limit: -1,
+    });
+    const pickupEnabledIds = (pickupEnabledRecords || []).map((record) => record.id);
+
+    if (pickupEnabledIds.length === 0) {
+      console.log(
+        "[COLLECTION BACKFILL] No pickups with pickup=true found. Skipping backfill.",
+      );
+      return;
+    }
+
     const batchSize = 200;
     let updated = 0;
     let loop = 0;
     const startedAt = Date.now();
 
     console.log(
-      `[COLLECTION BACKFILL] Config: batchSize=${batchSize}, filters=(status!=cancelled AND missing collection_pickup_route/date)`,
+      `[COLLECTION BACKFILL] Config: batchSize=${batchSize}, filters=(status!=cancelled AND missing collection_pickup_route/date AND pickup_in=${pickupEnabledIds.length} pickup-enabled ids)`,
     );
 
     while (true) {
@@ -1873,8 +1886,8 @@ async function backfillCollectionGroupingFields() {
       const routeQueryStartedAt = Date.now();
       const missingRouteBatch = await strapi.query("orders").find({
         status_ne: "cancelled",
+        "pickup.id_in": pickupEnabledIds,
         collection_pickup_route_null: true,
-        collection_pickup_date_null: false,
         route_null: false,
         _sort: "id:ASC",
         _limit: batchSize,
@@ -1893,6 +1906,7 @@ async function backfillCollectionGroupingFields() {
       const dateQueryStartedAt = Date.now();
       const missingDateBatch = await strapi.query("orders").find({
         status_ne: "cancelled",
+        "pickup.id_in": pickupEnabledIds,
         collection_pickup_date_null: true,
         estimated_delivery_date_null: false,
         _sort: "id:ASC",
