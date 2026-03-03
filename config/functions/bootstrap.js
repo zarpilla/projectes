@@ -2444,14 +2444,14 @@ module.exports = async () => {
   // await recalculatePhaseWarnings();
   // await migrateEstimatedHoursToExecutionPhases();
   // await consolidateMigratedHoursPhases();
-  await runStartupScript(
-    "backfillCollectionGroupingFields",
-    backfillCollectionGroupingFields,
-    { runOnce: true },
-  );
+  // await runStartupScript(
+  //   "backfillCollectionGroupingFields",
+  //   backfillCollectionGroupingFields,
+  //   { runOnce: true },
+  // );
 
-  await reconcileDateContaminatedCollectionOrders();
-  await reconcileDuplicateCollectionOrders();
-  await reconcileDeliveredCollectionOrders();
-  await cleanupEmptyCollectionOrders();
+  // await reconcileDateContaminatedCollectionOrders();
+  // await reconcileDuplicateCollectionOrders();
+  // await reconcileDeliveredCollectionOrders();
+  // await cleanupEmptyCollectionOrders();
 };
