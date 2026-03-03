@@ -1,0 +1,23 @@
+{
+  "kind": "collectionType",
+  "collectionName": "startup_scripts",
+  "info": {
+    "name": "Startup Scripts"
+  },
+  "options": {
+    "increments": true,
+    "timestamps": true,
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "name": {
+      "type": "string"
+    },
+    "start": {
+      "type": "datetime"
+    },
+    "end": {
+      "type": "datetime"
+    }
+  }
+}

@@ -1799,12 +1799,578 @@ async function consolidateMigratedHoursPhases() {
   }
 }
 
+async function cleanupEmptyCollectionOrders() {
+  try {
+    console.log("Starting cleanup for empty collection orders...");
+
+    const collectionOrders = await strapi.query("orders").find({
+      is_collection_order: true,
+      _limit: -1,
+    });
+
+    let reviewed = 0;
+    let updated = 0;
+
+    for (const collectionOrder of collectionOrders) {
+      reviewed++;
+
+      const relatedOrders = await strapi.query("orders").find({
+        collection_order: collectionOrder.id,
+        _limit: 1,
+      });
+
+      const hasOrdersInside = relatedOrders && relatedOrders.length > 0;
+      const isAlreadyCancelled = collectionOrder.status === "cancelled";
+
+      if (!hasOrdersInside && !isAlreadyCancelled) {
+        await strapi.query("orders").update(
+          { id: collectionOrder.id },
+          {
+            kilograms: 0,
+            units: 0,
+            price: 0,
+            status: "cancelled",
+            _internal: true,
+          },
+        );
+
+        updated++;
+        console.log(
+          `[COLLECTION CLEANUP] Updated empty collection order #${collectionOrder.id}`,
+        );
+      }
+    }
+
+    console.log(
+      `[COLLECTION CLEANUP] Done. Reviewed: ${reviewed}, updated: ${updated}`,
+    );
+  } catch (error) {
+    console.error("Error during empty collection order cleanup:", error);
+  }
+}
+
+async function backfillCollectionGroupingFields() {
+  try {
+    console.log("Starting backfill for missing collection grouping fields...");
+
+    const batchSize = 200;
+    let updated = 0;
+    let loop = 0;
+    const startedAt = Date.now();
+
+    console.log(
+      `[COLLECTION BACKFILL] Config: batchSize=${batchSize}, filters=(status!=cancelled AND missing collection_pickup_route/date)`,
+    );
+
+    while (true) {
+      loop++;
+      const loopStartedAt = Date.now();
+
+      console.log(
+        `[COLLECTION BACKFILL] Loop ${loop}: querying missing route batch...`,
+      );
+
+      const routeQueryStartedAt = Date.now();
+      const missingRouteBatch = await strapi.query("orders").find({
+        status_ne: "cancelled",
+        collection_pickup_route_null: true,
+        collection_pickup_date_null: false,
+        route_null: false,
+        _sort: "id:ASC",
+        _limit: batchSize,
+      });
+      const routeQueryMs = Date.now() - routeQueryStartedAt;
+      console.log(
+        `[COLLECTION BACKFILL] Loop ${loop}: missing route batch fetched ${
+          (missingRouteBatch || []).length
+        } rows in ${routeQueryMs}ms`,
+      );
+
+      console.log(
+        `[COLLECTION BACKFILL] Loop ${loop}: querying missing date batch...`,
+      );
+
+      const dateQueryStartedAt = Date.now();
+      const missingDateBatch = await strapi.query("orders").find({
+        status_ne: "cancelled",
+        collection_pickup_date_null: true,
+        estimated_delivery_date_null: false,
+        _sort: "id:ASC",
+        _limit: batchSize,
+      });
+      const dateQueryMs = Date.now() - dateQueryStartedAt;
+      console.log(
+        `[COLLECTION BACKFILL] Loop ${loop}: missing date batch fetched ${
+          (missingDateBatch || []).length
+        } rows in ${dateQueryMs}ms`,
+      );
+
+      const byId = {};
+      for (const order of missingRouteBatch || []) {
+        byId[order.id] = order;
+      }
+      for (const order of missingDateBatch || []) {
+        byId[order.id] = order;
+      }
+
+      const batch = Object.values(byId);
+      if (batch.length === 0) {
+        const elapsedMs = Date.now() - startedAt;
+        console.log(
+          `[COLLECTION BACKFILL] Loop ${loop}: no more candidate rows. Finishing. Total updated=${updated}, elapsed=${elapsedMs}ms`,
+        );
+        break;
+      }
+
+      const firstId = batch[0]?.id;
+      const lastId = batch[batch.length - 1]?.id;
+      console.log(
+        `[COLLECTION BACKFILL] Loop ${loop}: merged candidate batch size=${batch.length}, id-range=${firstId}..${lastId}`,
+      );
+
+      let updatedThisBatch = 0;
+      let skippedThisBatch = 0;
+      let processedInBatch = 0;
+
+      for (const order of batch) {
+        processedInBatch++;
+
+        const normalizedRouteId =
+          normalizeRouteId(order.collection_pickup_route) ||
+          normalizeRouteId(order.route);
+        const normalizedPickupDate = normalizeDate(
+          order.collection_pickup_date || order.estimated_delivery_date,
+        );
+
+        const nextData = {};
+
+        if (!order.collection_pickup_route && normalizedRouteId) {
+          nextData.collection_pickup_route = normalizedRouteId;
+        }
+
+        if (!order.collection_pickup_date && normalizedPickupDate) {
+          nextData.collection_pickup_date = normalizedPickupDate;
+        }
+
+        if (Object.keys(nextData).length > 0) {
+          nextData._internal = true;
+          await strapi.query("orders").update({ id: order.id }, nextData);
+          updated++;
+          updatedThisBatch++;
+        } else {
+          skippedThisBatch++;
+        }
+
+        if (processedInBatch % 50 === 0) {
+          console.log(
+            `[COLLECTION BACKFILL] Loop ${loop}: processed ${processedInBatch}/${batch.length} rows (updated ${updatedThisBatch}, skipped ${skippedThisBatch})`,
+          );
+        }
+      }
+
+      const loopMs = Date.now() - loopStartedAt;
+
+      console.log(
+        `[COLLECTION BACKFILL] Batch ${loop}: scanned ${batch.length}, updated ${updatedThisBatch}, skipped ${skippedThisBatch}, total updated ${updated}, loop time ${loopMs}ms`,
+      );
+
+      if (updatedThisBatch === 0) {
+        console.log(
+          `[COLLECTION BACKFILL] Loop ${loop}: updated 0 rows, stopping to avoid infinite loop`,
+        );
+        break;
+      }
+    }
+
+    const totalMs = Date.now() - startedAt;
+    console.log(
+      `[COLLECTION BACKFILL] Done. Updated: ${updated}. Total time: ${totalMs}ms`,
+    );
+  } catch (error) {
+    console.error("Error during collection grouping backfill:", error);
+  }
+}
+
+async function runStartupScript(scriptName, scriptHandler, options = {}) {
+  const runOnce = options.runOnce !== false;
+
+  const existingRuns = await strapi.query("startup-scripts").find({
+    name: scriptName,
+    _sort: "id:DESC",
+    _limit: 1,
+  });
+
+  const lastRun = existingRuns && existingRuns.length > 0 ? existingRuns[0] : null;
+
+  if (runOnce && lastRun && lastRun.end) {
+    console.log(
+      `[STARTUP SCRIPT] Skipping ${scriptName} (already completed on ${lastRun.end})`,
+    );
+    return;
+  }
+
+  if (runOnce && lastRun && lastRun.start && !lastRun.end) {
+    console.log(
+      `[STARTUP SCRIPT] Skipping ${scriptName} (found previous run without end: ${lastRun.start})`,
+    );
+    return;
+  }
+
+  const execution = await strapi.query("startup-scripts").create({
+    name: scriptName,
+    start: new Date(),
+  });
+
+  console.log(
+    `[STARTUP SCRIPT] Running ${scriptName} (execution #${execution.id})`,
+  );
+
+  try {
+    await scriptHandler();
+    await strapi.query("startup-scripts").update(
+      { id: execution.id },
+      { end: new Date() },
+    );
+    console.log(
+      `[STARTUP SCRIPT] Completed ${scriptName} (execution #${execution.id})`,
+    );
+  } catch (error) {
+    console.error(
+      `[STARTUP SCRIPT] Failed ${scriptName} (execution #${execution.id})`,
+      error,
+    );
+    throw error;
+  }
+}
+
+const normalizeDate = (value) => {
+  if (!value) return null;
+  const textValue = String(value);
+  return textValue.includes("T") ? textValue.split("T")[0] : textValue;
+};
+
+const normalizeRouteId = (value) => {
+  if (!value) return null;
+  return typeof value === "object" ? value.id : value;
+};
+
+const getCollectionRouteId = (order) => {
+  return (
+    normalizeRouteId(order?.collection_pickup_route) ||
+    normalizeRouteId(order?.route)
+  );
+};
+
+async function ensureCollectionOrderForDate(
+  sourceCollectionOrder,
+  targetDate,
+  targetRouteId,
+) {
+  const ownerId =
+    typeof sourceCollectionOrder.owner === "object"
+      ? sourceCollectionOrder.owner?.id
+      : sourceCollectionOrder.owner;
+  const contactId =
+    typeof sourceCollectionOrder.contact === "object"
+      ? sourceCollectionOrder.contact?.id
+      : sourceCollectionOrder.contact;
+  const sourceRouteId = getCollectionRouteId(sourceCollectionOrder);
+  const routeId = targetRouteId || sourceRouteId;
+
+  const candidates = await strapi.query("orders").find({
+    is_collection_order: true,
+    owner: ownerId,
+    contact: contactId,
+    route: routeId,
+    status_ne: "cancelled",
+    _sort: "id:ASC",
+    _limit: -1,
+  });
+
+  const exactDateMatches = (candidates || []).filter(
+    (candidate) => {
+      const candidateDate = normalizeDate(
+        candidate.collection_pickup_date || candidate.estimated_delivery_date,
+      );
+      const candidateRouteId = getCollectionRouteId(candidate);
+      return candidateDate === targetDate && candidateRouteId === routeId;
+    },
+  );
+
+  if (exactDateMatches.length > 0) {
+    return exactDateMatches[0];
+  }
+
+  const createData = {
+    is_collection_order: true,
+    owner: ownerId,
+    contact: contactId,
+    contact_name: sourceCollectionOrder.contact_name,
+    contact_trade_name: sourceCollectionOrder.contact_trade_name,
+    contact_nif: sourceCollectionOrder.contact_nif,
+    contact_address: sourceCollectionOrder.contact_address,
+    contact_postcode: sourceCollectionOrder.contact_postcode,
+    contact_city: sourceCollectionOrder.contact_city,
+    contact_phone: sourceCollectionOrder.contact_phone,
+    contact_legal_form:
+      typeof sourceCollectionOrder.contact_legal_form === "object"
+        ? sourceCollectionOrder.contact_legal_form?.id
+        : sourceCollectionOrder.contact_legal_form,
+    contact_notes: sourceCollectionOrder.contact_notes,
+    contact_time_slot_1_ini: sourceCollectionOrder.contact_time_slot_1_ini,
+    contact_time_slot_1_end: sourceCollectionOrder.contact_time_slot_1_end,
+    contact_time_slot_2_ini: sourceCollectionOrder.contact_time_slot_2_ini,
+    contact_time_slot_2_end: sourceCollectionOrder.contact_time_slot_2_end,
+    contact_pickup_discount: sourceCollectionOrder.contact_pickup_discount || 0,
+    route: routeId,
+    collection_pickup_route: routeId,
+    collection_pickup_date: targetDate,
+    estimated_delivery_date: targetDate,
+    pickup:
+      typeof sourceCollectionOrder.pickup === "object"
+        ? sourceCollectionOrder.pickup?.id
+        : sourceCollectionOrder.pickup,
+    collection_point:
+      typeof sourceCollectionOrder.collection_point === "object"
+        ? sourceCollectionOrder.collection_point?.id
+        : sourceCollectionOrder.collection_point,
+    delivery_type:
+      typeof sourceCollectionOrder.delivery_type === "object"
+        ? sourceCollectionOrder.delivery_type?.id
+        : sourceCollectionOrder.delivery_type,
+    transfer: !!sourceCollectionOrder.transfer,
+    transfer_pickup_origin:
+      typeof sourceCollectionOrder.transfer_pickup_origin === "object"
+        ? sourceCollectionOrder.transfer_pickup_origin?.id
+        : sourceCollectionOrder.transfer_pickup_origin,
+    transfer_pickup_destination:
+      typeof sourceCollectionOrder.transfer_pickup_destination === "object"
+        ? sourceCollectionOrder.transfer_pickup_destination?.id
+        : sourceCollectionOrder.transfer_pickup_destination,
+    status: "pending",
+    units: 0,
+    kilograms: 0,
+    price: 0,
+    refrigerated: false,
+    comments: "[AUTO-RECONCILE] Created from contaminated collection order",
+    _internal: true,
+  };
+
+  return strapi.query("orders").create(createData);
+}
+
+async function reconcileDateContaminatedCollectionOrders() {
+  try {
+    console.log("Starting date contamination reconciliation for collection orders...");
+
+    const collectionOrders = await strapi.query("orders").find({
+      is_collection_order: true,
+      status_ne: "cancelled",
+      _limit: -1,
+    });
+
+    let contaminatedCount = 0;
+    let relinkedCount = 0;
+
+    for (const collectionOrder of collectionOrders) {
+      const linkedOrders = await strapi.query("orders").find({
+        collection_order: collectionOrder.id,
+        status_ne: "cancelled",
+        _limit: -1,
+      });
+
+      const regularLinkedOrders = (linkedOrders || []).filter(
+        (order) => !order.is_collection_order,
+      );
+
+      if (regularLinkedOrders.length === 0) {
+        continue;
+      }
+
+      const linkedByDateAndRoute = {};
+      for (const order of regularLinkedOrders) {
+        const dateKey = normalizeDate(
+          order.collection_pickup_date || order.estimated_delivery_date,
+        );
+        const routeKey =
+          normalizeRouteId(order.collection_pickup_route) ||
+          normalizeRouteId(order.route);
+
+        if (!dateKey) {
+          continue;
+        }
+        const bucketKey = `${dateKey}|${routeKey || "null"}`;
+        if (!linkedByDateAndRoute[bucketKey]) {
+          linkedByDateAndRoute[bucketKey] = {
+            dateKey,
+            routeKey,
+            orders: [],
+          };
+        }
+        linkedByDateAndRoute[bucketKey].orders.push(order);
+      }
+
+      const distinctBuckets = Object.keys(linkedByDateAndRoute);
+      if (distinctBuckets.length <= 1) {
+        continue;
+      }
+
+      contaminatedCount++;
+
+      const canonicalDate =
+        normalizeDate(
+          collectionOrder.collection_pickup_date ||
+            collectionOrder.estimated_delivery_date,
+        ) || linkedByDateAndRoute[distinctBuckets[0]].dateKey;
+      const canonicalRoute = getCollectionRouteId(collectionOrder);
+      const canonicalBucket = `${canonicalDate}|${canonicalRoute || "null"}`;
+
+      console.log(
+        `[COLLECTION DATE RECONCILE] Collection order #${collectionOrder.id} has mixed buckets: ${distinctBuckets.join(",")}. Canonical bucket: ${canonicalBucket}`,
+      );
+
+      for (const bucketKey of distinctBuckets) {
+        if (bucketKey === canonicalBucket) {
+          continue;
+        }
+
+        const bucket = linkedByDateAndRoute[bucketKey];
+        const dateKey = bucket.dateKey;
+        const routeKey = bucket.routeKey;
+
+        const targetCollectionOrder = await ensureCollectionOrderForDate(
+          collectionOrder,
+          dateKey,
+          routeKey,
+        );
+
+        for (const orderToMove of bucket.orders) {
+          await strapi.query("orders").update(
+            { id: orderToMove.id },
+            { collection_order: targetCollectionOrder.id, _internal: true },
+          );
+          relinkedCount++;
+        }
+
+        console.log(
+          `[COLLECTION DATE RECONCILE] Moved ${bucket.orders.length} orders from #${collectionOrder.id} to #${targetCollectionOrder.id} for date ${dateKey} route ${routeKey}`,
+        );
+      }
+    }
+
+    console.log(
+      `[COLLECTION DATE RECONCILE] Done. Contaminated groups: ${contaminatedCount}, relinked orders: ${relinkedCount}`,
+    );
+  } catch (error) {
+    console.error("Error during collection date contamination reconciliation:", error);
+  }
+}
+
+async function reconcileDuplicateCollectionOrders() {
+  try {
+    console.log("Starting duplicate collection orders reconciliation...");
+
+    const collectionOrders = await strapi.query("orders").find({
+      is_collection_order: true,
+      status_ne: "cancelled",
+      _limit: -1,
+    });
+
+    const grouped = {};
+    for (const co of collectionOrders) {
+      const ownerId = typeof co.owner === "object" ? co.owner?.id : co.owner;
+      const contactId =
+        typeof co.contact === "object" ? co.contact?.id : co.contact;
+      const routeId = getCollectionRouteId(co);
+      const groupingDate =
+        normalizeDate(co.collection_pickup_date || co.estimated_delivery_date) || "";
+
+      const key = `${ownerId}|${contactId}|${routeId}|${groupingDate}`;
+      if (!grouped[key]) {
+        grouped[key] = [];
+      }
+      grouped[key].push(co);
+    }
+
+    let duplicateGroups = 0;
+    let relinkedOrders = 0;
+    let cancelledDuplicates = 0;
+
+    for (const key of Object.keys(grouped)) {
+      const group = grouped[key];
+
+      if (!group || group.length <= 1) {
+        continue;
+      }
+
+      duplicateGroups++;
+
+      const sorted = [...group].sort((a, b) => a.id - b.id);
+      const canonical = sorted[0];
+      const duplicates = sorted.slice(1);
+
+      console.log(
+        `[COLLECTION RECONCILE] Duplicate group ${key}. Canonical: ${canonical.id}. Duplicates: ${duplicates.map((d) => d.id).join(",")}`,
+      );
+
+      for (const duplicate of duplicates) {
+        const linkedOrders = await strapi.query("orders").find({
+          collection_order: duplicate.id,
+          _limit: -1,
+        });
+
+        for (const linkedOrder of linkedOrders) {
+          if (linkedOrder.is_collection_order) {
+            continue;
+          }
+
+          await strapi.query("orders").update(
+            { id: linkedOrder.id },
+            {
+              collection_order: canonical.id,
+            },
+          );
+          relinkedOrders++;
+        }
+
+        await strapi.query("orders").update(
+          { id: duplicate.id },
+          {
+            status: "cancelled",
+            kilograms: 0,
+            units: 0,
+            price: 0,
+            comments: `${duplicate.comments ? `${duplicate.comments}\n` : ""}[AUTO-RECONCILE] Merged into #${canonical.id}`,
+            _internal: true,
+          },
+        );
+        cancelledDuplicates++;
+      }
+    }
+
+    console.log(
+      `[COLLECTION RECONCILE] Done. Duplicate groups: ${duplicateGroups}, relinked regular orders: ${relinkedOrders}, cancelled duplicates: ${cancelledDuplicates}`,
+    );
+  } catch (error) {
+    console.error("Error during duplicate collection orders reconciliation:", error);
+  }
+}
+
 module.exports = async () => {
   await importSeedData();
   // await migrateGrantableDataToYears();
   // await migrateContactInfo();
   // await calculateMotherProjects();
-  await recalculatePhaseWarnings();
+  // await recalculatePhaseWarnings();
   // await migrateEstimatedHoursToExecutionPhases();
-  await consolidateMigratedHoursPhases();
+  // await consolidateMigratedHoursPhases();
+  await runStartupScript(
+    "backfillCollectionGroupingFields",
+    backfillCollectionGroupingFields,
+    { runOnce: true },
+  );
+
+  await reconcileDateContaminatedCollectionOrders();
+  await reconcileDuplicateCollectionOrders();
+  await cleanupEmptyCollectionOrders();
 };

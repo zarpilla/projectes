@@ -1,0 +1,52 @@
+{
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/startup-scripts",
+      "handler": "startup-scripts.find",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/startup-scripts/count",
+      "handler": "startup-scripts.count",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/startup-scripts/:id",
+      "handler": "startup-scripts.findOne",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/startup-scripts",
+      "handler": "startup-scripts.create",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "PUT",
+      "path": "/startup-scripts/:id",
+      "handler": "startup-scripts.update",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "DELETE",
+      "path": "/startup-scripts/:id",
+      "handler": "startup-scripts.delete",
+      "config": {
+        "policies": []
+      }
+    }
+  ]
+}

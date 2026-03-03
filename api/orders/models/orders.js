@@ -22,6 +22,11 @@ const extractId = (value) => {
   // Otherwise, it's not a valid ID
   return null;
 };
+const normalizeOrderDate = (value) => {
+  if (!value) return null;
+  const textValue = String(value);
+  return textValue.includes("T") ? textValue.split("T")[0] : textValue;
+};
 
 // --- VOLUME DISCOUNT LOGIC ---
 const checkVolumeDiscount = async (
@@ -451,23 +456,75 @@ const processCollectionOrder = async (orderId, orderData) => {
   // Determine route and date for collection order
   let route = null;
   let estimatedDeliveryDate = null;
+  let collectionPickupDate = null;
 
   if (orderData.collection_pickup_route) {
     // Use the route specified by the frontend
     const routeId = extractId(orderData.collection_pickup_route);
     route = await strapi.query("route").findOne({ id: routeId });
-    
-    // Use date from frontend if provided, otherwise calculate
+
+    // Use date from frontend if provided
     if (orderData.collection_pickup_date) {
-      estimatedDeliveryDate = moment(orderData.collection_pickup_date).format("YYYY-MM-DD");
+      collectionPickupDate = moment(orderData.collection_pickup_date).format("YYYY-MM-DD");
+      estimatedDeliveryDate = collectionPickupDate;
     } else {
-      estimatedDeliveryDate = calculateEstimatedDeliveryDate(route);
+      // Fallback priority when collection_pickup_date is missing:
+      // 1) main order collection pickup date (if present)
+      // 2) main order estimated delivery date
+      // 2) existing linked collection order date
+      // 3) route next-day calculation (last resort)
+      if (orderData.collection_pickup_date) {
+        collectionPickupDate = moment(orderData.collection_pickup_date).format("YYYY-MM-DD");
+      }
+
+      if (orderData.estimated_delivery_date) {
+        estimatedDeliveryDate = moment(orderData.estimated_delivery_date).format("YYYY-MM-DD");
+      }
+
+      if (!estimatedDeliveryDate) {
+        const existingCollectionOrderId = extractId(orderData.collection_order);
+
+        if (existingCollectionOrderId) {
+          const existingCollectionOrder = await strapi.query("orders").findOne({
+            id: existingCollectionOrderId,
+          });
+
+          if (existingCollectionOrder && existingCollectionOrder.collection_pickup_date) {
+            collectionPickupDate = moment(
+              existingCollectionOrder.collection_pickup_date,
+            ).format("YYYY-MM-DD");
+          }
+
+          if (existingCollectionOrder && existingCollectionOrder.estimated_delivery_date) {
+            estimatedDeliveryDate = moment(
+              existingCollectionOrder.estimated_delivery_date,
+            ).format("YYYY-MM-DD");
+          }
+        }
+      }
+
+      if (!estimatedDeliveryDate) {
+        estimatedDeliveryDate = calculateEstimatedDeliveryDate(route);        
+      }
+
+      if (!collectionPickupDate) {
+        collectionPickupDate = estimatedDeliveryDate;
+      }
     }
   } else {
     // Fallback to automatic calculation
     route = await calculateRouteForCollectionPoint(collectionPointContact);
     if (route) {
-      estimatedDeliveryDate = calculateEstimatedDeliveryDate(route);
+      if (orderData.collection_pickup_date) {
+        collectionPickupDate = moment(orderData.collection_pickup_date).format("YYYY-MM-DD");
+        estimatedDeliveryDate = collectionPickupDate;
+      } else if (orderData.estimated_delivery_date) {
+        estimatedDeliveryDate = moment(orderData.estimated_delivery_date).format("YYYY-MM-DD");
+        collectionPickupDate = estimatedDeliveryDate;
+      } else {
+        estimatedDeliveryDate = calculateEstimatedDeliveryDate(route);
+        collectionPickupDate = estimatedDeliveryDate;
+      }
     }
   }
 
@@ -476,19 +533,79 @@ const processCollectionOrder = async (orderId, orderData) => {
     return;
   }
 
+  if (!estimatedDeliveryDate) {
+    return;
+  }
+
+  if (!collectionPickupDate) {
+    collectionPickupDate = estimatedDeliveryDate;
+  }
+
+  const groupingRouteId = extractId(orderData.collection_pickup_route) || route.id;
+
   // Find existing collection order for this owner, collection point, route, and date
-  // Only reuse if the date is in the future and matches the desired route and date
-  const today = moment().format("YYYY-MM-DD");
-  const existingCollectionOrders = await strapi.query("orders").find({
+  // Deterministic search (oldest first) to avoid non-deterministic reuse
+  const groupingCriteria = {
+    owner: ownerId,
+    contact: collectionPointId,
+    collection_pickup_route: groupingRouteId,
+    route: route.id,
+    collection_pickup_date: collectionPickupDate,
+    estimated_delivery_date: estimatedDeliveryDate,
+  };
+
+  const existingCollectionOrdersRaw = await strapi.query("orders").find({
     is_collection_order: true,
     owner: ownerId,
     contact: collectionPointId,
     route: route.id,
-    estimated_delivery_date: estimatedDeliveryDate,
-    estimated_delivery_date_gte: today,
     status_in: ["pending", "deposited"],
-    _limit: 1
+    _sort: "id:ASC",
+    _limit: -1,
   });
+
+  const existingCollectionOrdersByDate = (existingCollectionOrdersRaw || []).filter(
+    (co) => {
+      const candidatePickupDate = normalizeOrderDate(
+        co.collection_pickup_date || co.estimated_delivery_date,
+      );
+      const candidateRouteId =
+        extractId(co.collection_pickup_route) || extractId(co.route);
+      return (
+        candidatePickupDate === collectionPickupDate &&
+        candidateRouteId === groupingRouteId
+      );
+    },
+  );
+
+  const existingCollectionOrders = [];
+  const contaminatedCollectionOrders = [];
+
+  for (const co of existingCollectionOrdersByDate) {
+    const linkedOrders = await strapi.query("orders").find({
+      collection_order: co.id,
+      status_ne: "cancelled",
+      _limit: -1,
+    });
+
+    const hasMixedLinkedDates = (linkedOrders || []).some(
+      (linkedOrder) => {
+        const linkedPickupDate = normalizeOrderDate(
+          linkedOrder.collection_pickup_date || linkedOrder.estimated_delivery_date,
+        );
+        return linkedPickupDate !== collectionPickupDate;
+      },
+    );
+
+    if (hasMixedLinkedDates) {
+      contaminatedCollectionOrders.push({
+        id: co.id,
+        linkedOrderIds: (linkedOrders || []).map((o) => o.id),
+      });
+    } else {
+      existingCollectionOrders.push(co);
+    }
+  }
 
   let collectionOrder = existingCollectionOrders && existingCollectionOrders.length > 0 ? existingCollectionOrders[0] : null;
 
@@ -503,6 +620,8 @@ const processCollectionOrder = async (orderId, orderData) => {
     // Update existing collection order
     const updateData = {
       route: route.id,
+      collection_pickup_route: groupingRouteId,
+      collection_pickup_date: collectionPickupDate,
       estimated_delivery_date: estimatedDeliveryDate,
       transfer: transferInfo.transfer,
       contact_pickup_discount: collectionPointContact.pickup_discount || 0,
@@ -527,10 +646,19 @@ const processCollectionOrder = async (orderId, orderData) => {
     }
 
     await strapi.query("orders").update({ id: collectionOrder.id }, updateData);
+
+    // Ensure original order points to the reused collection order
+    if (orderId && extractId(orderData.collection_order) !== collectionOrder.id) {
+      await strapi.query("orders").update(
+        { id: orderId },
+        { collection_order: collectionOrder.id, _internal: true }
+      );
+    }
     
     // After updating, recalculate aggregated data
     await updateCollectionOrderAggregates(collectionOrder.id);
   } else {
+
     // Create new collection order
     const createData = {
       is_collection_order: true,
@@ -551,6 +679,8 @@ const processCollectionOrder = async (orderId, orderData) => {
       contact_time_slot_2_end: collectionPointContact.time_slot_2_end,
       contact_pickup_discount: collectionPointContact.pickup_discount || 0,
       route: route.id,
+      collection_pickup_route: groupingRouteId,
+      collection_pickup_date: collectionPickupDate,
       estimated_delivery_date: estimatedDeliveryDate,
       pickup: pickupId,
       collection_point: originalCollectionPoint, // Inherit collection_point from creating order
