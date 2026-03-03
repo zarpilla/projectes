@@ -1,6 +1,4 @@
 'use strict';
-const path = require("path");
-const validator = require("xsd-schema-validator");
 
 const FACE_FAKE_SEND_ENABLED =
 	process.env.FACE_FAKE_SEND_ENABLED === undefined
@@ -9,8 +7,6 @@ const FACE_FAKE_SEND_ENABLED =
 const FACE_FAKE_RESULT = process.env.FACE_FAKE_RESULT || "ok";
 const FACE_FAKE_SOAP_URL =
 	process.env.FACE_FAKE_SOAP_URL || "https://face.invalid/soap";
-const FACE_XSD_TIMEOUT_MS = Number(process.env.FACE_XSD_TIMEOUT_MS || 0);
-const FACE_XSD_VALIDATION_ENABLED = process.env.FACE_XSD_VALIDATION_ENABLED === "true";
 
 /**
  * Read the documentation (https://strapi.io/documentation/developer-docs/latest/development/backend-customization.html#core-services)
@@ -245,55 +241,6 @@ const buildUblInvoiceXml = ({ invoice, me, contact, dir3 }) => {
 	return xmlParts.filter(Boolean).join("\n");
 };
 
-const validateXmlAgainstXsd = async (xml) => {
-	const xsdPath = path.join(
-		__dirname,
-		"..",
-		"schemas",
-		"ubl-invoice-basic-2.1.xsd"
-	);
-
-	return new Promise((resolve, reject) => {
-		let settled = false;
-		const timeout =
-			FACE_XSD_TIMEOUT_MS > 0
-				? setTimeout(() => {
-						if (!settled) {
-							settled = true;
-							reject(
-								new Error(
-									`XSD validation timeout after ${FACE_XSD_TIMEOUT_MS}ms`
-								)
-							);
-						}
-				  }, FACE_XSD_TIMEOUT_MS)
-				: null;
-
-		validator.validateXML(xml, xsdPath, (err, result) => {
-			if (settled) {
-				return;
-			}
-			settled = true;
-			if (timeout) {
-				clearTimeout(timeout);
-			}
-
-			if (err) {
-				reject(err);
-				return;
-			}
-
-			if (!result || result.valid !== true) {
-				const messages = result && result.messages ? result.messages : "Unknown XSD validation error";
-				reject(new Error(Array.isArray(messages) ? messages.join(" | ") : messages));
-				return;
-			}
-
-			resolve(true);
-		});
-	});
-};
-
 const fakeSendToFace = async ({ queueId, invoiceId, mode, xml }) => {
 	const result = ["ok", "warning", "error"].includes(FACE_FAKE_RESULT)
 		? FACE_FAKE_RESULT
@@ -463,33 +410,7 @@ const startFaceProcess = async (faceQueueInput) => {
 		return;
 	}
 
-	if (FACE_XSD_VALIDATION_ENABLED) {
-		try {
-			strapi.log.info(`[face-queue] validating xml queue=${faceQueue.id}`);
-			await validateXmlAgainstXsd(xml);
-			strapi.log.info(`[face-queue] xml validation ok queue=${faceQueue.id}`);
-		} catch (error) {
-			strapi.log.error(
-				`[face-queue] xml validation error queue=${faceQueue.id}: ${
-					error && error.message ? error.message : error
-				}`
-			);
-			await strapi.query("face-queue").update(
-				{ id: faceQueue.id },
-				{
-					_internal: true,
-					invoice: invoiceSnapshot,
-					status: "error",
-					response_body: `XSD validation error: ${
-						error && error.message ? error.message : String(error)
-					}`,
-				}
-			);
-			return;
-		}
-	} else {
-		strapi.log.info(`[face-queue] xml validation skipped queue=${faceQueue.id}`);
-	}
+	strapi.log.info(`[face-queue] xml validation skipped queue=${faceQueue.id}`);
 
 	await strapi.query("face-queue").update(
 		{ id: faceQueue.id },
