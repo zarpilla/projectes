@@ -2370,6 +2370,72 @@ async function reconcileDuplicateCollectionOrders() {
   }
 }
 
+async function reconcileDeliveredCollectionOrders() {
+  try {
+    console.log("Starting delivered status reconciliation for collection orders...");
+
+    const collectionOrders = await strapi.query("orders").find({
+      is_collection_order: true,
+      status_ne: "cancelled",
+      _limit: -1,
+    });
+
+    let reviewed = 0;
+    let updated = 0;
+
+    for (const collectionOrder of collectionOrders) {
+      reviewed++;
+
+      if (
+        collectionOrder.status === "cancelled" ||
+        collectionOrder.status === "invoiced" ||
+        collectionOrder.status === "delivered"
+      ) {
+        continue;
+      }
+
+      const linkedOrders = await strapi.query("orders").find({
+        collection_order: collectionOrder.id,
+        status_ne: "cancelled",
+        _limit: -1,
+      });
+
+      const regularLinkedOrders = (linkedOrders || []).filter(
+        (order) => !order.is_collection_order,
+      );
+
+      if (regularLinkedOrders.length === 0) {
+        continue;
+      }
+
+      const allDeliveredOrInvoiced = regularLinkedOrders.every((order) =>
+        ["delivered", "invoiced"].includes(order.status),
+      );
+
+      if (allDeliveredOrInvoiced && collectionOrder.status !== "delivered") {
+        await strapi.query("orders").update(
+          { id: collectionOrder.id },
+          { status: "delivered", _internal: true },
+        );
+
+        updated++;
+        console.log(
+          `[COLLECTION DELIVERED RECONCILE] Updated collection order #${collectionOrder.id} to delivered`,
+        );
+      }
+    }
+
+    console.log(
+      `[COLLECTION DELIVERED RECONCILE] Done. Reviewed: ${reviewed}, updated: ${updated}`,
+    );
+  } catch (error) {
+    console.error(
+      "Error during delivered collection orders reconciliation:",
+      error,
+    );
+  }
+}
+
 module.exports = async () => {
   await importSeedData();
   // await migrateGrantableDataToYears();
@@ -2386,5 +2452,6 @@ module.exports = async () => {
 
   await reconcileDateContaminatedCollectionOrders();
   await reconcileDuplicateCollectionOrders();
+  await reconcileDeliveredCollectionOrders();
   await cleanupEmptyCollectionOrders();
 };
