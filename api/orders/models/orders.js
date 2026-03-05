@@ -286,6 +286,34 @@ const normalizeContactLegalForm = (data) => {
   }
 };
 
+/**
+ * Enforce collection-order specific field rules
+ */
+const enforceCollectionOrderFields = async (data, previousOrder = null) => {
+  const isCollectionOrder =
+    data.is_collection_order === true ||
+    (previousOrder && previousOrder.is_collection_order === true);
+
+  if (!isCollectionOrder) {
+    return;
+  }
+
+  data.collection_point = null;
+  data.collection_pickup_route = null;
+
+  const routeId = extractId(data.route) || extractId(previousOrder && previousOrder.route);
+  if (!routeId) {
+    return;
+  }
+
+  const route = await strapi.query("route").findOne({ id: routeId });
+  const transferPickupId = route ? extractId(route.transfer_pickup) : null;
+
+  if (transferPickupId) {
+    data.pickup = transferPickupId;
+  }
+};
+
 // --- COLLECTION ORDER LOGIC ---
 
 /**
@@ -541,7 +569,7 @@ const processCollectionOrder = async (orderId, orderData) => {
     collectionPickupDate = estimatedDeliveryDate;
   }
 
-  const groupingRouteId = extractId(orderData.collection_pickup_route) || route.id;
+  const groupingRouteId = route.id;
 
   // Find existing collection order for this owner, collection point, route, and date
   // Deterministic search (oldest first) to avoid non-deterministic reuse
@@ -609,24 +637,43 @@ const processCollectionOrder = async (orderId, orderData) => {
 
   let collectionOrder = existingCollectionOrders && existingCollectionOrders.length > 0 ? existingCollectionOrders[0] : null;
 
-  // Get pickup from original order (inherit collection_point for the collection order)
-  const pickupId = extractId(orderData.pickup);
-  const originalCollectionPoint = extractId(orderData.collection_point);
+  // Collection-order pickup should be the route transfer warehouse when available
+  const originalPickupId = extractId(orderData.pickup);
+  const routeTransferPickupId = extractId(route.transfer_pickup);
+  const collectionOrderPickupId = routeTransferPickupId || originalPickupId;
 
   // Check if transfer is needed
-  const transferInfo = await checkTransferNeededForCollectionOrder(pickupId, route.id);
+  const transferInfo = await checkTransferNeededForCollectionOrder(
+    collectionOrderPickupId,
+    route.id,
+  );
 
   if (collectionOrder) {
     // Update existing collection order
     const updateData = {
-      route: route.id,
-      collection_pickup_route: groupingRouteId,
-      collection_pickup_date: collectionPickupDate,
-      estimated_delivery_date: estimatedDeliveryDate,
       transfer: transferInfo.transfer,
       contact_pickup_discount: collectionPointContact.pickup_discount || 0,
       _internal: true // Prevent recursive processing
     };
+
+    updateData.collection_point = null;
+    updateData.collection_pickup_route = null;
+
+    if (collectionOrderPickupId) {
+      updateData.pickup = collectionOrderPickupId;
+    }
+
+    // Preserve auto-generated route/date values for existing collection orders.
+    // Only backfill if any of these fields are missing.
+    if (!extractId(collectionOrder.route)) {
+      updateData.route = route.id;
+    }
+    if (!normalizeOrderDate(collectionOrder.collection_pickup_date)) {
+      updateData.collection_pickup_date = collectionPickupDate;
+    }
+    if (!normalizeOrderDate(collectionOrder.estimated_delivery_date)) {
+      updateData.estimated_delivery_date = estimatedDeliveryDate;
+    }
 
     if (transferInfo.transfer) {
       updateData.transfer_pickup_origin = transferInfo.transfer_pickup_origin;
@@ -679,11 +726,11 @@ const processCollectionOrder = async (orderId, orderData) => {
       contact_time_slot_2_end: collectionPointContact.time_slot_2_end,
       contact_pickup_discount: collectionPointContact.pickup_discount || 0,
       route: route.id,
-      collection_pickup_route: groupingRouteId,
+      collection_pickup_route: null,
       collection_pickup_date: collectionPickupDate,
       estimated_delivery_date: estimatedDeliveryDate,
-      pickup: pickupId,
-      collection_point: originalCollectionPoint, // Inherit collection_point from creating order
+      pickup: collectionOrderPickupId,
+      collection_point: null,
       status: "pending",
       transfer: transferInfo.transfer,
       units: 0,
@@ -1294,6 +1341,8 @@ module.exports = {
         data.route_date = new Date();
       }
 
+      await enforceCollectionOrderFields(data);
+
       // Normalize contact_legal_form to prevent empty objects
       normalizeContactLegalForm(data);
 
@@ -1318,6 +1367,8 @@ module.exports = {
 
       // Store previous order data for afterUpdate
       data._previousOrderData = previousOrder;
+
+      await enforceCollectionOrderFields(data, previousOrder);
 
       if (data.status === "delivered" && !data.delivery_date) {
         data.delivery_date = data.estimated_delivery_date
