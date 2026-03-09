@@ -825,7 +825,11 @@ const updateCollectionOrderAggregates = async (collectionOrderId) => {
     id: collectionOrderId 
   });
 
-  if (!collectionOrder || !collectionOrder.is_collection_order) {
+  if (!collectionOrder) {
+    return;
+  }
+
+  if (!collectionOrder.is_collection_order) {
     return;
   }
 
@@ -847,7 +851,24 @@ const updateCollectionOrderAggregates = async (collectionOrderId) => {
     _limit: -1
   });
 
+  // If no related orders and status is pending, deposited, or processed, reset aggregates to 0
   if (!relatedOrders || relatedOrders.length === 0) {
+    if (collectionOrder.status === "pending" || 
+        collectionOrder.status === "deposited" || 
+        collectionOrder.status === "processed") {
+      await strapi.query("orders").update(
+        { id: collectionOrderId },
+        {
+          units: 0,
+          kilograms: 0,
+          price: 0,
+          refrigerated: false,
+          status: "cancelled",
+          contact_pickup_discount: updatedPickupDiscount,
+          _internal: true
+        }
+      );      
+    }
     return;
   }
 
@@ -1473,6 +1494,11 @@ module.exports = {
         .findOne({ id: params.id });
 
       if (currentOrder) {
+        // If this is a collection order itself being updated, recalculate its aggregates
+        if (currentOrder.is_collection_order) {
+          await updateCollectionOrderAggregates(params.id);
+        }
+        
         // Process collection order if needed (collection_point was added or changed)
         await processCollectionOrder(params.id, currentOrder);
         
