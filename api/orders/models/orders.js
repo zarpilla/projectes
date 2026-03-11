@@ -460,15 +460,49 @@ const checkTransferNeededForCollectionOrder = async (pickupId, routeId) => {
 
 /**
  * Process collection order: find or create a collection order for the collection point
+ * NOTE: This function should NEVER be called for orders where is_collection_order=true
+ * Collection orders themselves should never create or link to other collection orders
  */
-const processCollectionOrder = async (orderId, orderData) => {
+const processCollectionOrder = async (orderId, orderData, previousOrderData = null) => {
   // Skip if no collection_point or if this is already a collection order
+  // IMPORTANT: Collection orders (is_collection_order=true) must never process themselves
+  // to prevent infinite loops or duplicate collection orders
   if (!orderData.collection_point || orderData.is_collection_order) {
     return;
   }
 
   const collectionPointId = extractId(orderData.collection_point);
   const ownerId = extractId(orderData.owner);
+  
+  // If the order already has a collection_order, check if we should keep it
+  if (previousOrderData && previousOrderData.collection_order) {
+    const existingCollectionOrderId = extractId(previousOrderData.collection_order);
+    
+    // Get the existing collection order
+    const existingCollectionOrder = await strapi.query("orders").findOne({
+      id: existingCollectionOrderId
+    });
+    
+    // Only reprocess if:
+    // 1. The collection order was cancelled
+    // 2. Key fields have changed (collection_point, collection_pickup_route, collection_pickup_date)
+    const collectionPointChanged = extractId(previousOrderData.collection_point) !== collectionPointId;
+    const routeChanged = extractId(previousOrderData.collection_pickup_route) !== extractId(orderData.collection_pickup_route);
+    const dateChanged = normalizeOrderDate(previousOrderData.collection_pickup_date) !== normalizeOrderDate(orderData.collection_pickup_date);
+    
+    if (existingCollectionOrder) {
+      // If the collection order is cancelled, we need to create/find a new one
+      if (existingCollectionOrder.status === "cancelled") {
+        // Continue with processing to find/create a new collection order
+      } 
+      // If key fields haven't changed and collection order is not cancelled, keep the existing one
+      else if (!collectionPointChanged && !routeChanged && !dateChanged) {
+        // Nothing to do - keep existing collection order
+        return;
+      }
+      // If key fields changed, continue with processing to find/create appropriate collection order
+    }
+  }
 
   if (!collectionPointId || !ownerId) {
     return;
@@ -582,12 +616,15 @@ const processCollectionOrder = async (orderId, orderData) => {
     estimated_delivery_date: estimatedDeliveryDate,
   };
 
+  // Search for existing collection orders with any status EXCEPT cancelled and invoiced
+  // Collection orders in delivered/lastmile/processed/pending status should all be reusable
+  // Only cancelled and invoiced orders are truly "closed" and shouldn't be reused
   const existingCollectionOrdersRaw = await strapi.query("orders").find({
     is_collection_order: true,
     owner: ownerId,
     contact: collectionPointId,
     route: route.id,
-    status_in: ["pending"],
+    status_nin: ["cancelled", "invoiced"],
     _sort: "id:ASC",
     _limit: -1,
   });
@@ -612,7 +649,7 @@ const processCollectionOrder = async (orderId, orderData) => {
   for (const co of existingCollectionOrdersByDate) {
     const linkedOrders = await strapi.query("orders").find({
       collection_order: co.id,
-      status_ne: "cancelled",
+      status_nin: ["cancelled", "invoiced"],
       _limit: -1,
     });
 
@@ -787,10 +824,10 @@ const checkAndUpdateCollectionOrderStatus = async (collectionOrderId) => {
     return;
   }
 
-  // Get all related orders
+  // Get all related orders (exclude cancelled and invoiced orders)
   const relatedOrders = await strapi.query("orders").find({
     collection_order: collectionOrderId,
-    status_ne: "cancelled",
+    status_nin: ["cancelled", "invoiced"],
     _limit: -1
   });
 
@@ -817,6 +854,12 @@ const updateCollectionOrderAggregates = async (collectionOrderId) => {
     return;
   }
 
+  // If the collection order is already cancelled or invoiced, skip aggregate updates
+  // (it's already in its final state and shouldn't be modified further)
+  if (collectionOrder.status === "cancelled" || collectionOrder.status === "invoiced") {
+    return;
+  }
+
   // Get the collection point contact to refresh discount
   const collectionPointId = extractId(collectionOrder.contact);
   let updatedPickupDiscount = 0;
@@ -828,10 +871,10 @@ const updateCollectionOrderAggregates = async (collectionOrderId) => {
     }
   }
 
-  // Get all related orders
+  // Get all related orders (exclude cancelled and invoiced orders from aggregation)
   const relatedOrders = await strapi.query("orders").find({
     collection_order: collectionOrderId,
-    status_ne: "cancelled",
+    status_nin: ["cancelled", "invoiced"],
     _limit: -1
   });
 
@@ -1424,7 +1467,7 @@ module.exports = {
       }
 
       // Process collection order if needed
-      await processCollectionOrder(result.id, result);
+      await processCollectionOrder(result.id, result, null);
 
       // If this order was added to a collection order, check if it should be auto-deposited
       const updatedOrder = await strapi.query("orders").findOne({ id: result.id });
@@ -1478,12 +1521,14 @@ module.exports = {
 
       if (currentOrder) {
         // If this is a collection order itself being updated, recalculate its aggregates
+        // but don't process it as a regular order (it should never create another collection order)
         if (currentOrder.is_collection_order) {
           await updateCollectionOrderAggregates(params.id);
+        } else {
+          // Process collection order if needed (collection_point was added or changed)
+          // This is only for regular orders that have a collection_point, not for collection orders themselves
+          await processCollectionOrder(params.id, currentOrder, previousOrder);
         }
-        
-        // Process collection order if needed (collection_point was added or changed)
-        await processCollectionOrder(params.id, currentOrder);
         
         // If this order has a collection_order, update its aggregates
         if (currentOrder.collection_order) {

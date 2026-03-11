@@ -290,7 +290,7 @@ module.exports = {
       for await (const o of contactOrders) {
         await strapi
           .query("orders")
-          .update({ id: o.id }, { invoice: invoice.id, status: "invoiced" });
+          .update({ id: o.id }, { invoice: invoice.id, status: "invoiced", _internal: true });
       }
       for await (const p of uniqueProjects) {
         const project = await strapi
@@ -358,6 +358,7 @@ module.exports = {
           {
             emitted_invoice: invoice.id,
             emitted_invoice_datetime: new Date(),
+            _internal: true,
           },
         );
       }
