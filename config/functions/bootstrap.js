@@ -186,6 +186,7 @@ async function importSeedData() {
     "pivot-table-view": ["find", "findone", "create", "update", "delete"],
     "bank-accounts": ["find", "findone"],
     incidences: ["create", "find", "findone", "update", "count", "delete", "infoall"],
+    "vat-type": ["find"],
   });
 
   await setPermissions("authenticated", "upload", {
@@ -1849,6 +1850,118 @@ async function cleanupEmptyCollectionOrders() {
   }
 }
 
+async function populateVatTypes() {
+  try {
+    console.log("Starting VAT types population...");
+
+    const vatValues = [0, 4, 10, 21];
+    let createdCount = 0;
+    let existingCount = 0;
+
+    for (const value of vatValues) {
+      // Check if VAT type already exists
+      const existingVatType = await strapi.query("vat-type").findOne({ value });
+
+      if (!existingVatType) {
+        await strapi.query("vat-type").create({ value });
+        createdCount++;
+        console.log(`[VAT TYPES] Created VAT type with value: ${value}`);
+      } else {
+        existingCount++;
+      }
+    }
+
+    console.log(
+      `[VAT TYPES] Done. Created: ${createdCount}, Already existed: ${existingCount}`
+    );
+  } catch (error) {
+    console.error("Error during VAT types population:", error);
+  }
+}
+
+async function backfillPhaseVatPercentages() {
+  try {
+    console.log("Starting VAT percentage backfill for phase incomes and expenses...");
+
+    let updatedIncomes = 0;
+    let updatedExpenses = 0;
+
+    // Process phase incomes
+    const phaseIncomes = await strapi.query("phase-income").find({ _limit: -1 });
+    console.log(`[VAT BACKFILL] Found ${phaseIncomes.length} phase incomes to process`);
+
+    for (const phaseIncome of phaseIncomes) {
+      // Skip if vat_pct is already set
+      if (phaseIncome.vat_pct !== null && phaseIncome.vat_pct !== undefined) {
+        continue;
+      }
+
+      let vatPct = 21; // Default value
+
+      // Get the income type
+      if (phaseIncome.income_type) {
+        const incomeTypeId = typeof phaseIncome.income_type === 'object' 
+          ? phaseIncome.income_type.id 
+          : phaseIncome.income_type;
+        
+        const incomeType = await strapi.query("income-type").findOne({ id: incomeTypeId });
+        
+        if (incomeType && incomeType.vat_pct !== null && incomeType.vat_pct !== undefined) {
+          vatPct = incomeType.vat_pct;
+        }
+      }
+
+      // Update the phase income
+      await strapi.query("phase-income").update(
+        { id: phaseIncome.id },
+        { vat_pct: vatPct }
+      );
+
+      updatedIncomes++;
+    }
+
+    // Process phase expenses
+    const phaseExpenses = await strapi.query("phase-expense").find({ _limit: -1 });
+    console.log(`[VAT BACKFILL] Found ${phaseExpenses.length} phase expenses to process`);
+
+    for (const phaseExpense of phaseExpenses) {
+      // Skip if vat_pct is already set
+      if (phaseExpense.vat_pct !== null && phaseExpense.vat_pct !== undefined) {
+        continue;
+      }
+
+      let vatPct = 21; // Default value
+
+      // Get the expense type
+      if (phaseExpense.expense_type) {
+        const expenseTypeId = typeof phaseExpense.expense_type === 'object' 
+          ? phaseExpense.expense_type.id 
+          : phaseExpense.expense_type;
+        
+        const expenseType = await strapi.query("expense-type").findOne({ id: expenseTypeId });
+        
+        if (expenseType && expenseType.vat_pct !== null && expenseType.vat_pct !== undefined) {
+          vatPct = expenseType.vat_pct;
+        }
+      }
+
+      // Update the phase expense
+      await strapi.query("phase-expense").update(
+        { id: phaseExpense.id },
+        { vat_pct: vatPct }
+      );
+
+      updatedExpenses++;
+    }
+
+    console.log(
+      `[VAT BACKFILL] Done. Updated incomes: ${updatedIncomes}, Updated expenses: ${updatedExpenses}`
+    );
+  } catch (error) {
+    console.error("Error during VAT percentage backfill:", error);
+  }
+}
+
 async function backfillCollectionGroupingFields() {
   try {
     console.log("Starting backfill for missing collection grouping fields...");
@@ -2449,6 +2562,16 @@ module.exports = async () => {
   //   backfillCollectionGroupingFields,
   //   { runOnce: true },
   // );
+  await runStartupScript(
+    "populateVatTypes",
+    populateVatTypes,
+    { runOnce: true },
+  );
+  await runStartupScript(
+    "backfillPhaseVatPercentages",
+    backfillPhaseVatPercentages,
+    { runOnce: true },
+  );
 
   // await reconcileDateContaminatedCollectionOrders();
   // await reconcileDuplicateCollectionOrders();

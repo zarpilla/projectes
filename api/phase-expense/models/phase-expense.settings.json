@@ -57,6 +57,9 @@
     },
     "warning": {
       "type": "boolean"
+    },
+    "vat_pct": {
+      "type": "integer"
     }
   }
 }

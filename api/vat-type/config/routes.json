@@ -1,0 +1,52 @@
+{
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/vat-types",
+      "handler": "vat-type.find",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/vat-types/count",
+      "handler": "vat-type.count",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/vat-types/:id",
+      "handler": "vat-type.findOne",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/vat-types",
+      "handler": "vat-type.create",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "PUT",
+      "path": "/vat-types/:id",
+      "handler": "vat-type.update",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "DELETE",
+      "path": "/vat-types/:id",
+      "handler": "vat-type.delete",
+      "config": {
+        "policies": []
+      }
+    }
+  ]
+}

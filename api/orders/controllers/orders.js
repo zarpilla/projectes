@@ -339,6 +339,7 @@ module.exports = {
           paid: true,
           date_estimate_document: new Date(),
           dirty: true,
+          vat_pct: 21,
         });
 
         await strapi.query("project").update(

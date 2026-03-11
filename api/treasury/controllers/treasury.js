@@ -35,8 +35,6 @@ module.exports = {
     const projectExpenses = [];
     const projectIncomes = [];
 
-    console.time("forecast")
-
     const treasuries = 
     await strapi.query("treasury").find({ _limit: -1 }, ["bank_account", "project"])
     
@@ -96,10 +94,6 @@ module.exports = {
 
     const me = await strapi.query("me").findOne({}, ["bank_account_payroll", "bank_account_ss", "bank_account_irpf", "bank_account_default", "bank_account_vat"]);
 
-    console.timeEnd("forecast")
-
-    console.time("process")
-
     // vat
     const vat = { paid: 0, received: 0, deductible_vat_pct: 0, deductible_vat_pct_sum: 0, deductible_vat_pct_n: 0, deductible_vat: 0, documents: [] };
     const vat_expected = { paid: 0, received: 0 };
@@ -107,25 +101,23 @@ module.exports = {
 
     // Process filtered projects to find unpaid incomes and expenses
     for (let p of projects) {
-      const hasUnpaidItems = p.project_phases?.some(ph => 
-        (ph.incomes?.some(i => !i.paid) || ph.expenses?.some(e => !e.paid))
-      );
-      if (hasUnpaidItems) {
-        console.log('Project with unpaid items:', p.name, 'Phases:', p.project_phases?.length);
-      }
       for (let ph of p.project_phases) {
-        if (ph.incomes?.some(i => !i.paid) || ph.expenses?.some(e => !e.paid)) {
-          console.log('  Phase:', ph.name, 'Incomes:', ph.incomes?.length, 'Expenses:', ph.expenses?.length);
-        }
         for (let e of ph.expenses || []) {          
           if (!e.paid) {
+            // Calculate total with VAT if vat_pct is available
+            let totalWithVat = e.total_amount ? e.total_amount : 0;
+            if (e.vat_pct && e.total_amount) {
+              const vatAmount = e.total_amount * e.vat_pct / 100;
+              totalWithVat = e.total_amount + vatAmount;
+            }
+            
             const expense = {
               expenseId: e.id,
               project_name: p.name,
               project_id: p.id,
               type: "Despesa esperada",
               concept: e.concept,
-              total_amount: e.total_amount ? -1 * e.total_amount : 0,
+              total_amount: -1 * totalWithVat,
               date: moment(e.date, "YYYY-MM-DD") || moment(),
               date_error: e.date === null,
               paid: false,
@@ -199,16 +191,21 @@ module.exports = {
           }
         }
         for (let i of ph.incomes || []) {
-          console.log('    Income:', i.id, 'Paid:', i.paid, 'Concept:', i.concept, 'Date:', i.date);
           if (!i.paid) {
-            console.log('      -> Adding to treasury as "Ingrés esperat"');
+            // Calculate total with VAT if vat_pct is available
+            let totalWithVat = i.total_amount ? i.total_amount : 0;
+            if (i.vat_pct && i.total_amount) {
+              const vatAmount = i.total_amount * i.vat_pct / 100;
+              totalWithVat = i.total_amount + vatAmount;
+            }
+            
             const income = {
               incomeId: i.id,
               project_name: p.name,
               project_id: p.id,
               type: "Ingrés esperat",
               concept: i.concept,
-              total_amount: i.total_amount ? i.total_amount : 0,
+              total_amount: totalWithVat,
               date: moment(i.date, "YYYY-MM-DD") || moment(),
               date_error: i.date === null,
               paid: false,
@@ -923,11 +920,6 @@ module.exports = {
       // If positive, balance carries forward to next quarter (no entry created)
     }
 
-    console.timeEnd("process")
-
-    console.time("sort")
-
-
     // sort and show
     const treasury2 = treasury.map((t) => {
       return { ...t, datef: t.date.format("YYYYMMDD") };
@@ -983,7 +975,6 @@ module.exports = {
       });
     }
 
-    // console.log("vat_expected", vat_expected);
     vat.deductible_vat_pct = vat.deductible_vat_pct_sum / vat.deductible_vat_pct_n * 100
     vat.deductible_vat_pct = parseFloat(vat.deductible_vat_pct.toFixed(2))
 
@@ -1005,8 +996,6 @@ module.exports = {
           .filter(ba => bankAccountIdArray.includes(ba.id.toString()))
           .map(ba => ba.name);
         
-        console.log('Selected bank account names:', selectedBankAccountNames);
-        
         if (selectedBankAccountNames.length > 0) {
           // Filter entries: include if bank_account matches OR if bank_account is null/undefined
           filteredTreasuryDataX = treasuryDataX.filter(t => 
@@ -1014,9 +1003,6 @@ module.exports = {
             !t.bank_account || 
             t.bank_account === null
           );
-          
-          console.log('Treasury entries after filter:', filteredTreasuryDataX.length);
-          console.log('Ingrés esperat after filter:', filteredTreasuryDataX.filter(t => t.type === 'Ingrés esperat').length);
           
           // Recalculate subtotals for the filtered account-specific data
           let accountSubtotal = 0;
@@ -1037,7 +1023,6 @@ module.exports = {
       }
     }
 
-    console.timeEnd("sort")
     return { treasury: filteredTreasuryDataX, projects, vat, vat_expected };
   },
 };
