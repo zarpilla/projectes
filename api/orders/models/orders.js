@@ -587,7 +587,7 @@ const processCollectionOrder = async (orderId, orderData) => {
     owner: ownerId,
     contact: collectionPointId,
     route: route.id,
-    status_in: ["pending", "deposited"],
+    status_in: ["pending"],
     _sort: "id:ASC",
     _limit: -1,
   });
@@ -783,7 +783,7 @@ const checkAndUpdateCollectionOrderStatus = async (collectionOrderId) => {
   }
 
   // Only process if collection order is pending or deposited
-  if (collectionOrder.status !== "pending" && collectionOrder.status !== "deposited") {
+  if (collectionOrder.status !== "pending") {
     return;
   }
 
@@ -798,22 +798,6 @@ const checkAndUpdateCollectionOrderStatus = async (collectionOrderId) => {
     return;
   }
 
-  // Check if all related orders are deposited
-  const allDeposited = relatedOrders.every(order => order.deposit_date !== null);
-
-  if (allDeposited && collectionOrder.status !== "deposited") {
-    // Update collection order status to deposited
-    await strapi.query("orders").update(
-      { id: collectionOrderId },
-      { status: "deposited", _internal: true }
-    );
-  } else if (!allDeposited && collectionOrder.status !== "pending") {
-    // If not all deposited, move back to pending (e.g., new order was added to a deposited collection)
-    await strapi.query("orders").update(
-      { id: collectionOrderId },
-      { status: "pending", _internal: true }
-    );
-  }
 };
 
 /**
@@ -854,7 +838,6 @@ const updateCollectionOrderAggregates = async (collectionOrderId) => {
   // If no related orders and status is pending, deposited, or processed, reset aggregates to 0
   if (!relatedOrders || relatedOrders.length === 0) {
     if (collectionOrder.status === "pending" || 
-        collectionOrder.status === "deposited" || 
         collectionOrder.status === "processed") {
       await strapi.query("orders").update(
         { id: collectionOrderId },
