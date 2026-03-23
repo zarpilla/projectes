@@ -2549,6 +2549,39 @@ async function reconcileDeliveredCollectionOrders() {
   }
 }
 
+async function markRecentProjectsAsDirty() {
+  try {
+    console.log("Starting to mark recently updated projects as dirty...");
+
+    // Calculate date 60 days ago
+    const sixtyDaysAgo = new Date();
+    sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
+    const isoDate = sixtyDaysAgo.toISOString();
+
+    console.log(`[MARK DIRTY] Querying projects updated after ${isoDate}`);
+
+    // Get all projects updated in the last 60 days
+    const recentProjects = await strapi.query("project").find({
+      updated_at_gte: isoDate,
+      published_at_null: false,
+      _limit: -1,
+    });
+
+    console.log(`[MARK DIRTY] Found ${recentProjects.length} projects updated in the last 60 days`);
+
+    let markedCount = 0;
+
+    for (const project of recentProjects) {
+      await projectController.setDirty(project.id);
+      markedCount++;
+    }
+
+    console.log(`[MARK DIRTY] Done. Marked ${markedCount} projects as dirty for recalculation`);
+  } catch (error) {
+    console.error("Error marking recent projects as dirty:", error);
+  }
+}
+
 module.exports = async () => {
   await importSeedData();
   // await migrateGrantableDataToYears();
@@ -2570,6 +2603,11 @@ module.exports = async () => {
   await runStartupScript(
     "backfillPhaseVatPercentages",
     backfillPhaseVatPercentages,
+    { runOnce: true },
+  );
+  await runStartupScript(
+    "markRecentProjectsAsDirty",
+    markRecentProjectsAsDirty,
     { runOnce: true },
   );
 
