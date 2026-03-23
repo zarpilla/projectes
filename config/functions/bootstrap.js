@@ -2582,6 +2582,37 @@ async function markRecentProjectsAsDirty() {
   }
 }
 
+async function copyCanAssignActivitiesToDocuments() {
+  try {
+    console.log("Starting to copy can_assign_activities to can_assign_documents...");
+
+    const projectStates = await strapi.query("project-state").find({ _limit: -1 });
+
+    console.log(`[PROJECT STATE] Found ${projectStates.length} project states to process`);
+
+    let updatedCount = 0;
+
+    for (const state of projectStates) {
+      // Copy can_assign_activities value to can_assign_documents
+      const canAssignActivities = state.can_assign_activities !== null && state.can_assign_activities !== undefined
+        ? state.can_assign_activities
+        : false;
+
+      await strapi.query("project-state").update(
+        { id: state.id },
+        { can_assign_documents: canAssignActivities }
+      );
+
+      updatedCount++;
+      console.log(`[PROJECT STATE] Updated state "${state.name}" (id: ${state.id}): can_assign_documents = ${canAssignActivities}`);
+    }
+
+    console.log(`[PROJECT STATE] Done. Updated ${updatedCount} project states`);
+  } catch (error) {
+    console.error("Error copying can_assign_activities to can_assign_documents:", error);
+  }
+}
+
 module.exports = async () => {
   await importSeedData();
   // await migrateGrantableDataToYears();
@@ -2608,6 +2639,11 @@ module.exports = async () => {
   await runStartupScript(
     "markRecentProjectsAsDirty",
     markRecentProjectsAsDirty,
+    { runOnce: true },
+  );
+  await runStartupScript(
+    "copyCanAssignActivitiesToDocuments",
+    copyCanAssignActivitiesToDocuments,
     { runOnce: true },
   );
 
