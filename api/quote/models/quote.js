@@ -19,13 +19,7 @@ module.exports = {
             data = await fillContactInfo(data);
             data = await calculateTotals(data)            
 
-        },
-        async afterCreate(result) {
-            // data = await calculateTotals(data)
-            // data = await setPDFPath(0, data)
-            await setPDFAfterCreation(result.id)
-
-        },
+        },        
         async beforeUpdate(params, data) {
             data = await fillContactInfo(data);
             data = await calculateTotals(data)
