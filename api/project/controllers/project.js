@@ -1220,15 +1220,18 @@ module.exports = {
   async findWithPhases(ctx) {
     // Calling the default core action
     let projects;
-    const { published_at_null, _limit, activities, ...where } = ctx.query;
+    const { published_at_null, _limit, activities, hoursType, ...where } = ctx.query;
 
     const project_state_in = where._where.project_state_in;
 
+    // Determine which phase type to use based on hoursType parameter
+    const phaseType = hoursType === 'previstes' ? 'project_phases' : 'project_original_phases';
+
     const withRelated = [
-      "project_original_phases",
-      "project_original_phases.incomes",
-      "project_original_phases.incomes.estimated_hours",
-      "project_original_phases.incomes.estimated_hours.users_permissions_user",
+      phaseType,
+      `${phaseType}.incomes`,
+      `${phaseType}.incomes.estimated_hours`,
+      `${phaseType}.incomes.estimated_hours.users_permissions_user`,
     ];
 
     if (activities) {
@@ -1238,7 +1241,7 @@ module.exports = {
     if (ctx.query._q) {
       projects = await strapi
         .query("project")
-        .model.fetchAll({ withRelated: ["project_original_phases"] });
+        .model.fetchAll({ withRelated: [phaseType] });
     } else {
       projects = await strapi
         .query("project")
