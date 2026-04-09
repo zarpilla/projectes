@@ -63,6 +63,13 @@
     },
     "transfer_pickup": {
       "model": "pickups"
+    },
+    "is_transfer_route": {
+      "type": "boolean"
+    },
+    "delivery_user": {
+      "plugin": "users-permissions",
+      "model": "user"
     }
   }
 }

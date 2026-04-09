@@ -204,6 +204,12 @@
     },
     "collection_pickup_date": {
       "type": "date"
+    },
+    "transfer_route": {
+      "model": "route"
+    },
+    "transfer_route_date": {
+      "type": "date"
     }
   }
 }
