@@ -459,6 +459,113 @@ const checkTransferNeededForCollectionOrder = async (pickupId, routeId) => {
 };
 
 /**
+ * Calculate transfer route and date for orders that need a transfer
+ * Finds an active transfer route that operates on or before the estimated delivery date
+ */
+const calculateTransferRoute = async (estimatedDeliveryDate) => {
+  if (!estimatedDeliveryDate) {
+    return { transfer_route: null, transfer_route_date: null };
+  }
+
+  // Get all active transfer routes
+  const transferRoutes = await strapi.query("route").find({
+    is_transfer_route: true,
+    active: true,
+    _limit: -1
+  });
+
+  if (!transferRoutes || transferRoutes.length === 0) {
+    return { transfer_route: null, transfer_route_date: null };
+  }
+
+  // Helper function to get day of week from route
+  const getRouteDayOfWeek = (route) => {
+    if (route.monday) return 1;
+    if (route.tuesday) return 2;
+    if (route.wednesday) return 3;
+    if (route.thursday) return 4;
+    if (route.friday) return 5;
+    if (route.saturday) return 6;
+    if (route.sunday) return 0; // Sunday is 0 in moment.js
+    return -1; // No day configured
+  };
+
+  // Start from the estimated delivery date and work backwards
+  let currentDate = moment(estimatedDeliveryDate);
+  let maxIterations = 14; // Check up to 2 weeks back
+  let iterations = 0;
+
+  while (iterations < maxIterations) {
+    const currentDayOfWeek = currentDate.day();
+
+    // Check if any transfer route operates on this day
+    for (const route of transferRoutes) {
+      const routeDayOfWeek = getRouteDayOfWeek(route);
+      
+      if (routeDayOfWeek === currentDayOfWeek) {
+        return {
+          transfer_route: route.id,
+          transfer_route_date: currentDate.format("YYYY-MM-DD")
+        };
+      }
+    }
+
+    // Move to previous day
+    currentDate = currentDate.subtract(1, "day");
+    iterations++;
+  }
+
+  // No transfer route found
+  return { transfer_route: null, transfer_route_date: null };
+};
+
+/**
+ * Calculate transfer data for an order without updating it
+ * Returns the transfer fields to be set on the order
+ */
+const calculateOrderTransferData = async (orderData) => {
+  // Skip if this is a collection order
+  if (orderData.is_collection_order) {
+    return {};
+  }
+
+  // Only process if we have the necessary data
+  const pickupId = extractId(orderData.pickup);
+  const routeId = extractId(orderData.route);
+  const estimatedDeliveryDate = orderData.estimated_delivery_date;
+
+  if (!pickupId || !routeId || !estimatedDeliveryDate) {
+    return {};
+  }
+
+  // Check if transfer is needed
+  const transferInfo = await checkTransferNeededForCollectionOrder(pickupId, routeId);
+
+  // If the order needs a transfer
+  if (transferInfo.transfer) {
+    // Calculate transfer route
+    const transferRouteInfo = await calculateTransferRoute(estimatedDeliveryDate);
+
+    return {
+      transfer: true,
+      transfer_pickup_origin: transferInfo.transfer_pickup_origin,
+      transfer_pickup_destination: transferInfo.transfer_pickup_destination,
+      transfer_route: transferRouteInfo.transfer_route,
+      transfer_route_date: transferRouteInfo.transfer_route_date,
+    };
+  } else {
+    // Clear transfer fields if no transfer is needed
+    return {
+      transfer: false,
+      transfer_pickup_origin: null,
+      transfer_pickup_destination: null,
+      transfer_route: null,
+      transfer_route_date: null,
+    };
+  }
+};
+
+/**
  * Process collection order: find or create a collection order for the collection point
  * NOTE: This function should NEVER be called for orders where is_collection_order=true
  * Collection orders themselves should never create or link to other collection orders
@@ -685,6 +792,12 @@ const processCollectionOrder = async (orderId, orderData, previousOrderData = nu
     route.id,
   );
 
+  // Calculate transfer route if transfer is needed
+  let transferRouteInfo = { transfer_route: null, transfer_route_date: null };
+  if (transferInfo.transfer) {
+    transferRouteInfo = await calculateTransferRoute(estimatedDeliveryDate);
+  }
+
   if (collectionOrder) {
     // Update existing collection order
     const updateData = {
@@ -715,6 +828,12 @@ const processCollectionOrder = async (orderId, orderData, previousOrderData = nu
     if (transferInfo.transfer) {
       updateData.transfer_pickup_origin = transferInfo.transfer_pickup_origin;
       updateData.transfer_pickup_destination = transferInfo.transfer_pickup_destination;
+      updateData.transfer_route = transferRouteInfo.transfer_route;
+      updateData.transfer_route_date = transferRouteInfo.transfer_route_date;
+    } else {
+      // Clear transfer route fields if no transfer is needed
+      updateData.transfer_route = null;
+      updateData.transfer_route_date = null;
     }
 
     // Copy delivery_type from original order if available
@@ -784,6 +903,8 @@ const processCollectionOrder = async (orderId, orderData, previousOrderData = nu
     if (transferInfo.transfer) {
       createData.transfer_pickup_origin = transferInfo.transfer_pickup_origin;
       createData.transfer_pickup_destination = transferInfo.transfer_pickup_destination;
+      createData.transfer_route = transferRouteInfo.transfer_route;
+      createData.transfer_route_date = transferRouteInfo.transfer_route_date;
     }
 
     // Add current order to collection_orders
@@ -1399,6 +1520,12 @@ module.exports = {
         data.last_mile = true;
       }
 
+      // Calculate and set transfer route data for normal orders
+      if (!data._internal && !data.is_collection_order) {
+        const transferData = await calculateOrderTransferData(data);
+        Object.assign(data, transferData);
+      }
+
       await processMultideliveryDiscountForCurrentOrder(0, data);
       await processVolumeDiscountForCurrentOrder(0, data);
     },
@@ -1450,6 +1577,19 @@ module.exports = {
         status: data.status || previousOrder.status,
         owner: data.owner || previousOrder.owner,
       };
+
+      // Calculate and set transfer route data for normal orders if relevant fields changed
+      if (!data.is_collection_order && !previousOrder.is_collection_order) {
+        const relevantFieldsChanged = 
+          data.pickup !== undefined ||
+          data.route !== undefined ||
+          data.estimated_delivery_date !== undefined;
+        
+        if (relevantFieldsChanged) {
+          const transferData = await calculateOrderTransferData(mergedData);
+          Object.assign(data, transferData);
+        }
+      }
       
       await processMultideliveryDiscountForCurrentOrder(
         params.id,
@@ -1498,6 +1638,24 @@ module.exports = {
       const previousOrder = await strapi
         .query("orders")
         .findOne({ id: result.id });
+
+      // Ensure transfer route is calculated for new orders that need transfer
+      // This handles edge cases where beforeCreate didn't set it properly
+      if (previousOrder && previousOrder.transfer && !previousOrder.is_collection_order && 
+          (!previousOrder.transfer_route || !previousOrder.transfer_route_date)) {
+        const transferRouteInfo = await calculateTransferRoute(previousOrder.estimated_delivery_date);
+        if (transferRouteInfo.transfer_route || transferRouteInfo.transfer_route_date) {
+          await strapi.query("orders").update(
+            { id: result.id },
+            {
+              transfer_route: transferRouteInfo.transfer_route,
+              transfer_route_date: transferRouteInfo.transfer_route_date,
+              _internal: true
+            }
+          );
+        }
+      }
+
       await processMultideliveryDiscountForOtherOrders(
         result.id,
         previousOrder
@@ -1567,6 +1725,24 @@ module.exports = {
         
         // Create tracking entry for every update
         // await createOrderTracking(currentOrder.id, currentOrder.status, trackingUser);
+
+        // Ensure transfer route is calculated for orders that need transfer
+        // This handles cases where orders were updated to need transfer but don't have the route yet
+        if (currentOrder.transfer && !currentOrder.is_collection_order && 
+            (!currentOrder.transfer_route || !currentOrder.transfer_route_date)) {
+          const transferRouteInfo = await calculateTransferRoute(currentOrder.estimated_delivery_date);
+          
+          if (transferRouteInfo.transfer_route || transferRouteInfo.transfer_route_date) {
+            await strapi.query("orders").update(
+              { id: params.id },
+              {
+                transfer_route: transferRouteInfo.transfer_route,
+                transfer_route_date: transferRouteInfo.transfer_route_date,
+                _internal: true
+              }
+            );
+          }
+        }
 
         // Process multidelivery discount for other orders
         await processMultideliveryDiscountForOtherOrders(

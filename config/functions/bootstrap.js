@@ -2613,6 +2613,130 @@ async function copyCanAssignActivitiesToDocuments() {
   }
 }
 
+async function backfillTransferRouteData() {
+  try {
+    console.log("Starting transfer route data backfill for transfer orders...");
+
+    // Helper function to calculate transfer route based on estimated delivery date
+    const calculateTransferRoute = async (estimatedDeliveryDate) => {
+      if (!estimatedDeliveryDate) {
+        return { transfer_route: null, transfer_route_date: null };
+      }
+
+      // Get all active transfer routes
+      const transferRoutes = await strapi.query("route").find({
+        is_transfer_route: true,
+        active: true,
+        _limit: -1
+      });
+
+      if (!transferRoutes || transferRoutes.length === 0) {
+        return { transfer_route: null, transfer_route_date: null };
+      }
+
+      // Helper function to get day of week from route
+      const getRouteDayOfWeek = (route) => {
+        if (route.monday) return 1;
+        if (route.tuesday) return 2;
+        if (route.wednesday) return 3;
+        if (route.thursday) return 4;
+        if (route.friday) return 5;
+        if (route.saturday) return 6;
+        if (route.sunday) return 0; // Sunday is 0 in moment.js
+        return -1; // No day configured
+      };
+
+      // Start from the estimated delivery date and work backwards
+      const moment = require("moment");
+      let currentDate = moment(estimatedDeliveryDate);
+      let maxIterations = 14; // Check up to 2 weeks back
+      let iterations = 0;
+
+      while (iterations < maxIterations) {
+        const currentDayOfWeek = currentDate.day();
+
+        // Check if any transfer route operates on this day
+        for (const route of transferRoutes) {
+          const routeDayOfWeek = getRouteDayOfWeek(route);
+          
+          if (routeDayOfWeek === currentDayOfWeek) {
+            return {
+              transfer_route: route.id,
+              transfer_route_date: currentDate.format("YYYY-MM-DD")
+            };
+          }
+        }
+
+        // Move to previous day
+        currentDate = currentDate.subtract(1, "day");
+        iterations++;
+      }
+
+      // No transfer route found
+      return { transfer_route: null, transfer_route_date: null };
+    };
+
+    // Get all orders with transfer=true and status pending or processed
+    const transferOrders = await strapi.query("orders").find({
+      transfer: true,
+      status_in: ["pending", "processed"],
+      _limit: -1,
+    });
+
+    console.log(`[TRANSFER ROUTE BACKFILL] Found ${transferOrders.length} transfer orders to process`);
+
+    let updatedCount = 0;
+    let skippedCount = 0;
+    let noRouteFoundCount = 0;
+
+    for (const order of transferOrders) {
+      // Skip if both transfer_route and transfer_route_date are already set
+      if (order.transfer_route && order.transfer_route_date) {
+        skippedCount++;
+        continue;
+      }
+
+      // Skip if no estimated_delivery_date
+      if (!order.estimated_delivery_date) {
+        console.log(`[TRANSFER ROUTE BACKFILL] Order #${order.id} has no estimated_delivery_date, skipping`);
+        skippedCount++;
+        continue;
+      }
+
+      // Calculate transfer route
+      const transferRouteInfo = await calculateTransferRoute(order.estimated_delivery_date);
+
+      // Update the order if a transfer route was found
+      if (transferRouteInfo.transfer_route && transferRouteInfo.transfer_route_date) {
+        await strapi.query("orders").update(
+          { id: order.id },
+          {
+            transfer_route: transferRouteInfo.transfer_route,
+            transfer_route_date: transferRouteInfo.transfer_route_date,
+            _internal: true,
+          }
+        );
+
+        updatedCount++;
+        console.log(
+          `[TRANSFER ROUTE BACKFILL] Updated order #${order.id} with transfer_route=${transferRouteInfo.transfer_route}, transfer_route_date=${transferRouteInfo.transfer_route_date}`
+        );
+      } else {
+        noRouteFoundCount++;
+        console.log(
+          `[TRANSFER ROUTE BACKFILL] No transfer route found for order #${order.id} with delivery date ${order.estimated_delivery_date}`
+        );
+      }
+    }
+
+    console.log(
+      `[TRANSFER ROUTE BACKFILL] Done. Updated: ${updatedCount}, Skipped (already has data): ${skippedCount}, No route found: ${noRouteFoundCount}`
+    );
+  } catch (error) {
+    console.error("Error during transfer route data backfill:", error);
+  }
+}
+
 module.exports = async () => {
   await importSeedData();
   // await migrateGrantableDataToYears();
@@ -2644,6 +2768,11 @@ module.exports = async () => {
   await runStartupScript(
     "copyCanAssignActivitiesToDocuments",
     copyCanAssignActivitiesToDocuments,
+    { runOnce: true },
+  );
+  await runStartupScript(
+    "backfillTransferRouteData",
+    backfillTransferRouteData,
     { runOnce: true },
   );
 
