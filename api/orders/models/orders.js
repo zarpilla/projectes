@@ -1579,13 +1579,23 @@ module.exports = {
       };
 
       // Calculate and set transfer route data for normal orders if relevant fields changed
+      // Skip if user has manually set the transfer route (manual_transfer_route flag)
       if (!data.is_collection_order && !previousOrder.is_collection_order) {
         const relevantFieldsChanged = 
           data.pickup !== undefined ||
           data.route !== undefined ||
           data.estimated_delivery_date !== undefined;
         
-        if (relevantFieldsChanged) {
+        const isManuallySet = data.manual_transfer_route === true || previousOrder.manual_transfer_route === true;
+        
+        // Only recalculate if fields changed AND not manually set by user
+        if (relevantFieldsChanged && !isManuallySet) {
+          const transferData = await calculateOrderTransferData(mergedData);
+          Object.assign(data, transferData);
+        }
+        
+        // If manual flag is explicitly set to false, allow recalculation
+        if (data.manual_transfer_route === false) {
           const transferData = await calculateOrderTransferData(mergedData);
           Object.assign(data, transferData);
         }
