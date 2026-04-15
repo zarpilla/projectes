@@ -234,5 +234,96 @@ module.exports = {
           );
       }
     },
+    async afterFind(results, params, populate) {
+      // Calculate aggregated totals for mother projects
+      if (results && results.length > 0) {
+        for (const project of results) {
+          if (project.is_mother) {
+            await calculateMotherProjectTotals(project);
+          }
+        }
+      }
+    },
+    async afterFindOne(result, params, populate) {
+      // Calculate aggregated totals for mother project
+      if (result && result.is_mother) {
+        await calculateMotherProjectTotals(result);
+      }
+    },
   },
 };
+
+// Helper function to calculate mother project totals from children
+async function calculateMotherProjectTotals(motherProject) {
+  try {
+    // Get all children of this mother project
+    const children = await strapi
+      .query("project")
+      .find({ mother: motherProject.id, _limit: -1 });
+    
+    if (!children || children.length === 0) {
+      return;
+    }
+    
+    // Initialize all totals to 0
+    motherProject.total_original_incomes = 0;
+    motherProject.total_original_expenses = 0;
+    motherProject.total_original_hours = 0;
+    motherProject.total_original_hours_price = 0;
+    motherProject.total_original_expenses_vat = 0;
+    motherProject.original_incomes_expenses = 0;
+    
+    motherProject.total_estimated_incomes = 0;
+    motherProject.total_estimated_expenses = 0;
+    motherProject.total_estimated_hours = 0;
+    motherProject.total_estimated_hours_price = 0;
+    motherProject.total_estimated_expenses_vat = 0;
+    motherProject.estimated_incomes_expenses = 0;
+    
+    motherProject.total_real_incomes = 0;
+    motherProject.total_real_expenses = 0;
+    motherProject.total_real_hours = 0;
+    motherProject.total_real_hours_price = 0;
+    motherProject.total_real_expenses_vat = 0;
+    motherProject.total_real_incomes_expenses = 0;
+    
+    // Backwards compatibility
+    motherProject.total_incomes = 0;
+    motherProject.total_expenses = 0;
+    motherProject.incomes_expenses = 0;
+    
+    // Sum up values from all children
+    for (const child of children) {
+      // Original dimension
+      motherProject.total_original_incomes += parseFloat(child.total_original_incomes || 0);
+      motherProject.total_original_expenses += parseFloat(child.total_original_expenses || 0);
+      motherProject.total_original_hours += parseFloat(child.total_original_hours || 0);
+      motherProject.total_original_hours_price += parseFloat(child.total_original_hours_price || 0);
+      motherProject.total_original_expenses_vat += parseFloat(child.total_original_expenses_vat || 0);
+      motherProject.original_incomes_expenses += parseFloat(child.original_incomes_expenses || 0);
+      
+      // Estimated dimension
+      motherProject.total_estimated_incomes += parseFloat(child.total_estimated_incomes || 0);
+      motherProject.total_estimated_expenses += parseFloat(child.total_estimated_expenses || 0);
+      motherProject.total_estimated_hours += parseFloat(child.total_estimated_hours || 0);
+      motherProject.total_estimated_hours_price += parseFloat(child.total_estimated_hours_price || 0);
+      motherProject.total_estimated_expenses_vat += parseFloat(child.total_estimated_expenses_vat || 0);
+      motherProject.estimated_incomes_expenses += parseFloat(child.estimated_incomes_expenses || 0);
+      
+      // Real dimension
+      motherProject.total_real_incomes += parseFloat(child.total_real_incomes || 0);
+      motherProject.total_real_expenses += parseFloat(child.total_real_expenses || 0);
+      motherProject.total_real_hours += parseFloat(child.total_real_hours || 0);
+      motherProject.total_real_hours_price += parseFloat(child.total_real_hours_price || 0);
+      motherProject.total_real_expenses_vat += parseFloat(child.total_real_expenses_vat || 0);
+      motherProject.total_real_incomes_expenses += parseFloat(child.total_real_incomes_expenses || 0);
+      
+      // Backwards compatibility
+      motherProject.total_incomes += parseFloat(child.total_incomes || child.total_estimated_incomes || 0);
+      motherProject.total_expenses += parseFloat(child.total_expenses || child.total_estimated_expenses || 0);
+      motherProject.incomes_expenses += parseFloat(child.incomes_expenses || child.estimated_incomes_expenses || 0);
+    }
+  } catch (error) {
+    console.error(`Error calculating mother project totals for project ${motherProject.id}:`, error);
+  }
+}
