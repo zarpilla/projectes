@@ -1285,18 +1285,26 @@ module.exports = {
       promises.push(strapi.query("project").search(ctx.query));
     } else {
 
-      const projectQuery = { _limit: -1, 
-        project_state_eq: ctx.query && ctx.query._where && ctx.query._where.project_state_eq ? ctx.query._where.project_state_eq : null,
-        project_state_in: ctx.query && ctx.query._where && ctx.query._where.project_state_in ? ctx.query._where.project_state_in : null
-       };
+      const projectQuery = { _limit: -1, published_at_null: false };
+      
+      // Handle project_state filtering
+      if (ctx.query && ctx.query._where) {
+        if (ctx.query._where.project_state_eq) {
+          projectQuery.project_state = ctx.query._where.project_state_eq;
+        } else if (ctx.query._where.project_state_in) {
+          // Convert comma-separated string to array of integers for Strapi _in filter
+          const stateIds = typeof ctx.query._where.project_state_in === 'string'
+            ? ctx.query._where.project_state_in.split(',').map(s => parseInt(s))
+            : ctx.query._where.project_state_in;
+          projectQuery.project_state_in = stateIds;
+        }
+      }
 
       
       // TODO check why this filter removes some projects that have activities in the given year
       // if (year) {
       //   projectQuery.activities = { date: { gte: `${year}-01-01`, lte: `${year}-12-31` } };
       // }
-
-      projectQuery.published_at_null = false;
 
       promises.push(
         strapi
