@@ -497,12 +497,27 @@ const calculateTransferRoute = async (estimatedDeliveryDate) => {
 
   while (iterations < maxIterations) {
     const currentDayOfWeek = currentDate.day();
+    const isSameDay = currentDate.isSame(moment(estimatedDeliveryDate), 'day');
 
     // Check if any transfer route operates on this day
     for (const route of transferRoutes) {
       const routeDayOfWeek = getRouteDayOfWeek(route);
       
       if (routeDayOfWeek === currentDayOfWeek) {
+        // Check date restriction based on is_transfer_route_date
+        if (route.is_transfer_route_date === "only_same_day") {
+          // Only use this route if current date is same as estimated delivery date
+          if (!isSameDay) {
+            continue;
+          }
+        } else if (route.is_transfer_route_date === "only_previous_days") {
+          // Only use this route if current date is before estimated delivery date
+          if (isSameDay) {
+            continue;
+          }
+        }
+        // If is_transfer_route_date is null/undefined, accept any day (existing behavior)
+        
         return {
           transfer_route: route.id,
           transfer_route_date: currentDate.format("YYYY-MM-DD")

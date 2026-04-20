@@ -67,6 +67,10 @@
     "is_transfer_route": {
       "type": "boolean"
     },
+    "is_transfer_route_date": {
+      "type": "enumeration",
+      "enum": ["only_same_day", "only_previous_days"]
+    },
     "delivery_user": {
       "plugin": "users-permissions",
       "model": "user"
