@@ -409,7 +409,7 @@ if (params.is_collection_order) {
 | Estat | Codi | Descripció |
 |-------|------|------------|
 | Pendent | `pending` | Comanda creada, pendent de dipositar |
-| Depositada | `deposited` | Paquets dipositats al punt de recollida |
+| Dipositada | `deposited` | Paquets dipositats al punt de recollida |
 | Processada | `processed` | En procés de repartiment |
 | Última Milla | `lastmile` | En servei d'última milla |
 | Lliurada | `delivered` | Entregada al destinatari |

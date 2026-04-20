@@ -2928,6 +2928,115 @@ async function backfillTransferRouteData() {
   }
 }
 
+async function recalculateTransferRoutes() {
+  try {
+    console.log("[RECALCULATE TRANSFER ROUTES] Starting recalculation with new is_transfer_route_date logic...");
+    
+    // Find all orders with transfer=true and status pending or processed
+    const ordersWithTransfer = await strapi.query("orders").find({
+      transfer: true,
+      status_in: ["pending", "processed"],
+      _limit: -1
+    });
+    
+    console.log(`[RECALCULATE TRANSFER ROUTES] Found ${ordersWithTransfer.length} orders to process`);
+    
+    let updatedCount = 0;
+    let skippedCount = 0;
+    
+    // Import moment at the beginning
+    const moment = require("moment");
+    
+    for (const order of ordersWithTransfer) {
+      // Skip if missing required fields
+      if (!order.estimated_delivery_date) {
+        console.log(`[RECALCULATE TRANSFER ROUTES] Skipping order ${order.id} - missing estimated_delivery_date`);
+        skippedCount++;
+        continue;
+      }
+      
+      const estimatedDeliveryDate = order.estimated_delivery_date;
+      
+      // Get all active transfer routes
+      const transferRoutes = await strapi.query("route").find({
+        is_transfer_route: true,
+        active: true,
+        _limit: -1
+      });
+      
+      if (!transferRoutes || transferRoutes.length === 0) {
+        console.log(`[RECALCULATE TRANSFER ROUTES] Skipping order ${order.id} - no active transfer routes found`);
+        skippedCount++;
+        continue;
+      }
+      
+      // Helper function to get day of week from route
+      const getRouteDayOfWeek = (route) => {
+        if (route.monday) return 1;
+        if (route.tuesday) return 2;
+        if (route.wednesday) return 3;
+        if (route.thursday) return 4;
+        if (route.friday) return 5;
+        if (route.saturday) return 6;
+        if (route.sunday) return 0;
+        return -1;
+      };
+      
+      let currentDate = moment(estimatedDeliveryDate);
+      let maxIterations = 14;
+      let iterations = 0;
+      let foundRoute = null;
+      let foundDate = null;
+      
+      while (iterations < maxIterations) {
+        const currentDayOfWeek = currentDate.day();
+        const isSameDay = currentDate.isSame(moment(estimatedDeliveryDate), 'day');
+        
+        for (const tRoute of transferRoutes) {
+          const routeDayOfWeek = getRouteDayOfWeek(tRoute);
+          
+          if (routeDayOfWeek === currentDayOfWeek) {
+            // Check date restriction based on is_transfer_route_date
+            if (tRoute.is_transfer_route_date === "only_same_day") {
+              if (!isSameDay) continue;
+            } else if (tRoute.is_transfer_route_date === "only_previous_days") {
+              if (isSameDay) continue;
+            }
+            
+            foundRoute = tRoute.id;
+            foundDate = currentDate.format("YYYY-MM-DD");
+            break;
+          }
+        }
+        
+        if (foundRoute) break;
+        
+        currentDate = currentDate.subtract(1, "day");
+        iterations++;
+      }
+      
+      // Update order with new transfer route data
+      const updateData = {
+        transfer_route: foundRoute,
+        transfer_route_date: foundDate,
+        _internal: true
+      };
+      
+      await strapi.query("orders").update(
+        { id: order.id },
+        updateData
+      );
+      
+      console.log(`[RECALCULATE TRANSFER ROUTES] Updated order ${order.id} - route: ${foundRoute}, date: ${foundDate}`);
+      updatedCount++;
+    }
+    
+    console.log(`[RECALCULATE TRANSFER ROUTES] Completed - Updated: ${updatedCount}, Skipped: ${skippedCount}`);
+  } catch (error) {
+    console.error("[RECALCULATE TRANSFER ROUTES] Error:", error);
+  }
+}
+
 module.exports = async () => {
   await importSeedData();
   // await migrateGrantableDataToYears();
@@ -2969,6 +3078,11 @@ module.exports = async () => {
   await runStartupScript(
     "backfillTransferRouteData",
     backfillTransferRouteData,
+    { runOnce: true },
+  );
+  await runStartupScript(
+    "recalculateTransferRoutes",
+    recalculateTransferRoutes,
     { runOnce: true },
   );
 

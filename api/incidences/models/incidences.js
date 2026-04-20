@@ -36,7 +36,7 @@ async function sendIncidenceEmail(incidence, action, currentUserId = null) {
     // Get full incidence data with relations
     const fullIncidence = await strapi.query('incidences').findOne({ 
         id: incidence.id 
-    }, ['order', 'order.owner', 'created_user', 'closed_user']);
+    }, ['order', 'order.owner', 'order.collection_point', 'order.contact', 'order.pickup', 'order.transfer_pickup_destination', 'created_user', 'closed_user']);
     
     if (!fullIncidence || !fullIncidence.order) {
         console.error('Incidence or order not found');
@@ -97,6 +97,13 @@ async function sendIncidenceEmail(incidence, action, currentUserId = null) {
         'closed': 'Tancada'
     };
     
+    // Determine delivery point based on order type (similar to OrderOperationsTable.vue)
+    let deliveryPoint = '-';
+    if (order.contact) {
+        // For direct orders, show the contact (place)
+        deliveryPoint = order.contact.trade_name || order.contact_trade_name || '-';
+    }
+    
     let responsesHtml = '';
     if (fullIncidence.incidence_response && fullIncidence.incidence_response.length > 0) {
         responsesHtml = '<br><b>Respostes:</b><br>';
@@ -113,6 +120,7 @@ async function sendIncidenceEmail(incidence, action, currentUserId = null) {
     <b>ID Incidència:</b> ${fullIncidence.id}<br>
     <b>Comanda:</b> #${order.id}<br>
     <b>Propietari Comanda:</b> ${orderOwner ? (orderOwner.fullname || orderOwner.username) : 'N/A'} ${orderOwner && orderOwner.email ? `(${orderOwner.email})` : ''}<br>
+    <b>Punt d'entrega:</b> ${deliveryPoint}<br>
     <b>Estat:</b> ${stateLabels[fullIncidence.state] || fullIncidence.state}<br>
     <b>Descripció:</b> ${fullIncidence.description || 'N/A'}<br>
     ${fullIncidence.created_user ? `<b>Creat per:</b> ${fullIncidence.created_user.fullname || fullIncidence.created_user.username}<br>` : ''}
