@@ -122,7 +122,7 @@ module.exports = {
           data.project_phases_info.deletedPhases || [],
           data.project_phases_info.deletedIncomes || [],
           data.project_phases_info.deletedExpenses || [],
-          []
+          data.project_phases_info.deletedHours || []
         );
       }
 
