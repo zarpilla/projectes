@@ -29,7 +29,8 @@ module.exports = {
 
     const year = ctx.query.year;
     const bankAccountFilterIds = ctx.query.bank_account_id;
-
+    const periodification = ctx.query.periodification; // "no", "real", or "prevista"
+    
     const treasury = [];
     // const treasuryData = [];
     const projectExpenses = [];
@@ -56,7 +57,7 @@ module.exports = {
     // Fetch ALL projects (we'll filter in JavaScript)
     const allProjectsRaw = 
     await strapi.query("project").find({ _limit: -1 },
-      ["project_phases", "project_phases.expenses", "project_phases.expenses.provider", "project_phases.expenses.expense_type", "project_phases.expenses.invoice", "project_phases.expenses.grant", "project_phases.expenses.ticket", "project_phases.expenses.diet", "project_phases.expenses.expense", "project_phases.expenses.bank_account", "project_phases.incomes", "project_phases.incomes.client", "project_phases.incomes.income_type", "project_phases.incomes.invoice", "project_phases.incomes.income", "project_phases.incomes.bank_account"]
+      ["project_phases", "project_phases.expenses", "project_phases.expenses.provider", "project_phases.expenses.expense_type", "project_phases.expenses.invoice", "project_phases.expenses.grant", "project_phases.expenses.ticket", "project_phases.expenses.diet", "project_phases.expenses.expense", "project_phases.expenses.bank_account", "project_phases.incomes", "project_phases.incomes.client", "project_phases.incomes.income_type", "project_phases.incomes.invoice", "project_phases.incomes.income", "project_phases.incomes.bank_account", "periodification"]
     )
     
     // Filter out mother projects (is_mother === true) for unpaid items processing
@@ -678,6 +679,63 @@ module.exports = {
             deductible_vat_pct: e.deductible_vat_pct || null,
             theoretical_deductible_vat_pct: theoreticalPct
           });
+        }
+      }
+    }
+
+    // Apply periodification if requested
+    if (periodification && periodification !== "no" && (periodification === "real" || periodification === "prevista")) {
+      for (let p of projects) {
+        if (p.periodification && p.periodification.length > 0) {
+          console.log(`Applying periodification for project ${p.name} (${p.id}) with periodificacio=${periodification}`);
+          for (let periodif of p.periodification) {
+            // Determine which fields to use based on periodificacio parameter
+            let incomeAdjustment = 0;
+            let expenseAdjustment = 0;
+            
+            if (periodification === "real") {
+              // Use real_incomes and real_expenses for "real" periodification
+              incomeAdjustment = periodif.real_incomes || 0;
+              expenseAdjustment = periodif.real_expenses || 0;
+            } else if (periodification === "prevista") {
+              // Use incomes and expenses for "prevista" periodification
+              incomeAdjustment = periodif.incomes || 0;
+              expenseAdjustment = periodif.expenses || 0;
+            }
+            
+            // Only add entries if there are non-zero adjustments
+            if (incomeAdjustment !== 0) {
+              const periodifIncome = {
+                project_name: p.name,
+                project_id: p.id,
+                type: `Periodificació ${periodification === "real" ? "real" : "prevista"} ingressos`,
+                concept: `Ajust periodificació ${periodif.year}`,
+                total_amount: incomeAdjustment,
+                date: moment(`${periodif.year}-12-31`, "YYYY-MM-DD"),
+                date_error: false,
+                paid: periodification === "real" ? true : false,
+                contact: "-",
+                bank_account: me.bank_account_default ? me.bank_account_default.name : null,
+              };
+              treasury.push(periodifIncome);
+            }
+            
+            if (expenseAdjustment !== 0) {
+              const periodifExpense = {
+                project_name: p.name,
+                project_id: p.id,
+                type: `Periodificació ${periodification === "real" ? "real" : "prevista"} despeses`,
+                concept: `Ajust periodificació ${periodif.year}`,
+                total_amount: expenseAdjustment,
+                date: moment(`${periodif.year}-12-31`, "YYYY-MM-DD"),
+                date_error: false,
+                paid: periodification === "real" ? true : false,
+                contact: "-",
+                bank_account: me.bank_account_default ? me.bank_account_default.name : null,
+              };
+              treasury.push(periodifExpense);
+            }
+          }
         }
       }
     }
