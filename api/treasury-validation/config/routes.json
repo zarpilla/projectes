@@ -1,0 +1,36 @@
+{
+  "routes": [
+    {
+      "method": "POST",
+      "path": "/treasury-validations/toggle",
+      "handler": "treasury-validation.toggle",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/treasury-validations",
+      "handler": "treasury-validation.find",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/treasury-validations/:entity_type/:entity_id/:sub_type?",
+      "handler": "treasury-validation.findByKey",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "DELETE",
+      "path": "/treasury-validations/:id",
+      "handler": "treasury-validation.delete",
+      "config": {
+        "policies": []
+      }
+    }
+  ]
+}

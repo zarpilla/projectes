@@ -24,6 +24,14 @@ const getBankAccountName = (bankAccount, defaultBankAccount) => {
   return null;
 }
 
+// Helper to generate validation key
+const getValidationKey = (entityType, entityId, subType = null) => {
+  if (subType) {
+    return `${entityType}:${entityId}:${subType}`;
+  }
+  return `${entityType}:${entityId}`;
+}
+
 module.exports = {
   async forecast(ctx) {
 
@@ -35,6 +43,16 @@ module.exports = {
     // const treasuryData = [];
     const projectExpenses = [];
     const projectIncomes = [];
+
+    // Fetch all validations
+    const validations = await strapi.query("treasury-validation").find({ _limit: -1 });
+    
+    // Create a map for quick lookup: validationKey -> true
+    const validationMap = {};
+    validations.forEach(v => {
+      const key = getValidationKey(v.entity_type, v.entity_id, v.sub_type);
+      validationMap[key] = true;
+    });
 
     const treasuries = 
     await strapi.query("treasury").find({ _limit: -1 }, ["bank_account", "project"])
@@ -269,6 +287,7 @@ module.exports = {
 
     treasuries.forEach((e) => {
       let expense;
+      const validationKey = getValidationKey('treasuries', e.id);
       
       // New: Handle is_real_balance entries (user sets exact balance for a specific date)
       if (e.is_real_balance) {
@@ -286,6 +305,8 @@ module.exports = {
           contact: "-",
           bank_account: getBankAccountName(e.bank_account, me.bank_account_default),
           is_real_balance_adjustment: true,
+          validation_key: validationKey,
+          is_validated: validationMap[validationKey] || false
         };
       }
       // Special case: treasury with total=0 but balance>0 indicates real money in account for that day
@@ -304,6 +325,8 @@ module.exports = {
           contact: "-",
           bank_account: getBankAccountName(e.bank_account, me.bank_account_default),
           is_balance_annotation: true,
+          validation_key: validationKey,
+          is_validated: validationMap[validationKey] || false
         };
       } else {
         expense = {
@@ -318,6 +341,8 @@ module.exports = {
           paid: true,
           contact: "-",
           bank_account: getBankAccountName(e.bank_account, me.bank_account_default),
+          validation_key: validationKey,
+          is_validated: validationMap[validationKey] || false
         };
       }
       
@@ -376,6 +401,7 @@ module.exports = {
       );
       const conceptProject = projectIncome ? projectIncome.concept : "";
       
+      const validationKey = getValidationKey('emitted-invoices', i.id);
       const income = {
         project_name:
           i.project && i.project.name
@@ -402,7 +428,9 @@ module.exports = {
         contact: i.contact && i.contact.name ? i.contact.name : "?",
         to: `/document/${i.id}/emitted-invoices`,
         bank_account: getBankAccountName(i.bank_account, me.bank_account_default),
-        conceptProject
+        conceptProject,
+        validation_key: validationKey,
+        is_validated: validationMap[validationKey] || false
       };
 
       treasury.push(income);
@@ -439,6 +467,7 @@ module.exports = {
       );
       const conceptProject = projectIncome ? projectIncome.concept : "";
       
+      const validationKey = getValidationKey('received-incomes', i.id);
       const income = {
         project_name:
           i.project && i.project.name
@@ -467,7 +496,9 @@ module.exports = {
         contact: i.contact && i.contact.name ? i.contact.name : "?",
         to: `/document/${i.id}/received-incomes`,
         bank_account: getBankAccountName(i.bank_account, me.bank_account_default),
-        conceptProject
+        conceptProject,
+        validation_key: validationKey,
+        is_validated: validationMap[validationKey] || false
       };
       treasury.push(income);
       if (i.total_vat) {
@@ -502,6 +533,7 @@ module.exports = {
       );
       const conceptProject = projectExpense ? projectExpense.concept : "";
       
+      const validationKey = getValidationKey('received-invoices', e.id);
       const expense = {
         project_name:
           e.project && e.project.name
@@ -528,10 +560,13 @@ module.exports = {
         contact: e.contact && e.contact.name ? e.contact.name : "-",
         to: `/document/${e.id}/received-invoices`,
         bank_account: getBankAccountName(e.bank_account, me.bank_account_default),
-        conceptProject
+        conceptProject,
+        validation_key: validationKey,
+        is_validated: validationMap[validationKey] || false
       };
       treasury.push(expense);
       if (e.total_irpf) {
+        const irpfValidationKey = getValidationKey('received-invoices', e.id, 'irpf');
         const expense2 = {
           project_name:
             e.project && e.project.name
@@ -563,6 +598,8 @@ module.exports = {
           contact: e.contact && e.contact.name ? e.contact.name : "-",
           to: `/document/${e.id}/received-invoices`,
           bank_account: me.bank_account_irpf && me.bank_account_irpf.name ? me.bank_account_irpf.name : null,
+          validation_key: irpfValidationKey,
+          is_validated: validationMap[irpfValidationKey] || false
         };
         treasury.push(expense2);
       }
@@ -599,6 +636,7 @@ module.exports = {
       );
       const conceptProject = projectExpense ? projectExpense.concept : "";
       
+      const validationKey = getValidationKey('received-expenses', e.id);
       const expense = {
         project_name:
           e.project && e.project.name
@@ -627,10 +665,13 @@ module.exports = {
         contact: e.contact && e.contact.name ? e.contact.name : "-",
         to: `/document/${e.id}/received-expenses`,
         bank_account: getBankAccountName(e.bank_account, me.bank_account_default),
-        conceptProject
+        conceptProject,
+        validation_key: validationKey,
+        is_validated: validationMap[validationKey] || false
       };
       treasury.push(expense);
       if (e.total_irpf) {
+        const irpfValidationKey = getValidationKey('received-expenses', e.id, 'irpf');
         const expense2 = {
           project_name:
             e.project && e.project.name
@@ -658,6 +699,8 @@ module.exports = {
           contact: e.contact && e.contact.name ? e.contact.name : "-",
           to: `/document/${e.id}/received-expenses`,
           bank_account: me.bank_account_irpf && me.bank_account_irpf.name ? me.bank_account_irpf.name : null,
+          validation_key: irpfValidationKey,
+          is_validated: validationMap[irpfValidationKey] || false
         };
         treasury.push(expense2);
       }
@@ -747,6 +790,7 @@ module.exports = {
             e.emitted ? moment(e.emitted, "YYYY-MM-DD") : moment(),
             moment(),
           ]);
+      const validationKey = getValidationKey('payrolls', e.id);
       const expense = {
         project_name: "",
         project_id: 0,
@@ -764,10 +808,13 @@ module.exports = {
             : "",
         to: `/document/${e.id}/payrolls`,
         bank_account: getBankAccountName(e.bank_account, me.bank_account_default),
+        validation_key: validationKey,
+        is_validated: validationMap[validationKey] || false
       };
       treasury.push(expense);
 
       if (e.irpf_base) {
+        const irpfValidationKey = getValidationKey('payrolls', e.id, 'irpf');
         const expense2 = {
           project_name: "",
           project_id: 0,
@@ -785,11 +832,14 @@ module.exports = {
               : "",
           to: `/document/${e.id}/payrolls`,
           bank_account: me.bank_account_irpf && me.bank_account_irpf.name ? me.bank_account_irpf.name : null,
+          validation_key: irpfValidationKey,
+          is_validated: validationMap[irpfValidationKey] || false
         };
         treasury.push(expense2);
       }
 
       if (e.other_base) {
+        const otherValidationKey = getValidationKey('payrolls', e.id, 'other');
         const expense4 = {
           project_name: "",
           project_id: 0,
@@ -807,11 +857,14 @@ module.exports = {
               : "",
           to: `/document/${e.id}/payrolls`,
           bank_account: me.bank_account_payroll && me.bank_account_payroll.name ? me.bank_account_payroll.name : null,
+          validation_key: otherValidationKey,
+          is_validated: validationMap[otherValidationKey] || false
         };
         treasury.push(expense4);
       }
 
       if (e.ss_base) {
+        const ssValidationKey = getValidationKey('payrolls', e.id, 'ss');
         const expense3 = {
           project_name: "",
           project_id: 0,
@@ -829,6 +882,8 @@ module.exports = {
               : "",
           to: `/document/${e.id}/payrolls`,
           bank_account: me.bank_account_ss && me.bank_account_ss.name ? me.bank_account_ss.name : null,
+          validation_key: ssValidationKey,
+          is_validated: validationMap[ssValidationKey] || false
         };
         treasury.push(expense3);
       }
