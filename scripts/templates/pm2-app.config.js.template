@@ -1,0 +1,36 @@
+module.exports = {
+  apps: [
+    {
+      name: 'strapi-projectes-{{INSTANCE_NAME}}',
+      cwd: '{{INSTANCE_PATH}}/projectes',
+      script: 'npm',
+      args: 'start',
+      env: {
+        HOST: '127.0.0.1',
+        PORT: '{{BACKEND_PORT}}',
+        NODE_ENV: 'production',
+        URL: 'https://{{DOMAIN}}',
+        DATABASE_CLIENT: 'mysql',
+        DATABASE_HOST: '127.0.0.1',
+        DATABASE_PORT: '3306',
+        DATABASE_NAME: '{{DB_NAME}}',
+        DATABASE_USERNAME: '{{DB_USER}}',
+        DATABASE_PASSWORD: '{{DB_PASSWORD}}',
+        DATABASE_SSL: false,
+        APP_KEYS: '{{APP_KEY_1}},{{APP_KEY_2}},{{APP_KEY_3}}',
+        API_TOKEN_SALT: '{{API_TOKEN_SALT}}',
+        ADMIN_JWT_SECRET: '{{ADMIN_JWT_SECRET}}',
+        TRANSFER_TOKEN_SALT: '{{TRANSFER_TOKEN_SALT}}',
+        JWT_SECRET: '{{JWT_SECRET}}',
+        SENDGRID_API_KEY: '',
+        EMAIL_FROM: '{{EMAIL_FROM}}',
+        TASK_EMAIL_TO: '{{TASK_EMAIL_TO}}',
+        EMAIL_PROVIDER: 'nodemailer',
+        SMTP_HOST: '{{SMTP_HOST}}',
+        SMTP_PORT: '{{SMTP_PORT}}',
+        SMTP_USER: '{{SMTP_USER}}',
+        SMTP_PASS: '{{SMTP_PASS}}'
+      }
+    }
+  ]
+};

@@ -1,0 +1,20 @@
+# Ignore any generated instance-specific scripts
+remove-instance.sh
+cleanup-*.sh
+
+# Ignore logs
+*.log
+
+# Ignore backup files
+*.bak
+*.backup
+*.old
+*.tmp
+
+# Ignore any files with actual credentials (just in case)
+*credentials*
+*secrets.txt
+
+# Ignore any test/temporary instance scripts
+test-*.sh
+temp-*.sh
