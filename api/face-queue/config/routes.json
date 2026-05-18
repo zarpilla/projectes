@@ -18,6 +18,22 @@
     },
     {
       "method": "GET",
+      "path": "/face-queues/verify-setup",
+      "handler": "face-queue.verifySetup",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/face-queues/:id/check-status",
+      "handler": "face-queue.checkStatus",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "GET",
       "path": "/face-queues/:id",
       "handler": "face-queue.findOne",
       "config": {

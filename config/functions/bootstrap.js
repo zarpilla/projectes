@@ -184,6 +184,7 @@ async function importSeedData() {
     "phase-expense": ["find", "findassigned"],
     verifactu: ["find", "findone"],
     "verifactu-declaration": ["find", "findone", "create"],
+    "face-queue": ["find", "findone", "create", "update", "delete", "checkStatus", "verifySetup"],
     "pivot-table-view": ["find", "findone", "create", "update", "delete"],
     "bank-accounts": ["find", "findone"],
     incidences: ["create", "find", "findone", "update", "count", "delete", "infoall"],
@@ -2929,6 +2930,50 @@ async function backfillTransferRouteData() {
   }
 }
 
+async function initializeFaceEndpoints() {
+  try {
+    console.log("[FACE ENDPOINTS] Initializing FACe endpoint configuration...");
+    console.log("[FACE ENDPOINTS] Note: Since Feb 27, 2026, FACe has new portal structure");
+    console.log("[FACE ENDPOINTS] Production: https://api.face.gob.es/providers");
+    console.log("[FACE ENDPOINTS] Test: https://se-api.face.gob.es/providers (probable)");
+
+    const me = await strapi.query("me").findOne();
+
+    if (!me) {
+      console.log("[FACE ENDPOINTS] No 'me' entity found, skipping");
+      return;
+    }
+
+    let needsUpdate = false;
+    const updates = {};
+
+    // Set default test endpoint if not configured
+    // New URL since Feb 2026 migration (probable - verify with FACe if issues)
+    if (!me.face_test_endpoint) {
+      updates.face_test_endpoint = "https://se-api.face.gob.es/providers";
+      needsUpdate = true;
+      console.log("[FACE ENDPOINTS] Setting probable test endpoint");
+    }
+
+    // Set default production endpoint if not configured
+    // New URL since Feb 2026 migration
+    if (!me.face_real_endpoint) {
+      updates.face_real_endpoint = "https://api.face.gob.es/providers";
+      needsUpdate = true;
+      console.log("[FACE ENDPOINTS] Setting default production endpoint");
+    }
+
+    if (needsUpdate) {
+      await strapi.query("me").update({ id: me.id }, updates);
+      console.log("[FACE ENDPOINTS] FACe endpoints initialized successfully");
+    } else {
+      console.log("[FACE ENDPOINTS] Endpoints already configured");
+    }
+  } catch (error) {
+    console.error("[FACE ENDPOINTS] Error initializing FACe endpoints:", error);
+  }
+}
+
 async function recalculateTransferRoutes() {
   try {
     console.log("[RECALCULATE TRANSFER ROUTES] Starting recalculation with new is_transfer_route_date logic...");
@@ -3084,6 +3129,11 @@ module.exports = async () => {
   await runStartupScript(
     "recalculateTransferRoutes",
     recalculateTransferRoutes,
+    { runOnce: true },
+  );
+  await runStartupScript(
+    "initializeFaceEndpoints",
+    initializeFaceEndpoints,
     { runOnce: true },
   );
 

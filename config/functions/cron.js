@@ -2,6 +2,7 @@
 
 const taskController = require('../../api/task/controllers/task');
 const projectController = require('../../api/project/controllers/project');
+const checkFaceStatus = require('../../api/face-queue/cron/check-status');
 
 /**
  * Cron config that gives you an opportunity
@@ -32,6 +33,11 @@ module.exports = {
       console.error('[CRON] Error in updateDirtyProjects:', error);
     }
   },
+
+  /**
+   * Check FACe invoice status every 30 minutes.
+   */
+  '*/30 * * * *': checkFaceStatus,
 
   
 };

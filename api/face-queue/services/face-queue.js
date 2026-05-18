@@ -1,12 +1,10 @@
 'use strict';
 
-const FACE_FAKE_SEND_ENABLED =
-	process.env.FACE_FAKE_SEND_ENABLED === undefined
-		? true
-		: process.env.FACE_FAKE_SEND_ENABLED === "true";
-const FACE_FAKE_RESULT = process.env.FACE_FAKE_RESULT || "ok";
-const FACE_FAKE_SOAP_URL =
-	process.env.FACE_FAKE_SOAP_URL || "https://face.invalid/soap";
+const fs = require("fs");
+const axios = require("axios");
+const https = require("https");
+const path = require("path");
+const FormData = require("form-data");
 
 /**
  * Read the documentation (https://strapi.io/documentation/developer-docs/latest/development/backend-customization.html#core-services)
@@ -241,6 +239,167 @@ const buildUblInvoiceXml = ({ invoice, me, contact, dir3 }) => {
 	return xmlParts.filter(Boolean).join("\n");
 };
 
+/**
+ * Create HTTPS agent with certificate authentication
+ */
+const createFaceHttpsAgent = (certificatePath, certificatePassword) => {
+	try {
+		if (!certificatePath || !fs.existsSync(certificatePath)) {
+			throw new Error(`Certificate file not found: ${certificatePath}`);
+		}
+
+		const pfx = fs.readFileSync(certificatePath);
+
+		return new https.Agent({
+			pfx: pfx,
+			passphrase: certificatePassword || undefined,
+			rejectUnauthorized: false,
+			requestCert: true,
+			agent: false,
+		});
+	} catch (error) {
+		strapi.log.error("[face-queue] Error creating HTTPS agent:", error);
+		throw error;
+	}
+};
+
+/**
+ * Submit invoice to FACe REST API
+ */
+const submitInvoiceToFace = async ({ xml, nif, dir3, mode, me }) => {
+	try {
+		const endpoint = mode === "test" 
+			? (me.face_test_endpoint || "https://se-api.face.gob.es/providers")
+			: (me.face_real_endpoint || "https://api.face.gob.es/providers");
+		
+		if (!endpoint) {
+			throw new Error("Test endpoint not configured. Please configure face_test_endpoint in settings or contact FACe support for test environment URL.");
+		}
+		
+		const submitUrl = `${endpoint}/invoices/submit`;
+
+		// Get certificate configuration
+		if (!me.face_certificate || !me.face_certificate.url) {
+			throw new Error("FACe certificate not configured in settings");
+		}
+
+		const currentDir = process.cwd();
+		const certificateRelativePath = me.face_certificate.url.replace(/^\//, "");
+		const certificatePath = path.join(
+			currentDir,
+			strapi.config.paths.static,
+			certificateRelativePath
+		);
+
+		const httpsAgent = createFaceHttpsAgent(certificatePath, me.face_certificate_password);
+	strapi.log.info(`[face-queue] Using certificate: ${certificatePath}`);
+	strapi.log.info(`[face-queue] Submitting to: ${submitUrl}`);
+		// Create multipart form data
+		const formData = new FormData();
+		formData.append("facturae", Buffer.from(xml, "utf-8"), {
+			filename: "invoice.xml",
+			contentType: "application/xml",
+		});
+		formData.append("nif", nif);
+		formData.append("dir3_oc", dir3.oc || "");
+		formData.append("dir3_og", dir3.og || "");
+		formData.append("dir3_ut", dir3.ut || "");
+
+		const config = {
+			method: "POST",
+			url: submitUrl,
+			data: formData,
+			headers: {
+				...formData.getHeaders(),
+				"User-Agent": "FACe-Client/1.0",
+			},
+			httpsAgent: httpsAgent,
+			timeout: 30000, // 30 seconds timeout
+		};
+
+		const response = await axios(config);
+
+		return {
+			success: true,
+			statusCode: response.status,
+			registrationNumber: response.data.numero_registro || response.data.registration_number,
+			estado: response.data.estado,
+			data: response.data,
+		};
+	} catch (error) {
+		strapi.log.error("[face-queue] submitInvoiceToFace error:", error.response?.data || error.message);
+		strapi.log.error("[face-queue] Status code:", error.response?.status);
+		strapi.log.error("[face-queue] Headers:", error.response?.headers);
+		return {
+			success: false,
+			statusCode: error.response?.status || 0,
+			error: error.response?.data || error.message,
+			data: error.response?.data,
+		};
+	}
+};
+
+/**
+ * Check invoice status from FACe REST API
+ */
+const checkInvoiceStatus = async ({ registrationNumber, mode, me }) => {
+	try {
+		const endpoint = mode === "test" 
+			? (me.face_test_endpoint || "https://se-api.face.gob.es/providers")
+			: (me.face_real_endpoint || "https://api.face.gob.es/providers");
+		
+		if (!endpoint) {
+			throw new Error("Test endpoint not configured. Please configure face_test_endpoint in settings or contact FACe support for test environment URL.");
+		}
+		
+		const statusUrl = `${endpoint}/invoices/${registrationNumber}/status`;
+
+		// Get certificate configuration
+		if (!me.face_certificate || !me.face_certificate.url) {
+			throw new Error("FACe certificate not configured in settings");
+		}
+
+		const currentDir = process.cwd();
+		const certificateRelativePath = me.face_certificate.url.replace(/^\//, "");
+		const certificatePath = path.join(
+			currentDir,
+			strapi.config.paths.static,
+			certificateRelativePath
+		);
+
+		const httpsAgent = createFaceHttpsAgent(certificatePath, me.face_certificate_password);
+
+		const config = {
+			method: "GET",
+			url: statusUrl,
+			headers: {
+				"User-Agent": "FACe-Client/1.0",
+			},
+			httpsAgent: httpsAgent,
+			timeout: 30000, // 30 seconds timeout
+		};
+
+		const response = await axios(config);
+
+		return {
+			success: true,
+			statusCode: response.status,
+			estado: response.data.estado,
+			codigoEstado: response.data.codigo_estado,
+			motivoRechazo: response.data.motivo_rechazo,
+			data: response.data,
+		};
+	} catch (error) {
+		strapi.log.error("[face-queue] checkInvoiceStatus error:", error.response?.data || error.message);
+		return {
+			success: false,
+			statusCode: error.response?.status || 0,
+			error: error.response?.data || error.message,
+			data: error.response?.data,
+		};
+	}
+};
+
 const fakeSendToFace = async ({ queueId, invoiceId, mode, xml }) => {
 	const result = ["ok", "warning", "error"].includes(FACE_FAKE_RESULT)
 		? FACE_FAKE_RESULT
@@ -412,49 +571,130 @@ const startFaceProcess = async (faceQueueInput) => {
 
 	strapi.log.info(`[face-queue] xml validation skipped queue=${faceQueue.id}`);
 
-	await strapi.query("face-queue").update(
-		{ id: faceQueue.id },
-		{
-			_internal: true,
-			invoice: invoiceSnapshot,
-			request_body: xml,
-			request_url: FACE_FAKE_SOAP_URL,
+const requestUrl = faceQueue.mode === "test" 
+			? (me.face_test_endpoint || "https://se-api.face.gob.es/providers")
+			: (me.face_real_endpoint || "https://api.face.gob.es/providers");
+		
+		if (!requestUrl) {
+			strapi.log.error(`[face-queue] Test endpoint not configured queue=${faceQueue.id}`);
+			await strapi.query("face-queue").update(
+				{ id: faceQueue.id },
+				{
+					_internal: true,
+					invoice: invoiceSnapshot,
+					request_body: xml,
+					status: "error",
+					response_body: "Test endpoint not configured. Please set face_test_endpoint in settings or contact FACe support.",
+				}
+			);
+			return;
+		}
+		
+		await strapi.query("face-queue").update(
+			{ id: faceQueue.id },
+			{
+				_internal: true,
+				invoice: invoiceSnapshot,
+				request_body: xml,
+				request_url: requestUrl,
 			status: "pending",
 		}
 	);
 
 	strapi.log.info(`[face-queue] xml persisted queue=${faceQueue.id}`);
 
-	if (FACE_FAKE_SEND_ENABLED) {
-		const fakeResult = await fakeSendToFace({
-			queueId: faceQueue.id,
-			invoiceId: emittedInvoiceId,
-			mode: faceQueue.mode,
-			xml,
-		});
-
+	// DRY-RUN mode: Generate XML but don't submit (for testing)
+	// Set FACE_DRY_RUN=true in .env to enable
+	const dryRunMode = process.env.FACE_DRY_RUN === "true";
+	
+	if (dryRunMode) {
+		strapi.log.warn(`[face-queue] DRY-RUN MODE: XML generated but not submitted queue=${faceQueue.id}`);
+		strapi.log.info(`[face-queue] Generated XML:\n${xml}`);
+		
 		await strapi.query("face-queue").update(
 			{ id: faceQueue.id },
 			{
 				_internal: true,
 				invoice: invoiceSnapshot,
-				request_url: fakeResult.requestUrl,
-				request_body: fakeResult.requestBody,				
-				response_body: fakeResult.responseBody,
-				status: fakeResult.status,
+				response_body: JSON.stringify({
+					dryRun: true,
+					message: "DRY-RUN: XML generated successfully but not submitted to FACe",
+					xmlLength: xml.length,
+					timestamp: new Date().toISOString()
+				}, null, 2),
+				status: "pending",
 			}
 		);
+		
+		strapi.log.info(`[face-queue] DRY-RUN completed for queue ${faceQueue.id}`);
+		return;
+	}
 
-		strapi.log.info(
-			`[face-queue] fake send finished queue=${faceQueue.id} status=${fakeResult.status}`
+	// Submit to FACe REST API
+	try {
+		const submitResult = await submitInvoiceToFace({
+			xml,
+			nif: me.nif,
+			dir3,
+			mode: faceQueue.mode,
+			me,
+		});
+
+		if (submitResult.success) {
+			await strapi.query("face-queue").update(
+				{ id: faceQueue.id },
+				{
+					_internal: true,
+					invoice: invoiceSnapshot,
+					registration_number: submitResult.registrationNumber,
+					response_body: JSON.stringify(submitResult.data, null, 2),
+					status: "registered",
+					last_status_check: new Date(),
+					attempts: 0,
+				}
+			);
+
+			strapi.log.info(
+				`[face-queue] invoice submitted queue=${faceQueue.id} registration=${submitResult.registrationNumber}`
+			);
+		} else {
+			const attempts = (faceQueue.attempts || 0) + 1;
+			const maxAttempts = 3;
+
+			await strapi.query("face-queue").update(
+				{ id: faceQueue.id },
+				{
+					_internal: true,
+					invoice: invoiceSnapshot,
+					response_body: JSON.stringify(submitResult.error || submitResult.data, null, 2),
+					status: attempts >= maxAttempts ? "error" : "pending",
+					attempts,
+				}
+			);
+
+			strapi.log.warn(
+				`[face-queue] submission failed queue=${faceQueue.id} attempts=${attempts}/${maxAttempts}`
+			);
+		}
+	} catch (error) {
+		strapi.log.error(`[face-queue] unexpected error queue=${faceQueue.id}:`, error);
+		await strapi.query("face-queue").update(
+			{ id: faceQueue.id },
+			{
+				_internal: true,
+				invoice: invoiceSnapshot,
+				response_body: JSON.stringify({ error: error.message }, null, 2),
+				status: "error",
+			}
 		);
 	}
 
 	strapi.log.info(
-		`[face-queue] FACe process started for queue ${faceQueue.id} (invoice ${emittedInvoiceId || "-"})`
+		`[face-queue] FACe process completed for queue ${faceQueue.id} (invoice ${emittedInvoiceId || "-"})`
 	);
 };
 
 module.exports = {
 	startFaceProcess,
+	checkInvoiceStatus,
 };

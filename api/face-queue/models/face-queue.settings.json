@@ -34,13 +34,24 @@
       "type": "enumeration",
       "enum": [
         "pending",
-        "error",
-        "warning",
-        "ok"
+        "registered",
+        "delivered",
+        "rejected",
+        "error"
       ]
     },
     "invoice": {
       "type": "json"
+    },
+    "registration_number": {
+      "type": "string"
+    },
+    "last_status_check": {
+      "type": "datetime"
+    },
+    "attempts": {
+      "type": "integer",
+      "default": 0
     }
   }
 }

@@ -11,7 +11,9 @@
     "strapi": "strapi"
   },
   "dependencies": {
+    "axios": "^0.27.2",
     "crypto": "^1.0.1",
+    "form-data": "^4.0.0",
     "googleapis": "^169.0.0",
     "knex": "0.21.18",
     "lodash": "^4.17.21",

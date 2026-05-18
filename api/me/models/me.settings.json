@@ -137,6 +137,25 @@
         "test",
         "real"
       ]
+    },
+    "face_certificate": {
+      "model": "file",
+      "via": "related",
+      "allowedTypes": [
+        "files"
+      ],
+      "plugin": "upload",
+      "required": false,
+      "pluginOptions": {}
+    },
+    "face_certificate_password": {
+      "type": "password"
+    },
+    "face_test_endpoint": {
+      "type": "string"
+    },
+    "face_real_endpoint": {
+      "type": "string"
     }
   }
 }
