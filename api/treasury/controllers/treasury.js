@@ -115,7 +115,7 @@ module.exports = {
 
     // vat
     const vat = { paid: 0, received: 0, deductible_vat_pct: 0, deductible_vat_pct_sum: 0, deductible_vat_pct_n: 0, deductible_vat: 0, documents: [] };
-    const vat_expected = { paid: 0, received: 0 };
+    const vat_expected = { paid: 0, received: 0, documents: [] };
     const vat_expected_by_quarter = {};    
 
     // Process filtered projects to find unpaid incomes and expenses
@@ -149,6 +149,21 @@ module.exports = {
             if (date_est && e.expense_type && e.expense_type.vat_pct) {
               const vatAmount = e.total_amount * e.expense_type.vat_pct / 100;
               vat_expected.paid += vatAmount;
+              
+              // Add document to the list
+              vat_expected.documents.push({
+                id: e.id,
+                project_id: p.id,
+                project_name: p.name,
+                concept: e.concept || '-',
+                type: 'phase-expense',
+                total: e.total_amount,
+                total_vat: vatAmount,
+                vat_pct: e.expense_type.vat_pct,
+                date: date_est,
+                expense_type: e.expense_type.name,
+                provider: e.provider && e.provider.name ? e.provider.name : '-'
+              });
               
               // Group by quarter
               const dateEstMoment = moment(date_est, 'YYYY-MM-DD');
@@ -238,6 +253,21 @@ module.exports = {
             if (date_est && i.income_type && i.income_type.vat_pct) {
               const vatAmount = i.total_amount * i.income_type.vat_pct / 100;
               vat_expected.received += vatAmount;
+              
+              // Add document to the list
+              vat_expected.documents.push({
+                id: i.id,
+                project_id: p.id,
+                project_name: p.name,
+                concept: i.concept || '-',
+                type: 'phase-income',
+                total: i.total_amount,
+                total_vat: vatAmount,
+                vat_pct: i.income_type.vat_pct,
+                date: date_est,
+                income_type: i.income_type.name,
+                client: i.client && i.client.name ? i.client.name : '-'
+              });
               
               // Group by quarter
               const dateEstMoment = moment(date_est, 'YYYY-MM-DD');
@@ -1136,6 +1166,6 @@ module.exports = {
       }
     }
 
-    return { treasury: filteredTreasuryDataX, projects, vat, vat_expected };
+    return { treasury: filteredTreasuryDataX, projects, vat, vat_expected, vat_expected_by_quarter, vat_by_quarter: vatByQuarter };
   },
 };
