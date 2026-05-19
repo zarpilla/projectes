@@ -306,6 +306,9 @@
         "confirmation",
         "completed"
       ]
+    },
+    "internal_notes": {
+      "type": "text"
     }
   }
 }
