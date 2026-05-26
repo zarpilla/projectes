@@ -409,7 +409,7 @@ const calculateEstimatedDeliveryDate = (route) => {
 /**
  * Check if transfer is needed for a collection order
  */
-const checkTransferNeededForCollectionOrder = async (pickupId, routeId) => {
+const checkTransferNeededForCollectionOrder = async (pickupId, routeId, orderData = null) => {
   if (!pickupId || !routeId) {
     return { transfer: false };
   }
@@ -428,8 +428,24 @@ const checkTransferNeededForCollectionOrder = async (pickupId, routeId) => {
 
   let pickupCityId = null;
 
-  // Get city from pickup
-  if (pickup.city) {
+  // If this is a "Recollida en Finca" pickup (pickup: true), get city from collection_point contact
+  if (pickup.pickup === true && orderData && orderData.collection_point) {
+    const collectionPointId = extractId(orderData.collection_point);
+    
+    if (collectionPointId) {
+      const collectionPointContact = await strapi.query("contacts").findOne({ id: collectionPointId });
+      if (collectionPointContact && collectionPointContact.city) {
+        // Find city object by name
+        const cities = await strapi.query("city").find({ name: collectionPointContact.city, _limit: 1 });
+        if (cities && cities.length > 0) {
+          pickupCityId = cities[0].id;
+        }
+      }
+    }
+  }
+  
+  // Fallback: Get city from pickup if not already set
+  if (!pickupCityId && pickup.city) {
     pickupCityId = typeof pickup.city === 'object' ? pickup.city.id : pickup.city;
   }
 
@@ -554,7 +570,7 @@ const calculateOrderTransferData = async (orderData) => {
   }
 
   // Check if transfer is needed
-  const transferInfo = await checkTransferNeededForCollectionOrder(pickupId, routeId);
+  const transferInfo = await checkTransferNeededForCollectionOrder(pickupId, routeId, orderData);
 
   // If the order needs a transfer
   if (transferInfo.transfer) {
@@ -801,10 +817,18 @@ const processCollectionOrder = async (orderId, orderData, previousOrderData = nu
   const routeTransferPickupId = extractId(route.transfer_pickup);
   const collectionOrderPickupId = routeTransferPickupId || originalPickupId;
 
-  // Check if transfer is needed
+  // Check if transfer is needed for the collection order
+  // If the collection order uses the original pickup (which might be "Recollida en Finca"),
+  // we need to pass the collection_point so the transfer check can use it
+  const collectionOrderData = {
+    pickup: collectionOrderPickupId,
+    collection_point: collectionOrderPickupId === originalPickupId ? orderData.collection_point : null
+  };
+  
   const transferInfo = await checkTransferNeededForCollectionOrder(
     collectionOrderPickupId,
     route.id,
+    collectionOrderData
   );
 
   // Calculate transfer route if transfer is needed
