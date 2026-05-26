@@ -205,7 +205,13 @@ module.exports = {
         }
       }
 
-      if (invoice && !invoice.pdf) {
+      // Regenerate PDF if:
+      // 1. Invoice has no PDF yet, OR
+      // 2. State changed to "real" (from draft to real conversion)
+      const shouldRegeneratePdf = !invoice.pdf || 
+        (invoice.state === "real" && data.state === "real" && data.code === "ESBORRANY");
+      
+      if (invoice && shouldRegeneratePdf) {
         try {
           const ctx = { params: { id: params.id, doc: "emitted-invoice" } };
           await emittedInvoiceController.pdf(ctx);
