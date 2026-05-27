@@ -1674,11 +1674,14 @@ module.exports = {
         for (var j = 0; j < p.periodification.length; j++) {
           const pp = p.periodification[j];
 
+          // Periodification entries are manual yearly adjustments that must be
+          // applied to ALL three dimensions (original, estimated, real) to
+          // match the RESUM FINANCER calculation in doProjectInfoCalculations.
           projectResponse.push({
             ...projectInfo,
             ...noPhaseInfo,
             type: "income",
-            income_orig: 0,
+            income_orig: pp.incomes,
             income_esti: pp.incomes,
             income_real: pp.real_incomes,
             date: `${pp.year}-12-31`,
@@ -1691,7 +1694,7 @@ module.exports = {
             ...projectInfo,
             ...noPhaseInfo,
             type: "expense",
-            expense_orig: 0,
+            expense_orig: pp.expenses,
             expense_orig_vat: 0,
             expense_esti: pp.expenses,
             expense_esti_vat: 0,
@@ -1725,38 +1728,54 @@ module.exports = {
         });
       }
 
-      const { totalsByDay } = await calculateEstimatedTotals(
+      // Hores originals come from project_original_phases (the locked baseline)
+      const { totalsByDay: originalTotalsByDay } = await calculateEstimatedTotals(
         { id: projectInfo.id, name: projectInfo.project_name },
         p.project_original_phases,
         dailyDedications,
         festives
       );
 
-      const totalsByDayPYM = totalsByDay.map((a) => {
-        return {
-          ...a,
-          ym: `${moment(a.day, "YYYY-MM-DD").year()}.${moment(
-            a.day,
-            "YYYY-MM-DD"
-          ).month()}`,
-        };
-      });
-      const groupedTotalsByDay = _(totalsByDayPYM)
-        .groupBy("ym")
-        .map((rows, id) => {
-          return {
+      // Hores previstes must come from the current plan (project_phases),
+      // not from project_original_phases. The form's RESUM FINANCER computes
+      // total_estimated_hours from project_phases, so the pivot must do the
+      // same to stay consistent.
+      const { totalsByDay: estimatedTotalsByDay } = await calculateEstimatedTotals(
+        { id: projectInfo.id, name: projectInfo.project_name },
+        p.project_phases,
+        dailyDedications,
+        festives,
+        true
+      );
+
+      const groupByYearMonth = (rows) =>
+        _(
+          rows.map((a) => ({
+            ...a,
+            ym: `${moment(a.day, "YYYY-MM-DD").year()}.${moment(
+              a.day,
+              "YYYY-MM-DD"
+            ).month()}`,
+          }))
+        )
+          .groupBy("ym")
+          .map((groupRows, id) => ({
             year: parseInt(id.split(".")[0]),
             month: parseInt(id.split(".")[1]) + 1,
-            cost: _.sumBy(rows, (r) => r.q * r.costByHour),
-            q: _.sumBy(rows, (r) => r.q),
-          };
-        });
+            cost: _.sumBy(groupRows, (r) => r.q * r.costByHour),
+            q: _.sumBy(groupRows, (r) => r.q),
+          }))
+          .value();
 
-      const groupedTotalsByDayObj = JSON.parse(
-        JSON.stringify(groupedTotalsByDay)
+      const groupedOriginalHours = JSON.parse(
+        JSON.stringify(groupByYearMonth(originalTotalsByDay))
       );
-      for (var j = 0; j < groupedTotalsByDayObj.length; j++) {
-        const g = groupedTotalsByDayObj[j];
+      const groupedEstimatedHours = JSON.parse(
+        JSON.stringify(groupByYearMonth(estimatedTotalsByDay))
+      );
+
+      for (var j = 0; j < groupedOriginalHours.length; j++) {
+        const g = groupedOriginalHours[j];
 
         projectResponse.push({
           ...projectInfo,
@@ -1772,8 +1791,11 @@ module.exports = {
           row_type: "Hores originals",
           // document: "0",
         });
+      }
 
-        // Hores prev should match hores originals
+      for (var j = 0; j < groupedEstimatedHours.length; j++) {
+        const g = groupedEstimatedHours[j];
+
         projectResponse.push({
           ...projectInfo,
           ...noPhaseInfo,
