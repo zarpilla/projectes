@@ -8,7 +8,8 @@
     "develop.admin": "strapi develop --watch-admin",
     "start": "strapi start",
     "build": "strapi build",
-    "strapi": "strapi"
+    "strapi": "strapi",
+    "test": "node tests/aggregateRowsByYear.test.js"
   },
   "dependencies": {
     "axios": "^0.27.2",

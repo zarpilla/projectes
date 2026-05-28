@@ -1,9 +1,15 @@
 "use strict";
 const { sanitizeEntity } = require("strapi-utils");
 const _ = require("lodash");
-const sumBy = require("lodash/sumBy");
 const moment = require("moment");
 const { getDailyDedications, getFestives } = require("../services/project");
+const {
+  buildProjectRows,
+  aggregateRowsByYear,
+  buildSingleProjectActivitiesMap,
+  calculateEstimatedTotals,
+  getProjectDefaultYear,
+} = require("../services/projectFinancials");
 
 /**
  * Read the documentation (https://strapi.io/documentation/v3.x/concepts/controllers.html#core-controllers)
@@ -29,71 +35,6 @@ const doProjectInfoCalculations = async (data, id) => {
       .filter((y) => y && y.year)
       .map((y) => [String(y.year), parseFloat(y.deductible_vat_pct || 100)])
   );
-  const projectDefaultYear = getProjectDefaultYear(data);
-
-  // Initialize all three dimensions: original, estimated (current plan), real (executed)
-  data.total_original_incomes = 0;
-  data.total_original_expenses = 0;
-  data.total_original_hours = 0;
-  data.total_original_hours_price = 0;
-  data.total_original_expenses_vat = 0;
-  
-  data.total_estimated_incomes = 0;
-  data.total_estimated_expenses = 0;
-  data.total_estimated_hours = 0;
-  data.total_estimated_hours_price = 0;
-  data.total_estimated_expenses_vat = 0;
-  
-  data.total_real_incomes = 0;
-  data.total_real_expenses = 0;
-  data.total_real_hours = 0;
-  data.total_real_hours_price = 0;
-  data.total_real_expenses_vat = 0;
-
-  // Backwards compatibility
-  data.total_incomes = 0;
-  data.total_expenses = 0;
-  data.total_expenses_hours = 0;
-  data.estimated_balance = 0;
-  data.total_estimated_expenses = 0;
-  data.total_expenses_vat = 0;
-
-  var allByYear1 = [];
-  var allByYear2 = [];
-
-  if (data.project_phases && data.project_phases.length) {
-    // Calculate ESTIMATED (current plan from project_phases - ALL lines including paid/unpaid)
-    const infoPhases = await calculateEstimatedTotals(
-      data,
-      data.project_phases,
-      dailyDedications,
-      festives,
-      true
-    );
-
-    allByYear1 = JSON.parse(JSON.stringify(infoPhases.totalsByYear));
-    data = infoPhases.data;
-    
-    // Note: Project-level totals will be calculated by summing allByYear after periodification
-  }
-
-  if (data.project_original_phases && data.project_original_phases.length) {
-    // Calculate ORIGINAL (original budget from project_original_phases)
-    const infoOriginalPhases = await calculateEstimatedTotals(
-      data,
-      data.project_original_phases,
-      dailyDedications,
-      festives,
-      false
-    );
-
-    allByYear2 = JSON.parse(
-      JSON.stringify(infoOriginalPhases.totalsByYear)
-    );
-    data = infoOriginalPhases.data;
-    
-    // Note: Project-level totals will be calculated by summing allByYear after periodification
-  }
 
   if (!data.activities) {
     data.activities = await strapi
@@ -101,285 +42,70 @@ const doProjectInfoCalculations = async (data, id) => {
       .find({ project: id, _limit: -1 });
   }
 
-  const activities = data.activities;
-
-  data.total_real_hours = _.sumBy(activities, "hours");
-  const activities_price = activities.map((a) => {
-    return { cost: a.hours * a.cost_by_hour };
-  });
-  data.total_real_hours_price = _.sumBy(activities_price, "cost");
-
-  const activitiesByYear = _(
-    activities.map((a) => {
-      return { ...a, year: getEstimateYear(a) };
-    })
-  )
-    .groupBy("year")
-    .map((rows, year) => {
-      return {
-        year: year,
-        // total_incomes: 0.0,
-        total_real_hours: _.sumBy(rows, "hours"),
-        total_real_hours_price: _.sumBy(rows, (a) => a.hours * a.cost_by_hour),
-      };
-    });
-
-  var allByYear3 = JSON.parse(JSON.stringify(activitiesByYear));
-
-  // Rename fields in allByYear1 (from project_phases) to use "estimated" prefix
-  const allByYear1Renamed = allByYear1.map(y => ({
-    year: y.year,
-    total_estimated_incomes: y.total_incomes,
-    total_estimated_expenses: y.total_expenses,
-    total_estimated_expenses_vat: y.total_expenses_vat,
-    total_estimated_hours: y.total_estimated_hours,
-    total_estimated_hours_price: y.total_estimated_hours_price,
-    total_real_incomes: y.total_real_incomes,
-    total_real_expenses: y.total_real_expenses,
-    total_real_expenses_vat: y.total_real_expenses_vat,
-  }));
-
-  // Rename fields in allByYear2 (from project_original_phases) to use "original" prefix
-  const allByYear2Renamed = allByYear2.map(y => ({
-    year: y.year,
-    total_original_incomes: y.total_incomes,
-    total_original_expenses: y.total_expenses,
-    total_original_expenses_vat: y.total_expenses_vat,
-    total_original_hours: y.total_estimated_hours,
-    total_original_hours_price: y.total_estimated_hours_price,
-  }));
-
-  let allByYearArray = _.concat(allByYear1Renamed, allByYear2Renamed, allByYear3);
-
-  var allByYearArrayJSON = JSON.parse(JSON.stringify(allByYearArray));
-
-  const allByYear = _(_.values(allByYearArrayJSON.filter((a) => a !== null)))
-    .groupBy("year")
-    .map((rows, year) => {
-      const sourceYear = String(year);
-      const vatYear = sourceYear === "9999" ? projectDefaultYear : sourceYear;
-      const deductible_vat_pct = deductibleVatPctByYear.has(vatYear)
-        ? deductibleVatPctByYear.get(vatYear)
-        : parseFloat(fallback_deductible_vat_pct || 100);
-      const deductible_ratio = (100.0 - deductible_vat_pct) / 100.0;
-
-      // Aggregate three separate dimensions
-      const total_original_incomes = sumBy(rows, (r) =>
-        r.total_original_incomes !== undefined ? parseFloat(r.total_original_incomes) : 0.0
-      );
-      const total_original_expenses = sumBy(rows, (r) =>
-        r.total_original_expenses !== undefined ? parseFloat(r.total_original_expenses) : 0.0
-      );
-      const total_original_expenses_vat = sumBy(rows, (r) =>
-        r.total_original_expenses_vat !== undefined
-          ? deductible_ratio * parseFloat(r.total_original_expenses_vat)
-          : 0.0
-      );
-      const total_original_hours = sumBy(rows, (r) =>
-        r.total_original_hours !== undefined
-          ? parseFloat(r.total_original_hours)
-          : 0.0
-      );
-      const total_original_hours_price = sumBy(rows, (r) =>
-        r.total_original_hours_price !== undefined
-          ? parseFloat(r.total_original_hours_price)
-          : 0.0
-      );
-      
-      const total_estimated_incomes = sumBy(rows, (r) =>
-        r.total_estimated_incomes !== undefined ? parseFloat(r.total_estimated_incomes) : 0.0
-      );
-      const total_estimated_expenses = sumBy(rows, (r) =>
-        r.total_estimated_expenses !== undefined ? parseFloat(r.total_estimated_expenses) : 0.0
-      );
-      const total_estimated_expenses_vat = sumBy(rows, (r) =>
-        r.total_estimated_expenses_vat !== undefined
-          ? deductible_ratio * parseFloat(r.total_estimated_expenses_vat)
-          : 0.0
-      );
-      const total_estimated_hours = sumBy(rows, (r) =>
-        r.total_estimated_hours !== undefined
-          ? parseFloat(r.total_estimated_hours)
-          : 0.0
-      );
-      const total_estimated_hours_price = sumBy(rows, (r) =>
-        r.total_estimated_hours_price !== undefined
-          ? parseFloat(r.total_estimated_hours_price)
-          : 0.0
-      );
-      
-      const total_real_incomes = sumBy(rows, (r) =>
-        r.total_real_incomes !== undefined
-          ? parseFloat(r.total_real_incomes)
-          : 0.0
-      );
-      const total_real_expenses = sumBy(rows, (r) =>
-        r.total_real_expenses !== undefined
-          ? parseFloat(r.total_real_expenses)
-          : 0.0
-      );
-      const total_real_expenses_vat = sumBy(rows, (r) =>
-        r.total_real_expenses_vat !== undefined
-          ? deductible_ratio * parseFloat(r.total_real_expenses_vat)
-          : 0.0
-      );
-      const total_real_hours = sumBy(rows, (r) =>
-        r.total_real_hours !== undefined
-          ? parseFloat(r.total_real_hours)
-          : 0.0
-      );
-      const total_real_hours_price = sumBy(rows, (r) =>
-        r.total_real_hours_price !== undefined
-          ? parseFloat(r.total_real_hours_price)
-          : 0.0
-      );
-      
-      return {
-        year: year,
-        // Original dimension (from project_original_phases)
-        total_original_incomes,
-        total_original_expenses,
-        total_original_expenses_vat,
-        total_original_hours,
-        total_original_hours_price,
-        original_incomes_expenses: total_original_incomes - total_original_expenses - total_original_hours_price - total_original_expenses_vat,
-        
-        // Estimated dimension (from project_phases - all lines)
-        total_estimated_incomes,
-        total_estimated_expenses,
-        total_estimated_expenses_vat,
-        total_estimated_hours,
-        total_estimated_hours_price,
-        estimated_incomes_expenses: total_estimated_incomes - total_estimated_expenses - total_estimated_hours_price - total_estimated_expenses_vat,
-        
-        // Real dimension (from paid invoices/expenses + activities)
-        total_real_incomes,
-        total_real_expenses,
-        total_real_expenses_vat,
-        total_real_hours,
-        total_real_hours_price,
-        total_real_incomes_expenses: total_real_incomes - total_real_expenses - total_real_hours_price - total_real_expenses_vat,
-        
-        // Backwards compatibility fields (use estimated as default)
-        total_incomes: total_estimated_incomes,
-        total_expenses: total_estimated_expenses,
-        total_expenses_vat: total_estimated_expenses_vat,
-        incomes_expenses: total_estimated_incomes - total_estimated_expenses - total_estimated_hours_price - total_estimated_expenses_vat,
-      };
-    });
-  const allByYearPeriodificated = JSON.parse(JSON.stringify(allByYear)).map(
-    (y) => {
-      const periodificationData = data.periodification && data.periodification.find((p) => p.year === y.year);
-      
-      // Periodification adjustments (manual corrections per year)
-      const periodified_real_incomes = periodificationData ? (periodificationData.real_incomes || 0) : 0;
-      const periodified_real_expenses = periodificationData ? (periodificationData.real_expenses || 0) : 0;
-      const periodified_incomes = periodificationData ? (periodificationData.incomes || 0) : 0;
-      const periodified_expenses = periodificationData ? (periodificationData.expenses || 0) : 0;
-      
-      // Apply periodification to all three dimensions
-      const new_total_original_incomes = (y.total_original_incomes || 0) + periodified_incomes;
-      const new_total_original_expenses = (y.total_original_expenses || 0) + periodified_expenses;
-      
-      const new_total_estimated_incomes = (y.total_estimated_incomes || 0) + periodified_incomes;
-      const new_total_estimated_expenses = (y.total_estimated_expenses || 0) + periodified_expenses;
-      
-      const new_total_real_incomes = (y.total_real_incomes || 0) + periodified_real_incomes;
-      const new_total_real_expenses = (y.total_real_expenses || 0) + periodified_real_expenses;
-      
-      return {
-        ...y,
-        // Original dimension (with periodification)
-        total_original_incomes: new_total_original_incomes,
-        total_original_expenses: new_total_original_expenses,
-        original_incomes_expenses: new_total_original_incomes - new_total_original_expenses - (y.total_original_hours_price || 0) - (y.total_original_expenses_vat || 0),
-        
-        // Estimated dimension (with periodification)
-        total_estimated_incomes: new_total_estimated_incomes,
-        total_estimated_expenses: new_total_estimated_expenses,
-        estimated_incomes_expenses: new_total_estimated_incomes - new_total_estimated_expenses - (y.total_estimated_hours_price || 0) - (y.total_estimated_expenses_vat || 0),
-        
-        // Real dimension (with periodification)
-        total_real_incomes: new_total_real_incomes,
-        total_real_expenses: new_total_real_expenses,
-        total_real_incomes_expenses: new_total_real_incomes - new_total_real_expenses - (y.total_real_hours_price || 0) - (y.total_real_expenses_vat || 0),
-        
-        // Backwards compatibility fields (use estimated)
-        total_incomes: new_total_estimated_incomes,
-        total_expenses: new_total_estimated_expenses,
-        incomes_expenses: new_total_estimated_incomes - new_total_estimated_expenses - (y.total_estimated_hours_price || 0) - (y.total_estimated_expenses_vat || 0),
-      };
-    }
+  // Build the same shared engine context the pivot uses, scoped to a
+  // single project. This is the cornerstone of the refactor: the form's
+  // RESUM FINANCER and the pivot endpoint now derive their numbers from
+  // the exact same row stream, so they cannot drift apart again.
+  const activitiesByProject = buildSingleProjectActivitiesMap(
+    data.id,
+    data.activities
   );
+  const financialsCtx = {
+    dailyDedications,
+    festives,
+    deductibleVatPctByYear,
+    fallback_deductible_vat_pct,
+    activitiesByProject,
+  };
 
-  data.allByYear = JSON.parse(JSON.stringify(allByYearPeriodificated)).filter(yearData => {
-    // Keep all non-9999 years
-    if (yearData.year !== "9999") {
-      return true;
-    }
-    
-    // For 9999 years, only keep if at least one numeric value is non-zero
-    return yearData.total_incomes !== 0 ||
-           yearData.total_expenses !== 0 ||
-           yearData.total_expenses_vat !== 0 ||
-           yearData.total_real_incomes !== 0 ||
-           yearData.total_real_expenses !== 0 ||
-           yearData.total_real_expenses_vat !== 0 ||
-           yearData.total_estimated_hours !== 0 ||
-           yearData.total_estimated_hours_price !== 0 ||
-           yearData.total_real_hours !== 0 ||
-           yearData.total_real_hours_price !== 0 ||
-           yearData.total_real_incomes_expenses !== 0 ||
-           yearData.incomes_expenses !== 0;
-  });
+  const rows = await buildProjectRows(data, financialsCtx);
 
-  // REFACTORED: Calculate project-level totals by summing yearly values
-  // This ensures perfect consistency between year-level and project-level numbers
-  
-  // Sum original dimension from years
+  data.allByYear = aggregateRowsByYear(rows);
+
+  // Sum project-level totals from the year buckets so the totals always
+  // match what the user sees per year.
   data.total_original_incomes = _.sumBy(data.allByYear, 'total_original_incomes') || 0;
   data.total_original_expenses = _.sumBy(data.allByYear, 'total_original_expenses') || 0;
   data.total_original_hours = _.sumBy(data.allByYear, 'total_original_hours') || 0;
   data.total_original_hours_price = _.sumBy(data.allByYear, 'total_original_hours_price') || 0;
   data.total_original_expenses_vat = _.sumBy(data.allByYear, 'total_original_expenses_vat') || 0;
-  
-  // Sum estimated dimension from years
+
   data.total_estimated_incomes = _.sumBy(data.allByYear, 'total_estimated_incomes') || 0;
   data.total_estimated_expenses = _.sumBy(data.allByYear, 'total_estimated_expenses') || 0;
   data.total_estimated_hours = _.sumBy(data.allByYear, 'total_estimated_hours') || 0;
   data.total_estimated_hours_price = _.sumBy(data.allByYear, 'total_estimated_hours_price') || 0;
   data.total_estimated_expenses_vat = _.sumBy(data.allByYear, 'total_estimated_expenses_vat') || 0;
-  
-  // Sum real dimension from years
+
   data.total_real_incomes = _.sumBy(data.allByYear, 'total_real_incomes') || 0;
   data.total_real_expenses = _.sumBy(data.allByYear, 'total_real_expenses') || 0;
   data.total_real_hours = _.sumBy(data.allByYear, 'total_real_hours') || 0;
   data.total_real_hours_price = _.sumBy(data.allByYear, 'total_real_hours_price') || 0;
   data.total_real_expenses_vat = _.sumBy(data.allByYear, 'total_real_expenses_vat') || 0;
-  
-  // Calculate balances for all three dimensions
+
+  // Three-dimensional balances
   data.original_incomes_expenses =
     data.total_original_incomes -
     data.total_original_expenses -
     data.total_original_hours_price -
     data.total_original_expenses_vat;
-  
+
   data.estimated_incomes_expenses =
     data.total_estimated_incomes -
     data.total_estimated_expenses -
     data.total_estimated_hours_price -
     data.total_estimated_expenses_vat;
-  
+
   data.total_real_incomes_expenses =
     data.total_real_incomes -
     data.total_real_expenses -
     data.total_real_hours_price -
     data.total_real_expenses_vat;
-  
-  // Backwards compatibility fields (use estimated as default)
+
+  // Backwards compatibility (estimated dimension is the default)
   data.total_incomes = data.total_estimated_incomes;
   data.total_expenses = data.total_estimated_expenses;
   data.total_expenses_vat = data.total_estimated_expenses_vat;
+  data.total_expenses_hours = data.total_estimated_hours;
 
   // Handle structural expenses if applicable
   if (data.structural_expenses === true) {
@@ -443,490 +169,6 @@ const doProjectInfoCalculations = async (data, id) => {
   data.is_mother = childProjects > 0;
 
   return data;
-};
-
-// const updateProjectInfo = async (id, updateEstimated) => {
-//   const data = await strapi.query("project").findOne({ id });
-
-//   const info = await doProjectInfoCalculations(data, id);
-
-//   if (!updateEstimated) {
-//     delete info.incomes;
-//     delete info.expenses;
-//     delete info.phases;
-//     delete info.original_phases;
-//   }
-
-//   info._internal = true;
-//   await strapi.query("project").update({ id: id }, info);
-
-//   // var end = new Date() - start
-//   // console.log("updateProjectInfo 4", end);
-
-//   return { id };
-// };
-
-// const addToYear = (years, year, property, value) => {
-//   if (!years[`y_${year}`]) {
-//     years[`y_${year}`] = {};
-//   }
-//   if (!years[`y_${year}`][property]) {
-//     years[`y_${year}`][property] = 0;
-//   }
-//   years[`y_${year}`][property] += value;
-//   return years;
-// };
-
-const getProjectDefaultYear = (project) => {
-  if (!project) {
-    return String(moment().format("YYYY"));
-  }
-
-  const extractYear = (value) => {
-    if (!value) {
-      return null;
-    }
-
-    if (value instanceof Date && !isNaN(value.getTime())) {
-      return String(value.getFullYear());
-    }
-
-    if (typeof value === "string") {
-      const yearMatch = value.match(/\d{4}/);
-      return yearMatch ? yearMatch[0] : null;
-    }
-
-    if (value && typeof value === "object" && typeof value.toISOString === "function") {
-      return String(value.toISOString().substring(0, 4));
-    }
-
-    return null;
-  };
-
-  return (
-    extractYear(project.date_start) ||
-    extractYear(project.date_end) ||
-    String(moment().format("YYYY"))
-  );
-};
-
-const getEstimateYear = (item, fallbackYear = "9999") => {
-  if (item && item.date_estimate_document) {
-    return item.date_estimate_document.substring(0, 4);
-  }
-  if (item && item.date) {
-    return item.date.substring(0, 4);
-  }
-  return fallbackYear;
-};
-
-const getRealYear = (item) => {
-  if (item && item.emitted) {
-    return item.emitted.substring(0, 4);
-  }
-  if (item && item.paid_date) {
-    return item.paid_date.substring(0, 4);
-  }
-  if (item && item.date) {
-    return item.date.substring(0, 4);
-  }
-  return "9999";
-};
-
-const calculateEstimatedTotals = async (
-  data,
-  phases,
-  dailyDedications,
-  festives,
-  real // or estimated
-) => {
-  var total_estimated_hours = 0;
-  var total_incomes = 0;
-  var total_estimated_hours_price = 0;
-  let total_expenses = 0;
-  let total_expenses_vat = 0;
-
-  let total_real_incomes = 0;
-  let total_real_expenses = 0;
-  let total_real_expenses_vat = 0;
-
-  const years = {};
-
-  const totalsByDay = [];
-  const rowsByYear = [];
-
-  // Pre-create Maps for O(1) lookups instead of O(n) array.find()
-  const festivesByDate = new Map();
-  const festivesByUserAndDate = new Map();
-  festives.forEach(f => {
-    const key = f.date;
-    if (!festivesByDate.has(key)) {
-      festivesByDate.set(key, []);
-    }
-    festivesByDate.get(key).push(f);
-    
-    if (f.users_permissions_user) {
-      const userKey = `${f.users_permissions_user.id}_${f.date}`;
-      festivesByUserAndDate.set(userKey, f);
-    }
-  });
-
-  // Pre-create Map for daily dedications lookup
-  const dedicationsByUser = new Map();
-  dailyDedications.forEach(d => {
-    const userId = d.users_permissions_user ? d.users_permissions_user.id : null;
-    if (!userId) {
-      return;
-    }
-    if (!dedicationsByUser.has(userId)) {
-      dedicationsByUser.set(userId, []);
-    }
-    dedicationsByUser.get(userId).push(d);
-  });
-
-  // Cache moment objects to avoid recreating them
-  const momentCache = new Map();
-  const getMoment = (dateStr) => {
-    if (!momentCache.has(dateStr)) {
-      momentCache.set(dateStr, moment(dateStr, "YYYY-MM-DD"));
-    }
-    return momentCache.get(dateStr);
-  };
-
-  // Cache formatted dates to avoid repeated formatting
-  const formatCache = new Map();
-  const getFormattedDate = (momentObj, format) => {
-    const key = `${momentObj.format("YYYY-MM-DD")}_${format}`;
-    if (!formatCache.has(key)) {
-      formatCache.set(key, momentObj.format(format));
-    }
-    return formatCache.get(key);
-  };
-
-  if (phases && phases.length) {
-    const projectDefaultYear = getProjectDefaultYear(data);
-
-    for (var i = 0; i < phases.length; i++) {
-      const phase = phases[i];
-      if (phase.incomes && phase.incomes.length) {
-        for (var j = 0; j < phase.incomes.length; j++) {
-          const subphase = phase.incomes[j];
-          var subphase_estimated_hours = 0;
-
-          // console.log('subphase', subphase)
-
-          subphase.total_amount =
-            (subphase.quantity ? subphase.quantity : 0) *
-            (subphase.amount ? subphase.amount : 0);
-          total_incomes +=
-            (subphase.quantity ? subphase.quantity : 0) *
-            (subphase.amount ? subphase.amount : 0);
-
-          const ey = getEstimateYear(subphase, projectDefaultYear);
-          // Always add estimated incomes to yearly breakdown (all lines including paid + unpaid)
-          rowsByYear.push({ year: ey, total_incomes: subphase.total_amount });
-
-          if (subphase.estimated_hours) {
-            for (var k = 0; k < subphase.estimated_hours.length; k++) {
-              const hours = subphase.estimated_hours[k];
-              hours.total_amount = 0;
-              if (
-                hours.from &&
-                hours.to &&
-                hours.users_permissions_user &&
-                hours.users_permissions_user.id
-              ) {
-                let mdiff = 1;
-                const userId = hours.users_permissions_user.id;
-                
-                // Get user's daily dedications once
-                const userDedications = dedicationsByUser.get(userId) || [];
-
-                if (hours.quantity_type && hours.quantity_type === "month") {
-                  const fromMoment = getMoment(hours.from);
-                  const toMoment = getMoment(hours.to);
-                  mdiff = Math.round(
-                    moment.duration(toMoment.diff(fromMoment)).asDays()
-                  );
-                  
-                  for (let i = 0; i < mdiff; i++) {
-                    const day = fromMoment.clone().add(i, "days");
-                    const dayStr = getFormattedDate(day, "YYYY-MM-DD");
-
-                    // Fast festive lookup using Maps
-                    const userFestiveKey = `${userId}_${dayStr}`;
-                    const festive = festivesByUserAndDate.has(userFestiveKey) 
-                      ? festivesByUserAndDate.get(userFestiveKey)
-                      : (festivesByDate.get(dayStr) || []).find(f => !f.users_permissions_user);
-
-                    if (![0, 6].includes(day.day()) && !festive) {
-                      const q = hours.quantity / 5 / 4.3;
-                      subphase_estimated_hours += q;
-                      total_estimated_hours += q;
-
-                      // Fast daily dedication lookup
-                      const dd = userDedications.find(
-                        (d) =>
-                          d.from <= dayStr &&
-                          d.to >= dayStr
-                      );
-                      const costByHour = dd && dd.costByHour ? dd.costByHour : 0;
-                      hours.total_amount += q * costByHour;
-                      total_estimated_hours_price += q * costByHour;
-
-                      totalsByDay.push({
-                        day,
-                        q,
-                        costByHour,
-                        userId: userId,
-                        project: data.id,
-                        project_name: data.name,
-                      });
-
-                      // Always add estimated hours to yearly breakdown
-                      const yearStr = getFormattedDate(day, "YYYY");
-                      rowsByYear.push({
-                        year: yearStr,
-                        total_estimated_hours: q,
-                      });
-                      rowsByYear.push({
-                        year: yearStr,
-                        total_estimated_hours_price: q * costByHour,
-                      });
-                    }
-                  }
-                } else if (
-                  hours.quantity_type &&
-                  hours.quantity_type === "week"
-                ) {
-                  const fromMoment = getMoment(hours.from);
-                  const toMoment = getMoment(hours.to);
-                  mdiff = Math.round(
-                    moment.duration(toMoment.diff(fromMoment)).asDays()
-                  );
-                  
-                  for (let i = 0; i < mdiff; i++) {
-                    const day = fromMoment.clone().add(i, "days");
-                    const dayStr = getFormattedDate(day, "YYYY-MM-DD");
-
-                    // Fast festive lookup using Maps
-                    const userFestiveKey = `${userId}_${dayStr}`;
-                    const festive = festivesByUserAndDate.has(userFestiveKey) 
-                      ? festivesByUserAndDate.get(userFestiveKey)
-                      : (festivesByDate.get(dayStr) || []).find(f => !f.users_permissions_user);
-
-                    if (![0, 6].includes(day.day()) && !festive) {
-                      const q = hours.quantity / 5;
-                      subphase_estimated_hours += q;
-                      total_estimated_hours += q;
-
-                      // Fast daily dedication lookup
-                      const dd = userDedications.find(
-                        (d) =>
-                          d.from <= dayStr &&
-                          d.to >= dayStr
-                      );
-                      const costByHour = dd && dd.costByHour ? dd.costByHour : 0;
-                      hours.total_amount += q * costByHour;
-                      total_estimated_hours_price += q * costByHour;
-
-                      totalsByDay.push({
-                        day,
-                        q,
-                        costByHour,
-                        userId: userId,
-                        project: data.id,
-                        project_name: data.name,
-                      });
-
-                      // Always add estimated hours to yearly breakdown
-                      const yearStr = getFormattedDate(day, "YYYY");
-                      rowsByYear.push({
-                        year: yearStr,
-                        total_estimated_hours: q,
-                      });
-                      rowsByYear.push({
-                        year: yearStr,
-                        total_estimated_hours_price: q * costByHour,
-                      });
-                    }
-                  }
-                } else {
-                  subphase_estimated_hours += hours.quantity * mdiff;
-                  total_estimated_hours += hours.quantity * mdiff;
-
-                  // Fast daily dedication lookup using pre-filtered array
-                  const dd = userDedications.find(
-                    (d) =>
-                      d.from <= hours.from &&
-                      d.to >= hours.from
-                  );
-                  const costByHour = dd && dd.costByHour ? dd.costByHour : 0;
-
-                  hours.total_amount =
-                    (hours.quantity ? hours.quantity : 0) * mdiff * costByHour;
-                  total_estimated_hours_price +=
-                    (hours.quantity ? hours.quantity : 0) * mdiff * costByHour;
-
-                  const fromMoment = getMoment(hours.from);
-                  const toMoment = getMoment(hours.to);
-                  mdiff = Math.round(
-                    moment.duration(toMoment.diff(fromMoment)).asMonths()
-                  );
-
-                  for (let i = 0; i < mdiff; i++) {
-                    const day = fromMoment.clone().add(i, "month");
-
-                    totalsByDay.push({
-                      day: day,
-                      q: hours.quantity / mdiff,
-                      costByHour,
-                      userId: userId,
-                      project: data.id,
-                      project_name: data.name,
-                    });
-
-                    // Always add estimated hours to yearly breakdown
-                    const yearStr = getFormattedDate(day, "YYYY");
-                    rowsByYear.push({
-                      year: yearStr,
-                      total_estimated_hours: hours.quantity / mdiff,
-                    });
-                    rowsByYear.push({
-                      year: yearStr,
-                      total_estimated_hours_price:
-                        (hours.quantity / mdiff) * costByHour,
-                    });
-                  }
-                }
-              }
-            }
-            subphase.total_estimated_hours = subphase_estimated_hours;
-          }
-          if (subphase.paid) {
-            total_real_incomes +=
-              (subphase.quantity ? subphase.quantity : 0) *
-              (subphase.amount ? subphase.amount : 0);
-            if (real) {
-              const realYear = getRealYear(
-                subphase.income
-                  ? subphase.income
-                  : subphase.expense
-                  ? subphase.expense
-                  : subphase.invoice
-              );
-
-              rowsByYear.push({
-                year: realYear,
-                total_real_incomes:
-                  (subphase.quantity ? subphase.quantity : 0) *
-                  (subphase.amount ? subphase.amount : 0),
-              });
-            }
-          }
-        }
-      }
-      if (phase.expenses && phase.expenses.length) {
-        for (var j = 0; j < phase.expenses.length; j++) {
-          const expense = phase.expenses[j];
-
-          expense.total_amount =
-            (expense.quantity ? expense.quantity : 0) *
-            (expense.amount ? expense.amount : 0);
-          total_expenses +=
-            (expense.quantity ? expense.quantity : 0) *
-            (expense.amount ? expense.amount : 0);
-
-          expense.total_expenses_vat =
-            (expense.total_amount *
-              (expense.expense_type && expense.expense_type.vat_pct
-                ? expense.expense_type.vat_pct
-                : 21)) /
-            100.0;
-
-          total_expenses_vat += expense.total_expenses_vat;
-
-          // Always add estimated expenses to yearly breakdown (all lines including paid + unpaid)
-          const ey = getEstimateYear(expense, projectDefaultYear);
-          rowsByYear.push({
-            year: ey,
-            total_expenses: expense.total_amount,
-            total_expenses_vat: expense.total_expenses_vat,
-          });
-
-          if (expense.paid) {
-            // console.log('expense', expense)
-
-            total_real_expenses +=
-              (expense.quantity ? expense.quantity : 0) *
-              (expense.amount ? expense.amount : 0);
-
-            // total_real_expenses_vat +=
-            //   (expense.quantity ? expense.quantity : 0) *
-            //   (expense.amount ? expense.amount : 0) *
-            //   (expense.expense_type && expense.expense_type.vat_pct ? expense.expense_type.vat_pct : 21) / 100.0;
-
-            // console.log('total_real_expenses_vat', total_real_expenses_vat)
-
-            if (real) {
-              const realYear = getRealYear(
-                expense.invoice ? expense.invoice : expense.expense
-              );
-              
-              rowsByYear.push({
-                year: realYear,
-                total_real_expenses:
-                  (expense.quantity ? expense.quantity : 0) *
-                  (expense.amount ? expense.amount : 0),
-                total_real_expenses_vat: expense.invoice
-                  ? expense.invoice.total_vat || 0
-                  : expense.total_expenses_vat || 0,
-              });
-              total_real_expenses_vat += expense.invoice
-                ? expense.invoice.total_vat || 0
-                : expense.total_expenses_vat || 0;
-            }
-          }
-        }
-      }
-    }
-  }
-
-  const totalsByYear = _(rowsByYear)
-    .groupBy("year")
-    .map((rows, year) => {
-      return {
-        year: year,
-        total_expenses: _.sumBy(rows, "total_expenses"),
-        total_expenses_vat: _.sumBy(rows, "total_expenses_vat"),
-        total_incomes: _.sumBy(rows, "total_incomes"),
-        total_estimated_hours: _.sumBy(rows, "total_estimated_hours"),
-        total_estimated_hours_price: _.sumBy(
-          rows,
-          "total_estimated_hours_price"
-        ),
-        total_real_incomes: _.sumBy(rows, "total_real_incomes"),
-        total_real_expenses: _.sumBy(rows, "total_real_expenses"),
-        total_real_expenses_vat: _.sumBy(
-          rows,
-          (r) => r.total_real_expenses_vat || 0
-        ),
-      };
-    });
-
-  return {
-    data,
-    total_expenses,
-    total_incomes,
-    total_estimated_hours,
-    total_estimated_hours_price,
-    total_real_incomes,
-    total_real_expenses,
-    total_expenses_vat,
-    total_real_expenses_vat,
-    totalsByDay,
-    totalsByYear,
-  };
 };
 
 let projectsQueue = [];
@@ -1037,86 +279,6 @@ module.exports = {
 
   //   return data;
   // },
-  async updateDirtyProjects() {
-    const projectsQueue = await strapi
-      .query("dirty-queue")
-      .find({ entity: "project", _limit: -1 });
-
-    const uniqueProjects = _.union(projectsQueue.map((p) => p.entityId));
-    const queueIds = projectsQueue.map((p) => p.id);
-
-    if (uniqueProjects.length === 0) {
-      await strapi.connections.default.raw("TRUNCATE TABLE dirty_queues;");
-      return;
-    }
-
-    let ok = true;
-    let processed = 0;
-
-    for await (const project of uniqueProjects) {
-      try {
-        const data = await strapi
-          .query("project")
-          .findOne({ id: project }, [
-            "activities",
-            "activities.activity_type",
-            "project_phases",
-            "project_phases.incomes",
-            "project_phases.incomes.estimated_hours",
-            "project_phases.incomes.income_type",
-            "project_phases.incomes.estimated_hours.users_permissions_user",
-            "project_phases.incomes.invoice",
-            "project_phases.incomes.income",
-            "project_phases.expenses",
-            "project_phases.expenses.expense_type",
-            "project_phases.expenses.invoice",
-            "project_phases.expenses.expense",
-            "project_original_phases",
-            "project_original_phases.incomes",
-            "project_original_phases.incomes.estimated_hours",
-            "project_original_phases.incomes.income_type",
-            "project_original_phases.incomes.estimated_hours.users_permissions_user",
-            "project_original_phases.incomes.invoice",
-            "project_original_phases.incomes.income",
-            "project_original_phases.expenses",
-            "project_original_phases.expenses.expense_type",
-            "project_original_phases.expenses.invoice",
-            "project_original_phases.expenses.expense",
-          ]);
-
-        // Trigger update with minimal data to force recalculation via beforeUpdate hook
-        // The hook will calculate all financial fields and save them
-        const projectDataToUpdate = {
-          activities: data.activities,
-          project_phases: data.project_phases,
-          project_original_phases: data.project_original_phases,
-          periodification: data.periodification,
-          structural_expenses: data.structural_expenses,
-          dirty: false,
-          _forceCalculation: true, // Flag to indicate this is a recalculation update
-        };
-
-        await strapi
-          .query("project")
-          .update({ id: project }, projectDataToUpdate);
-        
-        processed++;
-      } catch (e) {
-        console.error(`[updateDirtyProjects] Error processing project ${project}:`, e);
-        ok = false;
-      }
-    }
-
-    console.log(`[updateDirtyProjects] Processed ${processed} projects successfully`);
-
-    // delete from dirty-queue
-    if (ok) {
-      for await (const id of queueIds) {
-        await strapi.query("dirty-queue").delete({ id: id });
-      }
-      console.log(`[updateDirtyProjects] Cleared ${queueIds.length} items from dirty queue`);
-    }
-  },
   async findWithBasicInfo(ctx) {
     // Calling the default core action
     let projects;
@@ -1404,12 +566,6 @@ module.exports = {
       activitiesByProject.get(activity.projectId).push(activity);
     });
     
-    // console.log('activities', activities.length)
-    // console.log('grouped', grouped)
-
-    // const activities = await strapi.query("activity").find({ _limit: -1 });
-    const noPhaseInfo = { phase: "-", subphase: "-" };
-
     const me = await strapi.query("me").findOne();
     const fallback_deductible_vat_pct =
       me.options && me.options.deductible_vat_pct
@@ -1422,399 +578,20 @@ module.exports = {
         .map((y) => [String(y.year), parseFloat(y.deductible_vat_pct || 100)])
     );
 
-    const getDeductibleRatioForDate = (dateValue, projectDefaultYear, projectId, scope) => {
-      const extractedYear = (dateValue && String(dateValue).substring(0, 4)) || null;
-      const appliedYear = extractedYear || projectDefaultYear;
-      const deductible_vat_pct = deductibleVatPctByYear.has(appliedYear)
-        ? deductibleVatPctByYear.get(appliedYear)
-        : parseFloat(fallback_deductible_vat_pct || 100);
-      const deductible_ratio = (100.0 - deductible_vat_pct) / 100.0;
-
-      return deductible_ratio;
+    // Shared context handed to the projectFinancials engine for every project.
+    const financialsCtx = {
+      dailyDedications,
+      festives,
+      deductibleVatPctByYear,
+      fallback_deductible_vat_pct,
+      activitiesByProject,
     };
 
-    
-    // Parallelize project processing instead of sequential for loop
-    const projectResponses = await Promise.all(projects.map(async (p) => {
-      const projectDefaultYear = getProjectDefaultYear(p);
-
-      const projectInfo = {
-        id: p.id,
-        project_name: p.name,
-        project_scope:
-          p.project_scope && p.project_scope.id ? p.project_scope.name : "",
-        project_state:
-          p.project_state && p.project_state.id ? p.project_state.name : "",
-        project_type:
-          p.project_type && p.project_type.id ? p.project_type.name : "",
-        project_leader: p.leader && p.leader.id ? p.leader.username : "",
-        mother: p.mother && p.mother.id ? p.mother.name : p.name,
-        structural_expenses: p.structural_expenses,
-        grantable: p.grantable ? 1 : 0,
-      };
-
-      const projectResponse = [];
-
-      for (var j = 0; j < p.project_phases.length; j++) {
-        const ph = p.project_phases[j];
-        for (var k = 0; k < ph.incomes.length; k++) {
-          const sph = ph.incomes[k];
-          const phaseInfo = { phase: ph.name, subphase: sph.concept };
-
-          if (sph.quantity && sph.amount) {
-            // Match the document selection priority from calculateEstimatedTotals
-            const document = sph.income || sph.expense || sph.invoice;
-            
-            // For estimated incomes, always use estimate date priority
-            const estimate_date = sph.date_estimate_document || sph.date;
-            
-            // Row for estimated income (all lines, paid or unpaid)
-            projectResponse.push({
-              ...projectInfo,
-              ...phaseInfo,
-              type: "income",
-              paid: sph.paid,
-              date: estimate_date,
-              income_orig: 0,
-              income_esti: sph.quantity * sph.amount,
-              income_real: 0,
-              year: moment(estimate_date, "YYYY-MM-DD").format("YYYY"),
-              month: moment(estimate_date, "YYYY-MM-DD").format("MM"),
-              row_type:
-                sph.income_type && sph.income_type.name
-                  ? sph.income_type.name
-                  : "",
-              document,
-            });
-            
-            // Separate row for real income (only if paid)
-            if (sph.paid && document && document.emitted) {
-              const real_date = document.emitted;
-              projectResponse.push({
-                ...projectInfo,
-                ...phaseInfo,
-                type: "income",
-                paid: sph.paid,
-                date: real_date,
-                income_orig: 0,
-                income_esti: 0,
-                income_real: sph.quantity * sph.amount,
-                year: moment(real_date, "YYYY-MM-DD").format("YYYY"),
-                month: moment(real_date, "YYYY-MM-DD").format("MM"),
-                row_type:
-                  sph.income_type && sph.income_type.name
-                    ? sph.income_type.name
-                    : "",
-                document,
-              });
-            }
-          }
-        }
-
-        for (var k = 0; k < ph.expenses.length; k++) {
-          const sph = ph.expenses[k];
-          const phaseInfo = { phase: ph.name, subphase: sph.concept };
-          if (sph.quantity && sph.amount) {
-            // Match the document selection priority from calculateEstimatedTotals
-            // This ensures consistent VAT values between pivot and project form
-            const document = sph.invoice || sph.expense;
-            
-            // For estimated expenses, always use estimate date priority
-            const estimate_date = sph.date_estimate_document || sph.date;
-            
-            const vat_pct = sph.expense_type && sph.expense_type.vat_pct
-              ? sph.expense_type.vat_pct
-              : 21;
-            const estimatedDeductibleRatio = getDeductibleRatioForDate(
-              estimate_date,
-              projectDefaultYear,
-              p.id,
-              "estimated_expense"
-            );
-            
-            // Row for estimated expense (all lines, paid or unpaid)
-            projectResponse.push({
-              ...projectInfo,
-              ...phaseInfo,
-              type: "expense",
-              paid: sph.paid,
-              expense_orig: 0,
-              expense_orig_vat: 0,
-              expense_esti: -1 * sph.quantity * sph.amount,
-              expense_esti_vat: (-1 * estimatedDeductibleRatio * sph.quantity * sph.amount * vat_pct) / 100.0,
-              expense_real: 0,
-              expense_real_vat: 0,
-              date: estimate_date,
-              year: moment(estimate_date, "YYYY-MM-DD").format("YYYY"),
-              month: moment(estimate_date, "YYYY-MM-DD").format("MM"),
-              row_type:
-                sph.expense_type && sph.expense_type.name
-                  ? sph.expense_type.name
-                  : "",
-              document,
-            });
-            
-            // Separate row for real expense (only if paid)
-            if (sph.paid && document && document.emitted) {
-              const real_date = document.emitted;
-              
-              // Match VAT calculation logic from calculateEstimatedTotals
-              // Use invoice.total_vat if available, otherwise fall back to calculated VAT
-              const calculated_vat = (sph.quantity * sph.amount * vat_pct) / 100.0;
-              const expense_vat = sph.invoice && sph.invoice.total_vat !== undefined
-                ? sph.invoice.total_vat
-                : calculated_vat;
-              const realDeductibleRatio = getDeductibleRatioForDate(
-                real_date,
-                projectDefaultYear,
-                p.id,
-                "real_expense"
-              );
-              
-              projectResponse.push({
-                ...projectInfo,
-                ...phaseInfo,
-                type: "expense",
-                paid: sph.paid,
-                expense_orig: 0,
-                expense_orig_vat: 0,
-                expense_esti: 0,
-                expense_esti_vat: 0,
-                expense_real: -1 * sph.quantity * sph.amount,
-                expense_real_vat: -1 * expense_vat * realDeductibleRatio,
-                date: real_date,
-                year: moment(real_date, "YYYY-MM-DD").format("YYYY"),
-                month: moment(real_date, "YYYY-MM-DD").format("MM"),
-                row_type:
-                  sph.expense_type && sph.expense_type.name
-                    ? sph.expense_type.name
-                    : "",
-                document,
-              });
-            }
-          }
-        }
-      }
-
-      for (var j = 0; j < p.project_original_phases.length; j++) {
-        const ph = p.project_original_phases[j];
-        for (var k = 0; k < ph.incomes.length; k++) {
-          const sph = ph.incomes[k];
-          const phaseInfo = { phase: ph.name, subphase: sph.concept };
-          if (sph.quantity && sph.amount) {
-            // Match the document selection priority from calculateEstimatedTotals
-            const document = sph.income || sph.expense || sph.invoice;
-            const date = sph.date_estimate_document || sph.date;
-            projectResponse.push({
-              ...projectInfo,
-              ...phaseInfo,
-              type: "income",
-              // paid: sph.paid,
-              date: date,
-              income_orig: sph.quantity * sph.amount,
-              income_esti: 0,
-              income_real: 0,
-              year: moment(date, "YYYY-MM-DD").format("YYYY"),
-              month: moment(date, "YYYY-MM-DD").format("MM"),
-              row_type:
-                sph.income_type && sph.income_type.name
-                  ? sph.income_type.name
-                  : "",
-              document,
-            });
-          }
-        }
-        for (var k = 0; k < ph.expenses.length; k++) {
-          const sph = ph.expenses[k];
-          const phaseInfo = { phase: ph.name, subphase: sph.concept };
-          if (sph.quantity && sph.amount) {
-            // Match the document selection priority from calculateEstimatedTotals
-            const document = sph.invoice || sph.expense;
-            const date = sph.date_estimate_document || sph.date;
-            
-            const vat_pct = sph.expense_type && sph.expense_type.vat_pct
-              ? sph.expense_type.vat_pct
-              : 21;
-            const originalDeductibleRatio = getDeductibleRatioForDate(
-              date,
-              projectDefaultYear,
-              p.id,
-              "original_expense"
-            );
-            
-            projectResponse.push({
-              ...projectInfo,
-              ...phaseInfo,
-              type: "expense",
-              // paid: sph.paid,
-              expense_orig: -1 * Math.abs(sph.quantity * sph.amount),
-              expense_orig_vat:
-                (-1 *
-                  originalDeductibleRatio *
-                  Math.abs(sph.quantity * sph.amount) *
-                  vat_pct) /
-                100.0,
-              expense_esti: 0,
-              expense_esti_vat: 0,
-              expense_real: 0,
-              date: date,
-              year: moment(date, "YYYY-MM-DD").format("YYYY"),
-              month: moment(date, "YYYY-MM-DD").format("MM"),
-              row_type:
-                sph.expense_type && sph.expense_type.name
-                  ? sph.expense_type.name
-                  : "",
-              document,
-            });
-          }
-        }
-      }
-
-      if (p.periodification && p.periodification.length) {
-        for (var j = 0; j < p.periodification.length; j++) {
-          const pp = p.periodification[j];
-
-          // Periodification entries are manual yearly adjustments that must be
-          // applied to ALL three dimensions (original, estimated, real) to
-          // match the RESUM FINANCER calculation in doProjectInfoCalculations.
-          projectResponse.push({
-            ...projectInfo,
-            ...noPhaseInfo,
-            type: "income",
-            income_orig: pp.incomes,
-            income_esti: pp.incomes,
-            income_real: pp.real_incomes,
-            date: `${pp.year}-12-31`,
-            year: pp.year.toString(),
-            month: "12",
-            row_type: "Periodificació",
-          });
-
-          projectResponse.push({
-            ...projectInfo,
-            ...noPhaseInfo,
-            type: "expense",
-            expense_orig: pp.expenses,
-            expense_orig_vat: 0,
-            expense_esti: pp.expenses,
-            expense_esti_vat: 0,
-            expense_real: pp.real_expenses,
-            expense_real_vat: 0,
-            date: `${pp.year}-12-31`,
-            year: pp.year.toString(),
-            month: "12",
-            row_type: "Periodificació",
-          });
-        }
-      }
-
-      const projectActivities = activitiesByProject.get(projectInfo.id) || [];
-
-      for (var j = 0; j < projectActivities.length; j++) {
-        const pa = projectActivities[j];
-        projectResponse.push({
-          ...projectInfo,
-          ...noPhaseInfo,
-          type: "real_hours",
-          date: pa.year.toString() + "-" + pa.month.toString().padStart(2, "0") + "-01",
-          total_original_hours_price: 0,
-          total_estimated_hours_price: 0,
-          total_real_hours_price: -1 * (pa.cost || 0),
-          total_real_hours: pa.hours || 0,
-          year: pa.year.toString().padStart(4, "0"),
-          month: pa.month.toString().padStart(2, "0"),
-          row_type: "Hores reals",
-          // document: "0",
-        });
-      }
-
-      // Hores originals come from project_original_phases (the locked baseline)
-      const { totalsByDay: originalTotalsByDay } = await calculateEstimatedTotals(
-        { id: projectInfo.id, name: projectInfo.project_name },
-        p.project_original_phases,
-        dailyDedications,
-        festives
-      );
-
-      // Hores previstes must come from the current plan (project_phases),
-      // not from project_original_phases. The form's RESUM FINANCER computes
-      // total_estimated_hours from project_phases, so the pivot must do the
-      // same to stay consistent.
-      const { totalsByDay: estimatedTotalsByDay } = await calculateEstimatedTotals(
-        { id: projectInfo.id, name: projectInfo.project_name },
-        p.project_phases,
-        dailyDedications,
-        festives,
-        true
-      );
-
-      const groupByYearMonth = (rows) =>
-        _(
-          rows.map((a) => ({
-            ...a,
-            ym: `${moment(a.day, "YYYY-MM-DD").year()}.${moment(
-              a.day,
-              "YYYY-MM-DD"
-            ).month()}`,
-          }))
-        )
-          .groupBy("ym")
-          .map((groupRows, id) => ({
-            year: parseInt(id.split(".")[0]),
-            month: parseInt(id.split(".")[1]) + 1,
-            cost: _.sumBy(groupRows, (r) => r.q * r.costByHour),
-            q: _.sumBy(groupRows, (r) => r.q),
-          }))
-          .value();
-
-      const groupedOriginalHours = JSON.parse(
-        JSON.stringify(groupByYearMonth(originalTotalsByDay))
-      );
-      const groupedEstimatedHours = JSON.parse(
-        JSON.stringify(groupByYearMonth(estimatedTotalsByDay))
-      );
-
-      for (var j = 0; j < groupedOriginalHours.length; j++) {
-        const g = groupedOriginalHours[j];
-
-        projectResponse.push({
-          ...projectInfo,
-          ...noPhaseInfo,
-          type: "original_hours",
-          date: g.year.toString() + "-" + g.month.toString().padStart(2, "0") + "-01",
-          total_original_hours_price: -1 * (g.cost || 0),
-          total_original_hours: g.q || 0,
-          total_estimated_hours_price: 0,
-          total_real_hours_price: 0,
-          year: g.year.toString(),
-          month: g.month.toString().padStart(2, "0"),
-          row_type: "Hores originals",
-          // document: "0",
-        });
-      }
-
-      for (var j = 0; j < groupedEstimatedHours.length; j++) {
-        const g = groupedEstimatedHours[j];
-
-        projectResponse.push({
-          ...projectInfo,
-          ...noPhaseInfo,
-          type: "estimated_hours",
-          date: g.year.toString() + "-" + g.month.toString().padStart(2, "0") + "-01",
-          total_original_hours_price: 0,
-          total_original_hours: 0,
-          total_estimated_hours_price: -1 * (g.cost || 0),
-          total_estimated_hours: g.q || 0,
-          total_real_hours_price: 0,
-          year: g.year.toString(),
-          month: g.month.toString().padStart(2, "0"),
-          row_type: "Hores previstes",
-          // document: "0",
-        });
-      }
-
-      return projectResponse;
-    }));
+    // Delegate all per-project row construction to the shared engine so
+    // the pivot view cannot drift from the form's RESUM FINANCER.
+    const projectResponses = await Promise.all(
+      projects.map((p) => buildProjectRows(p, financialsCtx))
+    );
 
     // Flatten all project responses into a single array
     response = _.flatten(projectResponses);
@@ -1838,6 +615,118 @@ module.exports = {
     // Removing some info
     // const newArray = projects.map(({ phases, activities, emitted_invoices, received_invoices, tickets, diets, emitted_grants, received_grants, quotes, original_phases, incomes, expenses, strategies, estimated_hours, intercooperations, clients, received_expenses, received_incomes, ...item }) => item)
     return returnData;
+  },
+
+  // Read-only diagnostic: compares the persisted total_* columns on `project`
+  // against what projectFinancials would compute right now. Used to validate
+  // the upcoming switch to refreshStoredTotals before wiring lifecycle hooks.
+  //
+  // Query params:
+  //   ?ids=1,2,3        comma-separated project ids (max 200)
+  //   ?limit=50         when ids is omitted, sample this many published projects
+  //   ?onlyDiffs=true   trim the report to projects with a difference
+  //   ?epsilon=0.01     tolerance per field (default 0.01)
+  async verifyStoredTotals(ctx) {
+    const {
+      verifyStoredTotals,
+    } = require("../services/projectFinancials");
+
+    const epsilon = ctx.query.epsilon
+      ? parseFloat(ctx.query.epsilon)
+      : 0.01;
+    const onlyDiffs = ctx.query.onlyDiffs === "true";
+
+    let ids;
+    if (ctx.query.ids) {
+      ids = String(ctx.query.ids)
+        .split(",")
+        .map((s) => parseInt(s.trim(), 10))
+        .filter((n) => n > 0)
+        .slice(0, 200);
+    } else {
+      const limit = Math.min(parseInt(ctx.query.limit, 10) || 20, 200);
+      const sample = await strapi
+        .query("project")
+        .find({ _limit: limit, published_at_null: false, _sort: "id:desc" });
+      ids = sample.map((p) => p.id);
+    }
+
+    const result = await verifyStoredTotals(ids, epsilon);
+    if (onlyDiffs) {
+      result.report = result.report.filter((r) => r.error || !r.ok);
+    }
+    return result;
+  },
+
+  // Targeted refresh of the persisted total_* columns on `project`.
+  // Bypasses lifecycles (uses raw knex). Modes:
+  //   ?id=240               refresh a single project
+  //   ?ids=1,2,3            refresh a list (max 500)
+  //   ?all=true             refresh every published project (sequential)
+  //   ?all=true&limit=N     ditto, capped at N (handy for staged rollouts)
+  //   add &dryRun=true      run verifyStoredTotals instead of writing
+  async refreshStoredTotals(ctx) {
+    const {
+      refreshStoredTotals,
+      refreshAllStoredTotals,
+      verifyStoredTotals,
+    } = require("../services/projectFinancials");
+
+    const dryRun = ctx.query.dryRun === "true";
+
+    // Single id
+    if (ctx.query.id) {
+      const id = parseInt(ctx.query.id, 10);
+      if (!(id > 0)) return ctx.badRequest("invalid id");
+      if (dryRun) {
+        return await verifyStoredTotals([id]);
+      }
+      const picked = await refreshStoredTotals(id);
+      if (!picked) return ctx.notFound("project not found");
+      return { id, written: picked };
+    }
+
+    // Explicit id list
+    if (ctx.query.ids) {
+      const ids = String(ctx.query.ids)
+        .split(",")
+        .map((s) => parseInt(s.trim(), 10))
+        .filter((n) => n > 0)
+        .slice(0, 500);
+      if (!ids.length) return ctx.badRequest("no valid ids");
+      if (dryRun) {
+        return await verifyStoredTotals(ids);
+      }
+      let processed = 0;
+      const failed = [];
+      for (const id of ids) {
+        try {
+          await refreshStoredTotals(id);
+          processed++;
+        } catch (e) {
+          failed.push({ id, error: e && e.message });
+        }
+      }
+      return { total: ids.length, processed, failed };
+    }
+
+    // Bulk: every project
+    if (ctx.query.all === "true") {
+      const limit = ctx.query.limit
+        ? parseInt(ctx.query.limit, 10)
+        : undefined;
+      if (dryRun) {
+        // For dry-run on `all`, just delegate to verifier with a sensible cap.
+        const cap = Math.min(limit || 100, 500);
+        const projects = await strapi
+          .query("project")
+          .find({ _limit: cap, published_at_null: false, _sort: "id:desc" });
+        return await verifyStoredTotals(projects.map((p) => p.id));
+      }
+      return await refreshAllStoredTotals({ limit });
+    }
+
+    return ctx.badRequest("provide ?id=, ?ids= or ?all=true");
   },
 
   async findEstimatedTotalsByDay(ctx) {
@@ -2373,22 +1262,6 @@ module.exports = {
 
   //   return { id: id, dirty: p[0].dirty };
   // },
-
-  setDirty: async (id) => {
-    // console.log("setDirty", id);
-    if (parseInt(id) > 0) {
-      //await updateProjectInfo(id, false);
-
-      await strapi
-        .query("dirty-queue")
-        .create({ entityId: id, entity: "project" });
-      
-      // Also set the dirty flag on the project
-      await strapi
-        .query("project")
-        .update({ id: id }, { dirty: true, _internal: true });
-    }
-  },
 
   // enqueueProjects: async (projects) => {
   //   //projectsQueue.push(projects);

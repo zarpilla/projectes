@@ -1,6 +1,6 @@
 'use strict';
 const _ = require('lodash');
-const projectController = require('../../project/controllers/project');
+const { scheduleRefresh } = require('../../project/services/totalsRefreshScheduler');
 
 /**
  * Read the documentation (https://strapi.io/documentation/developer-docs/latest/development/backend-customization.html#lifecycle-hooks)
@@ -10,21 +10,34 @@ const projectController = require('../../project/controllers/project');
 module.exports = {
     lifecycles: {
         async beforeCreate(data) {
-            data = await calculatePrice(0, data)            
-            await projectController.setDirty(data.project)
-        },        
+            data = await calculatePrice(0, data)
+        },
+        async afterCreate(result) {
+            if (result && result.project) {
+                scheduleRefresh(result.project.id || result.project)
+            }
+        },
         async beforeUpdate(params, data) {
             data = await calculatePrice(params.id, data)
-            if (data && data.project) {
-                await projectController.setDirty(data.project)
+        },
+        async afterUpdate(result, params, data) {
+            // Refresh both the new and (if changed) the previous project.
+            if (result && result.project) {
+                scheduleRefresh(result.project.id || result.project)
             }
-        },        
-        async beforeDelete(params) {        
-            const activity = await strapi.query('activity').findOne(params);   
-            if (activity.project && activity.project.id) {
-                await projectController.setDirty(activity.project.id)
-            }                
-        },        
+            if (data && data.project && result && (
+                !result.project ||
+                (result.project.id || result.project) !== (data.project.id || data.project)
+            )) {
+                scheduleRefresh(data.project.id || data.project)
+            }
+        },
+        async beforeDelete(params) {
+            const activity = await strapi.query('activity').findOne(params);
+            if (activity && activity.project) {
+                scheduleRefresh(activity.project.id || activity.project)
+            }
+        },
       },
 };
 

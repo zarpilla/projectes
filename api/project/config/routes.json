@@ -31,6 +31,22 @@
       "config": {
         "policies": []
       }
+    },
+    {
+      "method": "GET",
+      "path": "/projects/verify-stored-totals",
+      "handler": "project.verifyStoredTotals",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/projects/refresh-stored-totals",
+      "handler": "project.refreshStoredTotals",
+      "config": {
+        "policies": []
+      }
     },    
     {
       "method": "GET",

@@ -1,5 +1,5 @@
 "use strict";
-const projectController = require("../../project/controllers/project");
+const { scheduleFromEntityProjects } = require("../../project/services/totalsRefreshScheduler");
 const emittedInvoiceController = require("../controllers/emitted-invoice");
 const entity = "emitted-invoice";
 /**
@@ -68,6 +68,7 @@ module.exports = {
     async afterCreate(result) {
       const ctx = { params: { id: result.id, doc: "emitted-invoice" } };
       await emittedInvoiceController.pdf(ctx);
+      scheduleFromEntityProjects(result);
     },
     async beforeUpdate(params, data) {
       const invoice = await strapi.query(entity).findOne(params);
@@ -219,6 +220,9 @@ module.exports = {
           console.error("Error generating PDF after update:", err);
         }
       }
+
+      scheduleFromEntityProjects(result);
+      scheduleFromEntityProjects(data);
     },
     async beforeDelete(params) {
       const invoice = await strapi.query(entity).findOne(params);
@@ -240,6 +244,7 @@ module.exports = {
             );
         }
       }
+      scheduleFromEntityProjects(invoice);
     },
   },
 };

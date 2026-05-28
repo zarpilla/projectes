@@ -1,5 +1,7 @@
 "use strict";
-const projectController = require("../../api/project/controllers/project");
+const {
+  refreshAllStoredTotals,
+} = require("../../api/project/services/projectFinancials");
 
 /**
  * An asynchronous bootstrap function that runs before
@@ -2551,36 +2553,14 @@ async function reconcileDeliveredCollectionOrders() {
   }
 }
 
-async function markRecentProjectsAsDirty() {
-  try {
-    console.log("Starting to mark recently updated projects as dirty...");
-
-    // Calculate date 60 days ago
-    const sixtyDaysAgo = new Date();
-    sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
-    const isoDate = sixtyDaysAgo.toISOString();
-
-    console.log(`[MARK DIRTY] Querying projects updated after ${isoDate}`);
-
-    // Get all projects updated in the last 60 days
-    const recentProjects = await strapi.query("project").find({
-      updated_at_gte: isoDate,
-      published_at_null: false,
-      _limit: -1,
-    });
-
-    console.log(`[MARK DIRTY] Found ${recentProjects.length} projects updated in the last 60 days`);
-
-    let markedCount = 0;
-
-    for (const project of recentProjects) {
-      await projectController.setDirty(project.id);
-      markedCount++;
-    }
-
-    console.log(`[MARK DIRTY] Done. Marked ${markedCount} projects as dirty for recalculation`);
-  } catch (error) {
-    console.error("Error marking recent projects as dirty:", error);
+async function backfillStoredProjectTotals() {
+  console.log("[STORED TOTALS BACKFILL] Starting bulk refresh of project total_* columns...");
+  const summary = await refreshAllStoredTotals({ progressEvery: 50 });
+  console.log(
+    `[STORED TOTALS BACKFILL] Done. total=${summary.total}, processed=${summary.processed}, failed=${summary.failed}`,
+  );
+  if (summary.failed > 0) {
+    console.error("[STORED TOTALS BACKFILL] Errors:", summary.errors.slice(0, 20));
   }
 }
 
@@ -3107,8 +3087,8 @@ module.exports = async () => {
     { runOnce: true },
   );
   await runStartupScript(
-    "markRecentProjectsAsDirty",
-    markRecentProjectsAsDirty,
+    "backfillStoredProjectTotals",
+    backfillStoredProjectTotals,
     { runOnce: true },
   );
   await runStartupScript(

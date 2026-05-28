@@ -7,7 +7,7 @@ const _ = require("lodash");
 const moment = require("moment");
 const ical = require("node-ical");
 const { RRule } = require("rrule");
-const projectController = require("../../project/controllers/project");
+const { scheduleRefresh } = require("../../project/services/totalsRefreshScheduler");
 const { google } = require("googleapis");
 const fs = require("fs");
 
@@ -437,8 +437,8 @@ module.exports = {
           .query("activity")
           .update({ id: activity.id }, activityToUpdate);
       }
-      await projectController.setDirty(to);
-      await projectController.setDirty(from);
+      scheduleRefresh(to);
+      scheduleRefresh(from);
     }
 
     ctx.send({ user, from, to, start, end });

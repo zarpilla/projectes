@@ -1,5 +1,5 @@
 "use strict";
-const projectController = require("../../project/controllers/project");
+const { scheduleFromEntityProjects } = require("../../project/services/totalsRefreshScheduler");
 const entity = "received-income"
 /**
  * Read the documentation (https://strapi.io/documentation/developer-docs/latest/development/backend-customization.html#lifecycle-hooks)
@@ -35,9 +35,7 @@ module.exports = {
       data = await calculateTotals(data);
     },
     async afterCreate(result) {
-      // result.projects.forEach((p) => {
-      //   projectController.setDirty(p.id);
-      // });
+      scheduleFromEntityProjects(result);
     },
     async beforeUpdate(params, data) {
       const invoice = await strapi.query(entity).findOne(params);
@@ -65,25 +63,15 @@ module.exports = {
       }
     },
     async afterUpdate(result, params, data) {
-      // if (result.projects) {
-      //   result.projects.forEach((p) => {
-      //     projectController.setDirty(p.id);
-      //   });
-      // }
-      // if (data.projects) {
-      //   data.projects.forEach((p) => {
-      //     projectController.setDirty(p.id);
-      //   });
-      // }
+      scheduleFromEntityProjects(result);
+      scheduleFromEntityProjects(data);
     },
     async beforeDelete(params) {
       const invoice = await strapi.query(entity).findOne(params);
       if (invoice && invoice.updatable === false) {
         throw new Error("received-income NOT updatable");
       }
-      // if (invoice && invoice.project) {
-      //   await projectController.setDirty(invoice.project.id);
-      // }
+      scheduleFromEntityProjects(invoice);
     }
   },
 };
