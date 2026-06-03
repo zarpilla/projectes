@@ -4,6 +4,13 @@ server {
 
         server_name {{DOMAIN}};
 
+        # Security: block direct download of sensitive credential files (FACe / Verifactu
+        # certificates, private keys, etc.) regardless of where they live in /uploads.
+        # Must come BEFORE the catch-all `location /` so it wins the match.
+        location ~* \.(p12|pfx|pem|key|crt|cer|jks|kdb)$ {
+            return 403;
+        }
+
         location / {
             proxy_pass         http://127.0.0.1:{{BACKEND_PORT}};
             proxy_http_version          1.1;

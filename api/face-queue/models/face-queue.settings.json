@@ -30,6 +30,9 @@
     "response_body": {
       "type": "text"
     },
+    "response_code": {
+      "type": "integer"
+    },
     "status": {
       "type": "enumeration",
       "enum": [

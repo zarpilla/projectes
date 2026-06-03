@@ -63,6 +63,8 @@ face-queue (delivered/rejected status)
 - `face_certificate_password` - password (certificate passphrase)
 - `face_test_endpoint` - string (default: `https://se-api.face.gob.es/providers` - probable, verify with FACe)
 - `face_real_endpoint` - string (default: `https://api.face.gob.es/providers`)
+- `face_invoice_format` - enum: "ubl" | "facturae" (default: "facturae" - invoice XML format)
+- `iban` - string (bank account for PaymentMeans in invoices)
 
 **In `contacts` entity:**
 - `face` - boolean (contact requires FACe submission)
@@ -75,7 +77,7 @@ face-queue (delivered/rejected status)
 - `mode` - "test" | "real"
 - `status` - "pending" | "registered" | "delivered" | "rejected" | "error"
 - `registration_number` - FACe tracking number
-- `request_body` - UBL XML sent
+- `request_body` - XML sent (Facturae 3.2.2 or UBL 2.1 depending on configuration)
 - `response_body` - FACe API response
 - `last_status_check` - timestamp
 - `attempts` - retry counter (max 3)
@@ -532,14 +534,14 @@ npm run develop
 ### How It Works
 
 1. **Create invoice** with FACe-enabled contact (must have DIR3 codes)
-2. **XML is generated** following UBL 2.1 standard
+2. **XML is generated** following Facturae 3.2.2 or UBL 2.1 standard (configurable via `face_invoice_format`)
 3. **No submission** to FACe API - just validation
 4. **Check logs** to see generated XML:
    ```
    [face-queue] DRY-RUN MODE: XML generated but not submitted queue=X
    [face-queue] Generated XML:
    <?xml version="1.0" encoding="UTF-8"?>
-   <Invoice xmlns="urn:oasis:names:specification:ubl:schema:xsd:Invoice-2">
+   <Facturae xmlns="http://facturae.es"> or <Invoice xmlns="urn:oasis:names:specification:ubl:schema:xsd:Invoice-2">
    ...
    ```
 5. **XML saved** in database: `face-queue.request_body`
@@ -648,7 +650,7 @@ POST {endpoint}/invoices/submit
 Content-Type: multipart/form-data
 
 Fields:
-- facturae: UBL XML file
+- facturae: Facturae 3.2.2 or UBL 2.1 XML file (depends on face_invoice_format setting)
 - nif: Provider NIF
 - dir3_oc: Oficina Contable code
 - dir3_og: Órgano Gestor code  
@@ -801,7 +803,8 @@ Gracias,
 
 - [x] Database schema created
 - [x] Certificate authentication implemented
-- [x] UBL 2.1 XML generation
+- [x] Facturae 3.2.2 XML generation (default)
+- [x] UBL 2.1 XML generation (alternative)
 - [x] DIR3 validation
 - [x] REST API client (submit + check status)
 - [x] Lifecycle hooks for auto-submission

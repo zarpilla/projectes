@@ -1,0 +1,181 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<facturae:Facturae xmlns:facturae="http://www.facturae.es/Facturae/2009/v3.2/Facturae">
+    <FileHeader>
+        <SchemaVersion>3.2</SchemaVersion>
+        <Modality>I</Modality>
+        <InvoiceIssuerType>EM</InvoiceIssuerType>
+        <Batch>
+            <BatchIdentifier>LOTE2026020</BatchIdentifier>
+            <InvoicesCount>1</InvoicesCount>
+            <TotalInvoicesAmount>
+                <TotalAmount>1.21</TotalAmount>
+            </TotalInvoicesAmount>
+            <TotalOutstandingAmount>
+                <TotalAmount>1.21</TotalAmount>
+            </TotalOutstandingAmount>
+            <TotalExecutableAmount>
+                <TotalAmount>1.21</TotalAmount>
+            </TotalExecutableAmount>
+            <InvoiceCurrencyCode>EUR</InvoiceCurrencyCode>
+        </Batch>
+    </FileHeader>
+    <Parties>
+        <SellerParty>
+            <TaxIdentification>
+                <PersonTypeCode>F</PersonTypeCode>
+                <ResidenceTypeCode>R</ResidenceTypeCode>
+                <TaxIdentificationNumber>39891236J</TaxIdentificationNumber>
+            </TaxIdentification>
+            <Individual>
+                <Name>Jordi</Name>
+                <FirstSurname>Sabaté</FirstSurname>
+                <SecondSurname>Estopà</SecondSurname>
+                <AddressInSpain>
+                    <Address>Bernat Saulet 25, 2-2</Address>
+                    <PostCode>17860</PostCode>
+                    <Town>Sant Joan de les Abadesses</Town>
+                    <Province>Girona</Province>
+                    <CountryCode>ESP</CountryCode>
+                </AddressInSpain>
+            </Individual>
+        </SellerParty>
+        <BuyerParty>
+            <TaxIdentification>
+                <PersonTypeCode>J</PersonTypeCode>
+                <ResidenceTypeCode>R</ResidenceTypeCode>
+                <TaxIdentificationNumber>Q0818001J</TaxIdentificationNumber>
+            </TaxIdentification>
+            <AdministrativeCentres>
+                <AdministrativeCentre>
+                    <CentreCode>U00400225</CentreCode>
+                    <RoleTypeCode>01</RoleTypeCode>
+                    <Name>Universitat de Barcelona</Name>
+                    <AddressInSpain>
+                        <Address> Gran Via de les Corts Catalanes 585</Address>
+                        <PostCode>08007</PostCode>
+                        <Town>Barcelona </Town>
+                        <Province/>
+                        <CountryCode>ESP</CountryCode>
+                    </AddressInSpain>
+                </AdministrativeCentre>
+                <AdministrativeCentre>
+                    <CentreCode>U00400001</CentreCode>
+                    <RoleTypeCode>02</RoleTypeCode>
+                    <Name>Universitat de Barcelona</Name>
+                    <AddressInSpain>
+                        <Address> Gran Via de les Corts Catalanes 585</Address>
+                        <PostCode>08007</PostCode>
+                        <Town>Barcelona </Town>
+                        <Province/>
+                        <CountryCode>ESP</CountryCode>
+                    </AddressInSpain>
+                </AdministrativeCentre>
+                <AdministrativeCentre>
+                    <CentreCode>U00400001</CentreCode>
+                    <RoleTypeCode>03</RoleTypeCode>
+                    <Name>Universitat de Barcelona</Name>
+                    <AddressInSpain>
+                        <Address> Gran Via de les Corts Catalanes 585</Address>
+                        <PostCode>08007</PostCode>
+                        <Town>Barcelona </Town>
+                        <Province/>
+                        <CountryCode>ESP</CountryCode>
+                    </AddressInSpain>
+                </AdministrativeCentre>
+            </AdministrativeCentres>
+            <LegalEntity>
+                <CorporateName>Universitat de Barcelona</CorporateName>
+                <AddressInSpain>
+                    <Address> Gran Via de les Corts Catalanes 585</Address>
+                    <PostCode>08007</PostCode>
+                    <Town>Barcelona </Town>
+                    <Province/>
+                    <CountryCode>ESP</CountryCode>
+                </AddressInSpain>
+            </LegalEntity>
+        </BuyerParty>
+    </Parties>
+    <Invoices>
+        <Invoice>
+            <InvoiceHeader>
+                <InvoiceNumber>2026-020</InvoiceNumber>
+                <InvoiceDocumentType>FC</InvoiceDocumentType>
+                <InvoiceClass>OO</InvoiceClass>
+            </InvoiceHeader>
+            <InvoiceIssueData>
+                <IssueDate>2026-06-02</IssueDate>
+                <InvoiceCurrencyCode>EUR</InvoiceCurrencyCode>
+                <TaxCurrencyCode>EUR</TaxCurrencyCode>
+                <LanguageName>es</LanguageName>
+            </InvoiceIssueData>
+            <TaxesOutputs>
+                <Tax>
+                    <TaxTypeCode>01</TaxTypeCode>
+                    <TaxRate>21.00</TaxRate>
+                    <TaxableBase>
+                        <TotalAmount>1.00</TotalAmount>
+                    </TaxableBase>
+                    <TaxAmount>
+                        <TotalAmount>0.21</TotalAmount>
+                    </TaxAmount>
+                </Tax>
+            </TaxesOutputs>
+            <TaxesWithheld>
+                <Tax>
+                    <TaxTypeCode>04</TaxTypeCode>
+                    <TaxRate>0.00</TaxRate>
+                    <TaxableBase>
+                        <TotalAmount>0.00</TotalAmount>
+                    </TaxableBase>
+                    <TaxAmount>
+                        <TotalAmount>0.00</TotalAmount>
+                    </TaxAmount>
+                </Tax>
+            </TaxesWithheld>
+            <InvoiceTotals>
+                <TotalGrossAmount>1.00</TotalGrossAmount>
+                <TotalGeneralDiscounts>0.00</TotalGeneralDiscounts>
+                <TotalGrossAmountBeforeTaxes>1.00</TotalGrossAmountBeforeTaxes>
+                <TotalTaxOutputs>0.21</TotalTaxOutputs>
+                <TotalTaxesWithheld>0.00</TotalTaxesWithheld>
+                <InvoiceTotal>1.21</InvoiceTotal>
+                <TotalFinancialExpenses>0.00</TotalFinancialExpenses>
+                <TotalOutstandingAmount>1.21</TotalOutstandingAmount>
+                <TotalPaymentsOnAccount>0.00</TotalPaymentsOnAccount>
+                <TotalExecutableAmount>1.21</TotalExecutableAmount>
+            </InvoiceTotals>
+            <Items>
+                <InvoiceLine>
+                    <ItemDescription>1</ItemDescription>
+                    <Quantity>1.00</Quantity>
+                    <UnitOfMeasure>01</UnitOfMeasure>
+                    <UnitPriceWithoutTax>1.000000</UnitPriceWithoutTax>
+                    <TotalCost>1.000000</TotalCost>
+                    <GrossAmount>1.000000</GrossAmount>
+                    <TaxesOutputs>
+                        <Tax>
+                            <TaxTypeCode>01</TaxTypeCode>
+                            <TaxRate>21.00</TaxRate>
+                            <TaxableBase>
+                                <TotalAmount>1.00</TotalAmount>
+                            </TaxableBase>
+                            <TaxAmount>
+                                <TotalAmount>0.21</TotalAmount>
+                            </TaxAmount>
+                        </Tax>
+                    </TaxesOutputs>
+                </InvoiceLine>
+            </Items>
+            <PaymentDetails>
+                <Installment>
+                    <InstallmentDueDate>2026-06-02</InstallmentDueDate>
+                    <InstallmentAmount>1.21</InstallmentAmount>
+                    <PaymentMeans>04</PaymentMeans>
+                    <AccountToBeCredited>
+                        <IBAN>ES91 2100 0418 4502 0005 1332</IBAN>
+                    </AccountToBeCredited>
+                </Installment>
+            </PaymentDetails>
+        </Invoice>
+    </Invoices>
+<ds:Signature Id="Signature-1780501740660" xmlns:ds="http://www.w3.org/2000/09/xmldsig#"><ds:SignedInfo><ds:CanonicalizationMethod Algorithm="http://www.w3.org/TR/2001/REC-xml-c14n-20010315"/><ds:SignatureMethod Algorithm="http://www.w3.org/2000/09/xmldsig#rsa-sha1"/><ds:Reference Id="Reference-1780501740660" URI=""><ds:Transforms><ds:Transform Algorithm="http://www.w3.org/2000/09/xmldsig#enveloped-signature"/></ds:Transforms><ds:DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha1"/><ds:DigestValue>dB6gC7EyTg0DGa1pjUBY+/RGyhQ=</ds:DigestValue></ds:Reference><ds:Reference URI="#Signature-1780501740660-KeyInfo"><ds:DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha1"/><ds:DigestValue>lnOJ0mQy7DKyIYjklF0Zp5xg5yQ=</ds:DigestValue></ds:Reference><ds:Reference URI="#xades-id-ef37d09995f2" Type="http://uri.etsi.org/01903#SignedProperties"><ds:DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha1"/><ds:DigestValue>nDw85ttEcki/K1tpl6hphd9w2M8=</ds:DigestValue></ds:Reference></ds:SignedInfo><ds:SignatureValue>UYTt7CTed3eorjlLrx94U6n6Bmwgf9VF3NSyyjNFrr0PkoTyiKqXGCfR8FRW9CQS2CO+Lw7f8z1CMRmHN2/XF+FHl+js71ivwMVjhoPKPcOHtereh1jJwVM9ydbm9S5+U37EWGsrvNmnFsi64Q+93IuhVxk/HhYXWu0ajMxtVE6jRflq7Pe/DNVwfs4v/MRVURKDPJ139+efGzjZxKvNdpkn67kJe/se7r48w8j97arFIxtO7JmWQwafWhaRbfIh0Pqjv/qbFyxQTDZ8CHg5DwL8O3JyEEp6q/Jjdrjv2xpgmwCBw+nNWzLUHwP1ozAfSanVyt806me849AyuAU1zQ==</ds:SignatureValue><ds:KeyInfo Id="Signature-1780501740660-KeyInfo"><ds:KeyValue><ds:RSAKeyValue><ds:Modulus>tGL6lTY7lIAa/VsSzIsULb3gNnMExKD+4GurtfpL2HSgurCLQSu3GHlSEQW3wfzJNCEclgFi+PtNNoaViOgXsb6qqyJd5DCdGUwlaLRMXexRaGcaVrHMLumH5EgLExEpbaMB+bcucwTTbFL1lez39h4QuL0vyhnqo3dPFMjt77TB4b7eLxw0S7HgvQ+9r7N/ckdWdQ+XheMm/PpItGcdCnuigTQyNX5EtwNarVfnCy9OHi+KM+Eb9kTwkpubb5E+pBm6pTeT7RkGO0U0Sruh5KJO0NEd9s2oaYh6Bcwd3Ra1TeljMlKmcfkcYbETNP7uRyHXdecgLZKNOd5yjU/d7Q==</ds:Modulus><ds:Exponent>AQAB</ds:Exponent></ds:RSAKeyValue></ds:KeyValue><ds:X509Data><ds:X509Certificate>MIIHjzCCBnegAwIBAgIQaToYdF68T1tnmxMlCD0WJjANBgkqhkiG9w0BAQsFADBLMQswCQYDVQQGEwJFUzERMA8GA1UECgwIRk5NVC1SQ00xDjAMBgNVBAsMBUNlcmVzMRkwFwYDVQQDDBBBQyBGTk1UIFVzdWFyaW9zMB4XDTI1MDEzMDA1NTAyOVoXDTI5MDEzMDA1NTAyOVoweTELMAkGA1UEBhMCRVMxGDAWBgNVBAUTD0lEQ0VTLTM5ODkxMjM2SjEOMAwGA1UEKgwFSk9SREkxFjAUBgNVBAQMDVNBQkFURSBFU1RPUEExKDAmBgNVBAMMH1NBQkFURSBFU1RPUEEgSk9SREkgLSAzOTg5MTIzNkowggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQC0YvqVNjuUgBr9WxLMixQtveA2cwTEoP7ga6u1+kvYdKC6sItBK7cYeVIRBbfB/Mk0IRyWAWL4+002hpWI6BexvqqrIl3kMJ0ZTCVotExd7FFoZxpWscwu6YfkSAsTESltowH5ty5zBNNsUvWV7Pf2HhC4vS/KGeqjd08UyO3vtMHhvt4vHDRLseC9D72vs39yR1Z1D5eF4yb8+ki0Zx0Ke6KBNDI1fkS3A1qtV+cLL04eL4oz4Rv2RPCSm5tvkT6kGbqlN5PtGQY7RTRKu6Hkok7Q0R32zahpiHoFzB3dFrVN6WMyUqZx+RxhsRM0/u5HIdd15yAtko053nKNT93tAgMBAAGjggQ/MIIEOzBrBgNVHREEZDBipGAwXjEYMBYGCSsGAQQBrGYBBAwJMzk4OTEyMzZKMRUwEwYJKwYBBAGsZgEDDAZFU1RPUEExFTATBgkrBgEEAaxmAQIMBlNBQkFURTEUMBIGCSsGAQQBrGYBAQwFSk9SREkwDAYDVR0TAQH/BAIwADAOBgNVHQ8BAf8EBAMCBeAwKgYDVR0lBCMwIQYIKwYBBQUHAwIGCisGAQQBgjcKAwwGCSqGSIb3LwEBBTAdBgNVHQ4EFgQUeWn901QoL+yu3g4DOrxvHcojuZMwHwYDVR0jBBgwFoAUsdRPxCN5+kQFCcbrOc/oNbC4IGQwgYIGCCsGAQUFBwEBBHYwdDA9BggrBgEFBQcwAYYxaHR0cDovL29jc3B1c3UuY2VydC5mbm10LmVzL29jc3B1c3UvT2NzcFJlc3BvbmRlcjAzBggrBgEFBQcwAoYnaHR0cDovL3d3dy5jZXJ0LmZubXQuZXMvY2VydHMvQUNVU1UuY3J0MIIBFQYDVR0gBIIBDDCCAQgwgfoGCisGAQQBrGYDCgEwgeswKQYIKwYBBQUHAgEWHWh0dHA6Ly93d3cuY2VydC5mbm10LmVzL2RwY3MvMIG9BggrBgEFBQcCAjCBsAyBrUNlcnRpZmljYWRvIGN1YWxpZmljYWRvIGRlIGZpcm1hIGVsZWN0csOzbmljYS4gU3VqZXRvIGEgbGFzIGNvbmRpY2lvbmVzIGRlIHVzbyBleHB1ZXN0YXMgZW4gbGEgRFBDIGRlIGxhIEZOTVQtUkNNIGNvbiBOSUY6IFEyODI2MDA0LUogKEMvSm9yZ2UgSnVhbiAxMDYtMjgwMDktTWFkcmlkLUVzcGHDsWEpMAkGBwQAi+xAAQAwgboGCCsGAQUFBwEDBIGtMIGqMAgGBgQAjkYBATALBgYEAI5GAQMCAQ8wEwYGBACORgEGMAkGBwQAjkYBBgEwfAYGBACORgEFMHIwNxYxaHR0cHM6Ly93d3cuY2VydC5mbm10LmVzL3Bkcy9QRFNBQ1VzdWFyaW9zX2VzLnBkZhMCZXMwNxYxaHR0cHM6Ly93d3cuY2VydC5mbm10LmVzL3Bkcy9QRFNBQ1VzdWFyaW9zX2VuLnBkZhMCZW4wgeYGA1UdHwSB3jCB2zCB2KCB1aCB0oaBn2xkYXA6Ly9sZGFwdXN1LmNlcnQuZm5tdC5lcy9jbj1DUkxVMjI5OSxjbj1BQyUyMEZOTVQlMjBVc3VhcmlvcyxvdT1DRVJFUyxvPUZOTVQtUkNNLGM9RVM/Y2VydGlmaWNhdGVSZXZvY2F0aW9uTGlzdDtiaW5hcnk/YmFzZT9vYmplY3RjbGFzcz1jUkxEaXN0cmlidXRpb25Qb2ludIYuaHR0cDovL3d3dy5jZXJ0LmZubXQuZXMvY3Jsc2FjdXN1L0NSTFUyMjk5LmNybDANBgkqhkiG9w0BAQsFAAOCAQEAIFkfUb7GeuNE6NHd+JIAvkmuTPt4LbtrSR73pIo/9fWVpvAPJyqBrMXY/wUcUjUesOvbZFYM5gAbEFhK0GpOuNQLqhbTmg3F6WhP73Nc66DNoMetdQBC81qRp7eLIgkfo/BQ4FoKR+RGPI/WDza6cKSN3gIAfrdCiZbioFZVN62AR7iwyPcsTdYcCQS1doml+FvSHls0keyInCMI48FqdM7qESMFXPkukDY1/qh1uHOMKpSZ4MC6+RlC3K970CE5Oz7TdL5+ycrIdUze0a/04wh4q6UXlHP/iU+Ss8apeCKu+TjqIPcxTZE8OrIF7n7a4YvuQ+GvYBPM2vgxABue+w==</ds:X509Certificate></ds:X509Data></ds:KeyInfo><ds:Object><xades:QualifyingProperties Target="#id-ef37d09995f2" xmlns:xades="http://uri.etsi.org/01903/v1.3.2#"><xades:SignedProperties Id="xades-id-ef37d09995f2"><xades:SignedSignatureProperties><xades:SigningTime>2026-06-03T15:49:00.663Z</xades:SigningTime><xades:SigningCertificate><xades:Cert><xades:CertDigest><ds:DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha1"/><ds:DigestValue>mguCWbDXgIWnRt/3wEd1Htz6ltA=</ds:DigestValue></xades:CertDigest><xades:IssuerSerial><ds:X509IssuerName>CN=AC FNMT Usuarios,OU=Ceres,O=FNMT-RCM,C=ES</ds:X509IssuerName><ds:X509SerialNumber>139870588772827769682473271713244976678</ds:X509SerialNumber></xades:IssuerSerial></xades:Cert></xades:SigningCertificate><xades:SignaturePolicyIdentifier><xades:SignaturePolicyId><xades:SigPolicyId><xades:Identifier>http://www.facturae.es/politica_de_firma_formato_facturae/politica_de_firma_formato_facturae_v3_1.pdf</xades:Identifier><xades:Description>Facturación electrónica con formato Facturae</xades:Description></xades:SigPolicyId><xades:SigPolicyHash><ds:DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha1"/><ds:DigestValue>Ohixl6upD6av8N7pEvDABhEL6hM=</ds:DigestValue></xades:SigPolicyHash><xades:SigPolicyQualifiers><xades:SigPolicyQualifier><xades:SPURI>http://www.facturae.es/politica_de_firma_formato_facturae/politica_de_firma_formato_facturae_v3_1.pdf</xades:SPURI></xades:SigPolicyQualifier></xades:SigPolicyQualifiers></xades:SignaturePolicyId></xades:SignaturePolicyIdentifier><xades:SignerRole><xades:ClaimedRoles><xades:ClaimedRole>emisor</xades:ClaimedRole></xades:ClaimedRoles></xades:SignerRole></xades:SignedSignatureProperties><xades:SignedDataObjectProperties><xades:DataObjectFormat ObjectReference="#Reference-1780501740660"><xades:ObjectIdentifier><xades:Identifier Qualifier="OIDAsURN">urn:oid:1.2.840.10003.5.109.10</xades:Identifier></xades:ObjectIdentifier><xades:MimeType>text/xml</xades:MimeType><xades:Encoding>UTF-8</xades:Encoding></xades:DataObjectFormat></xades:SignedDataObjectProperties></xades:SignedProperties></xades:QualifyingProperties></ds:Object></ds:Signature></facturae:Facturae>

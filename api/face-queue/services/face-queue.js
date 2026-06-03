@@ -5,11 +5,163 @@ const axios = require("axios");
 const https = require("https");
 const path = require("path");
 const FormData = require("form-data");
+const crypto = require("crypto");
+const { execSync } = require('child_process');
+const { signFacturaeXml } = require('./sign-facturae');
 
 /**
  * Read the documentation (https://strapi.io/documentation/developer-docs/latest/development/backend-customization.html#core-services)
  * to customize this service
  */
+
+/**
+ * Generate JWT token for FACe API authentication
+ * According to FACe API manual: JWT signed with JWS (RS256), valid for 5 minutes
+ * Manual: /home/jordi/Documents/work/webcoop/face/FACe - Manual de API de Proveedores.pdf (page 7)
+ */
+const generateFaceJWT = (certificatePath, certificatePassword) => {
+	try {
+		// Read PFX certificate
+		const pfxBuffer = fs.readFileSync(certificatePath);
+		
+		// Extract private key and certificate from PFX using OpenSSL commands
+		// We need to convert PFX to PEM format to extract the public certificate
+		const tmpCertPath = `/tmp/face_cert_${Date.now()}.pem`;
+		const tmpKeyPath = `/tmp/face_key_${Date.now()}.pem`;
+		
+		try {
+			// Extract certificate (public part) - only client cert, no chain
+			execSync(`openssl pkcs12 -in "${certificatePath}" -clcerts -nokeys -out "${tmpCertPath}" -passin pass:"${certificatePassword || ''}"`);
+			
+			// Extract private key
+			execSync(`openssl pkcs12 -in "${certificatePath}" -nocerts -nodes -out "${tmpKeyPath}" -passin pass:"${certificatePassword || ''}"`);
+			
+			// Read the extracted PEM certificate
+			let certPem = fs.readFileSync(tmpCertPath, 'utf8');
+			
+			// Extract ONLY the certificate part (between BEGIN and END CERTIFICATE)
+			// OpenSSL output may include Bag Attributes and other info we don't want
+			const certMatch = certPem.match(/-----BEGIN CERTIFICATE-----\s*([\s\S]+?)\s*-----END CERTIFICATE-----/);
+			if (!certMatch) {
+				throw new Error('Could not extract certificate from PFX');
+			}
+			
+			// Clean PEM: remove all whitespace and newlines
+			const pemCleaned = certMatch[1]
+				.replace(/\s/g, '')  // Remove ALL whitespace (spaces, tabs, newlines)
+				.trim();
+			
+			// Calculate SHA1 hash of the cleaned PEM for username
+			const username = crypto.createHash('sha1').update(pemCleaned).digest('hex');
+			
+			strapi.log.info(`[face-queue] PEM cleaned length: ${pemCleaned.length}`);
+			strapi.log.info(`[face-queue] Username (SHA1): ${username}`);
+			
+			// Generate timestamps (Unix timestamp in seconds)
+			const now = Math.floor(Date.now() / 1000);
+			const iat = now;
+			const exp = now + (5 * 60); // 5 minutes validity
+			
+			// Build JWT Header
+			const header = {
+				typ: "JWT",
+				alg: "RS256",
+				x5c: [pemCleaned]
+			};
+			
+			// Build JWT Payload
+			const payload = {
+				username: username,
+				iat: iat,
+				exp: exp
+			};
+			
+			strapi.log.info(`[face-queue] JWT Header: ${JSON.stringify(header).substring(0, 200)}...`);
+			strapi.log.info(`[face-queue] JWT Payload: ${JSON.stringify(payload)}`);
+			
+			// Encode header and payload in base64url
+			const base64UrlEncode = (obj) => {
+				const json = JSON.stringify(obj);
+				return Buffer.from(json)
+					.toString('base64')
+					.replace(/\+/g, '-')
+					.replace(/\//g, '_')
+					.replace(/=/g, '');
+			};
+			
+			const headerEncoded = base64UrlEncode(header);
+			const payloadEncoded = base64UrlEncode(payload);
+			
+			strapi.log.info(`[face-queue] Header encoded: ${headerEncoded.substring(0, 100)}...`);
+			strapi.log.info(`[face-queue] Payload encoded: ${payloadEncoded}`);
+			
+			// Create the signature input
+			const signatureInput = `${headerEncoded}.${payloadEncoded}`;
+			
+			// Read private key
+			let privateKeyPem = fs.readFileSync(tmpKeyPath, 'utf8');
+			
+			// Extract only the private key part (OpenSSL may include Bag Attributes)
+			const keyMatch = privateKeyPem.match(/-----BEGIN PRIVATE KEY-----[\s\S]+?-----END PRIVATE KEY-----/);
+			const rsaKeyMatch = privateKeyPem.match(/-----BEGIN RSA PRIVATE KEY-----[\s\S]+?-----END RSA PRIVATE KEY-----/);
+			
+			let privateKey;
+			if (keyMatch) {
+				privateKey = keyMatch[0];
+				strapi.log.info(`[face-queue] Using PKCS#8 private key format`);
+			} else if (rsaKeyMatch) {
+				privateKey = rsaKeyMatch[0];
+				strapi.log.info(`[face-queue] Using RSA private key format`);
+			} else {
+				throw new Error('Could not extract private key from PFX');
+			}
+			
+			strapi.log.info(`[face-queue] Private key extracted (${privateKey.length} chars)`);
+			strapi.log.info(`[face-queue] Signing input length: ${signatureInput.length} chars`);
+			
+			// Sign with RS256 (RSA with SHA-256)
+			const signature = crypto.sign('RSA-SHA256', Buffer.from(signatureInput), {
+				key: privateKey,
+				padding: crypto.constants.RSA_PKCS1_PADDING
+			});
+			
+			// Encode signature in base64url
+			const signatureEncoded = signature
+				.toString('base64')
+				.replace(/\+/g, '-')
+				.replace(/\//g, '_')
+				.replace(/=/g, '');
+			
+			strapi.log.info(`[face-queue] Signature generated (${signature.length} bytes, ${signatureEncoded.length} chars encoded)`);
+			
+			// Construct the final JWT
+			const jwt = `${headerEncoded}.${payloadEncoded}.${signatureEncoded}`;
+			
+			// Clean up temporary files
+			fs.unlinkSync(tmpCertPath);
+			fs.unlinkSync(tmpKeyPath);
+			
+			strapi.log.info(`[face-queue] JWT generated successfully`);
+			strapi.log.info(`[face-queue] JWT parts: header=${headerEncoded.substring(0, 50)}...`);
+			strapi.log.info(`[face-queue] JWT parts: payload=${payloadEncoded.substring(0, 50)}...`);
+			strapi.log.info(`[face-queue] JWT parts: signature=${signatureEncoded.substring(0, 50)}...`);
+			strapi.log.info(`[face-queue] JWT length: ${jwt.length} chars`);
+			strapi.log.debug(`[face-queue] Full JWT: ${jwt}`);
+			
+			return jwt;
+			
+		} catch (execError) {
+			// Clean up temp files if they exist
+			try { if (fs.existsSync(tmpCertPath)) fs.unlinkSync(tmpCertPath); } catch(e) {}
+			try { if (fs.existsSync(tmpKeyPath)) fs.unlinkSync(tmpKeyPath); } catch(e) {}
+			throw execError;
+		}
+		
+	} catch (error) {
+		strapi.log.error("[face-queue] Error generating JWT:", error.message);
+		throw new Error(`Failed to generate FACe JWT: ${error.message}`);
+	}
+};
 
 const toNumber = (value) => {
 	const n = Number(value || 0);
@@ -58,7 +210,320 @@ const getInvoiceLineAmounts = (line) => {
 	};
 };
 
-const buildUblInvoiceXml = ({ invoice, me, contact, dir3 }) => {
+/**
+ * Build Facturae 3.2 XML invoice
+ */
+const buildFacturaeInvoiceXml = ({ invoice, me, contact, dir3, bankAccount }) => {
+	const issueDate = formatDate(invoice.emitted || invoice.created_at);
+	const dueDate = invoice.paybefore ? formatDate(invoice.paybefore) : null;
+	const invoiceId = invoice.code || `INV-${invoice.id}`;
+	const lines = Array.isArray(invoice.lines) ? invoice.lines : [];
+
+	const supplierName = me && me.name ? me.name : "";
+	const supplierNif = me && me.nif ? me.nif : "";
+	const supplierAddress = me && me.address ? me.address : "";
+	const supplierCity = me && me.city ? me.city : "";
+	const supplierPostcode = me && me.postcode ? me.postcode : "";
+	const supplierProvince = me && me.state ? me.state : "";
+
+	const customerName =
+		(contact && contact.name) ||
+		(invoice.contact_info && invoice.contact_info.name) ||
+		"";
+	const customerNif =
+		(contact && contact.nif) ||
+		(invoice.contact_info && invoice.contact_info.nif) ||
+		"";
+	const customerAddress =
+		(contact && contact.address) ||
+		(invoice.contact_info && invoice.contact_info.address) ||
+		"";
+	const customerCity =
+		(contact && contact.city) ||
+		(invoice.contact_info && invoice.contact_info.city) ||
+		"";
+	const customerPostcode =
+		(contact && contact.postcode) ||
+		(invoice.contact_info && invoice.contact_info.postcode) ||
+		"";
+	const customerProvince =
+		(contact && contact.state) ||
+		(invoice.contact_info && invoice.contact_info.state) ||
+		"";
+	const dir3Oc = dir3 && dir3.oc ? dir3.oc : "";
+	const dir3Og = dir3 && dir3.og ? dir3.og : "";
+	const dir3Ut = dir3 && dir3.ut ? dir3.ut : "";
+
+	let totalBase = 0;
+	let totalVat = 0;
+
+	// Determine person type (F=física, J=jurídica)
+	const supplierPersonType = supplierNif && supplierNif.match(/^[0-9]{8}[A-Z]$/) ? "F" : "J";
+	const customerPersonType = customerNif && customerNif.match(/^[0-9]{8}[A-Z]$/) ? "F" : "J";
+
+	// Split supplier name for physical person
+	let supplierFirstName = "", supplierFirstSurname = "", supplierSecondSurname = "";
+	if (supplierPersonType === "F") {
+		const nameParts = supplierName.split(" ");
+		if (nameParts.length >= 3) {
+			supplierFirstName = nameParts[0];
+			supplierFirstSurname = nameParts[1];
+			supplierSecondSurname = nameParts.slice(2).join(" ");
+		} else if (nameParts.length === 2) {
+			supplierFirstName = nameParts[0];
+			supplierFirstSurname = nameParts[1];
+		} else {
+			supplierFirstName = supplierName;
+		}
+	}
+
+	const invoiceLinesXml = lines
+		.map((line, index) => {
+			const { quantity, base, vat, extension, vatAmount } = getInvoiceLineAmounts(line);
+
+			totalBase += extension;
+			totalVat += vatAmount;
+
+			const itemName = line.concept || `Línia ${index + 1}`;
+
+			return [
+				"                <InvoiceLine>",
+				`                    <ItemDescription>${escapeXml(itemName)}</ItemDescription>`,
+				`                    <Quantity>${formatAmount(quantity)}</Quantity>`,
+				"                    <UnitOfMeasure>01</UnitOfMeasure>",
+				`                    <UnitPriceWithoutTax>${base.toFixed(6)}</UnitPriceWithoutTax>`,
+				`                    <TotalCost>${extension.toFixed(6)}</TotalCost>`,
+				`                    <GrossAmount>${extension.toFixed(6)}</GrossAmount>`,
+				"                    <TaxesOutputs>",
+				"                        <Tax>",
+				"                            <TaxTypeCode>01</TaxTypeCode>",
+				`                            <TaxRate>${formatAmount(vat)}</TaxRate>`,
+				"                            <TaxableBase>",
+				`                                <TotalAmount>${formatAmount(extension)}</TotalAmount>`,
+				"                            </TaxableBase>",
+				"                            <TaxAmount>",
+				`                                <TotalAmount>${formatAmount(vatAmount)}</TotalAmount>`,
+				"                            </TaxAmount>",
+				"                        </Tax>",
+				"                    </TaxesOutputs>",
+				"                </InvoiceLine>",
+			].join("\n");
+		})
+		.join("\n");
+
+	totalBase = round2(totalBase);
+	totalVat = round2(totalVat);
+	const totalInvoice = round2(totalBase + totalVat);
+
+	// Generate batch ID from invoice id
+	const batchId = `LOTE${invoiceId.replace(/[^A-Z0-9]/gi, "")}`;
+
+	const xmlParts = [
+		'<?xml version="1.0" encoding="UTF-8"?>',
+		'<facturae:Facturae xmlns:facturae="http://www.facturae.es/Facturae/2009/v3.2/Facturae">',
+		"    <FileHeader>",
+		"        <SchemaVersion>3.2</SchemaVersion>",
+		"        <Modality>I</Modality>",
+		"        <InvoiceIssuerType>EM</InvoiceIssuerType>",
+		"        <Batch>",
+		`            <BatchIdentifier>${escapeXml(batchId)}</BatchIdentifier>`,
+		"            <InvoicesCount>1</InvoicesCount>",
+		"            <TotalInvoicesAmount>",
+		`                <TotalAmount>${formatAmount(totalInvoice)}</TotalAmount>`,
+		"            </TotalInvoicesAmount>",
+		"            <TotalOutstandingAmount>",
+		`                <TotalAmount>${formatAmount(totalInvoice)}</TotalAmount>`,
+		"            </TotalOutstandingAmount>",
+		"            <TotalExecutableAmount>",
+		`                <TotalAmount>${formatAmount(totalInvoice)}</TotalAmount>`,
+		"            </TotalExecutableAmount>",
+		"            <InvoiceCurrencyCode>EUR</InvoiceCurrencyCode>",
+		"        </Batch>",
+		"    </FileHeader>",
+		"    <Parties>",
+		"        <SellerParty>",
+		"            <TaxIdentification>",
+		`                <PersonTypeCode>${supplierPersonType}</PersonTypeCode>`,
+		`                <ResidenceTypeCode>R</ResidenceTypeCode>`,
+		`                <TaxIdentificationNumber>${escapeXml(supplierNif)}</TaxIdentificationNumber>`,
+		"            </TaxIdentification>",
+	];
+
+	// Supplier: Individual or LegalEntity
+	if (supplierPersonType === "F") {
+		xmlParts.push(
+			"            <Individual>",
+			`                <Name>${escapeXml(supplierFirstName)}</Name>`,
+			`                <FirstSurname>${escapeXml(supplierFirstSurname)}</FirstSurname>`,
+			...(supplierSecondSurname ? [`                <SecondSurname>${escapeXml(supplierSecondSurname)}</SecondSurname>`] : []),
+			"                <AddressInSpain>",
+			`                    <Address>${escapeXml(supplierAddress)}</Address>`,
+			`                    <PostCode>${escapeXml(supplierPostcode)}</PostCode>`,
+			`                    <Town>${escapeXml(supplierCity)}</Town>`,
+			`                    <Province>${escapeXml(supplierProvince)}</Province>`,
+			"                    <CountryCode>ESP</CountryCode>",
+			"                </AddressInSpain>",
+			"            </Individual>"
+		);
+	} else {
+		xmlParts.push(
+			"            <LegalEntity>",
+			`                <CorporateName>${escapeXml(supplierName)}</CorporateName>`,
+			"                <AddressInSpain>",
+			`                    <Address>${escapeXml(supplierAddress)}</Address>`,
+			`                    <PostCode>${escapeXml(supplierPostcode)}</PostCode>`,
+			`                    <Town>${escapeXml(supplierCity)}</Town>`,
+			`                    <Province>${escapeXml(supplierProvince)}</Province>`,
+			"                    <CountryCode>ESP</CountryCode>",
+			"                </AddressInSpain>",
+			"            </LegalEntity>"
+		);
+	}
+
+	xmlParts.push(
+		"        </SellerParty>",
+		"        <BuyerParty>",
+		"            <TaxIdentification>",
+		`                <PersonTypeCode>${customerPersonType}</PersonTypeCode>`,
+		`                <ResidenceTypeCode>R</ResidenceTypeCode>`,
+		`                <TaxIdentificationNumber>${escapeXml(customerNif)}</TaxIdentificationNumber>`,
+		"            </TaxIdentification>"
+	);
+
+	// DIR3 codes as AdministrativeCentres (only for public administration)
+	const adminCentreAddress = [
+		"                    <AddressInSpain>",
+		`                        <Address>${escapeXml(customerAddress)}</Address>`,
+		`                        <PostCode>${escapeXml(customerPostcode)}</PostCode>`,
+		`                        <Town>${escapeXml(customerCity)}</Town>`,
+		`                        <Province>${escapeXml(customerProvince)}</Province>`,
+		"                        <CountryCode>ESP</CountryCode>",
+		"                    </AddressInSpain>",
+	];
+	if (dir3Oc || dir3Og || dir3Ut) {
+		xmlParts.push("            <AdministrativeCentres>");
+		if (dir3Oc) {
+			xmlParts.push(
+				"                <AdministrativeCentre>",
+				`                    <CentreCode>${escapeXml(dir3Oc)}</CentreCode>`,
+				"                    <RoleTypeCode>01</RoleTypeCode>",
+				`                    <Name>${escapeXml(customerName)}</Name>`,
+				...adminCentreAddress,
+				"                </AdministrativeCentre>"
+			);
+		}
+		if (dir3Og) {
+			xmlParts.push(
+				"                <AdministrativeCentre>",
+				`                    <CentreCode>${escapeXml(dir3Og)}</CentreCode>`,
+				"                    <RoleTypeCode>02</RoleTypeCode>",
+				`                    <Name>${escapeXml(customerName)}</Name>`,
+				...adminCentreAddress,
+				"                </AdministrativeCentre>"
+			);
+		}
+		if (dir3Ut) {
+			xmlParts.push(
+				"                <AdministrativeCentre>",
+				`                    <CentreCode>${escapeXml(dir3Ut)}</CentreCode>`,
+				"                    <RoleTypeCode>03</RoleTypeCode>",
+				`                    <Name>${escapeXml(customerName)}</Name>`,
+				...adminCentreAddress,
+				"                </AdministrativeCentre>"
+			);
+		}
+		xmlParts.push("            </AdministrativeCentres>");
+	}
+
+	xmlParts.push(
+		"            <LegalEntity>",
+		`                <CorporateName>${escapeXml(customerName)}</CorporateName>`,
+		"                <AddressInSpain>",
+		`                    <Address>${escapeXml(customerAddress)}</Address>`,
+		`                    <PostCode>${escapeXml(customerPostcode)}</PostCode>`,
+		`                    <Town>${escapeXml(customerCity)}</Town>`,
+		`                    <Province>${escapeXml(customerProvince)}</Province>`,
+		"                    <CountryCode>ESP</CountryCode>",
+		"                </AddressInSpain>",
+		"            </LegalEntity>",
+		"        </BuyerParty>",
+		"    </Parties>",
+		"    <Invoices>",
+		"        <Invoice>",
+		"            <InvoiceHeader>",
+		`                <InvoiceNumber>${escapeXml(invoiceId)}</InvoiceNumber>`,
+		"                <InvoiceDocumentType>FC</InvoiceDocumentType>",
+		"                <InvoiceClass>OO</InvoiceClass>",
+		"            </InvoiceHeader>",
+		"            <InvoiceIssueData>",
+		`                <IssueDate>${issueDate}</IssueDate>`,
+		"                <InvoiceCurrencyCode>EUR</InvoiceCurrencyCode>",
+		"                <TaxCurrencyCode>EUR</TaxCurrencyCode>",
+		"                <LanguageName>es</LanguageName>",
+		"            </InvoiceIssueData>",
+		"            <TaxesOutputs>",
+		"                <Tax>",
+		"                    <TaxTypeCode>01</TaxTypeCode>",
+		`                    <TaxRate>${formatAmount(totalBase > 0 ? round2((totalVat / totalBase) * 100) : 21)}</TaxRate>`,
+		"                    <TaxableBase>",
+		`                        <TotalAmount>${formatAmount(totalBase)}</TotalAmount>`,
+		"                    </TaxableBase>",
+		"                    <TaxAmount>",
+		`                        <TotalAmount>${formatAmount(totalVat)}</TotalAmount>`,
+		"                    </TaxAmount>",
+		"                </Tax>",
+		"            </TaxesOutputs>",
+		"            <TaxesWithheld>",
+		"                <Tax>",
+		"                    <TaxTypeCode>04</TaxTypeCode>",
+		"                    <TaxRate>0.00</TaxRate>",
+		"                    <TaxableBase>",
+		"                        <TotalAmount>0.00</TotalAmount>",
+		"                    </TaxableBase>",
+		"                    <TaxAmount>",
+		"                        <TotalAmount>0.00</TotalAmount>",
+		"                    </TaxAmount>",
+		"                </Tax>",
+		"            </TaxesWithheld>",
+		"            <InvoiceTotals>",
+		`                <TotalGrossAmount>${formatAmount(totalBase)}</TotalGrossAmount>`,
+		"                <TotalGeneralDiscounts>0.00</TotalGeneralDiscounts>",
+		`                <TotalGrossAmountBeforeTaxes>${formatAmount(totalBase)}</TotalGrossAmountBeforeTaxes>`,
+		`                <TotalTaxOutputs>${formatAmount(totalVat)}</TotalTaxOutputs>`,
+		"                <TotalTaxesWithheld>0.00</TotalTaxesWithheld>",
+		`                <InvoiceTotal>${formatAmount(totalInvoice)}</InvoiceTotal>`,
+		"                <TotalFinancialExpenses>0.00</TotalFinancialExpenses>",
+		`                <TotalOutstandingAmount>${formatAmount(totalInvoice)}</TotalOutstandingAmount>`,
+		"                <TotalPaymentsOnAccount>0.00</TotalPaymentsOnAccount>",
+		`                <TotalExecutableAmount>${formatAmount(totalInvoice)}</TotalExecutableAmount>`,
+		"            </InvoiceTotals>",
+		"            <Items>",
+		invoiceLinesXml,
+		"            </Items>",
+		"            <PaymentDetails>",
+		"                <Installment>",
+		`                    <InstallmentDueDate>${dueDate || issueDate}</InstallmentDueDate>`,
+		`                    <InstallmentAmount>${formatAmount(totalInvoice)}</InstallmentAmount>`,
+		`                    <PaymentMeans>${bankAccount && bankAccount.iban ? "04" : "01"}</PaymentMeans>`,
+		...(bankAccount && bankAccount.iban ? [
+			"                    <AccountToBeCredited>",
+			`                        <IBAN>${escapeXml(bankAccount.iban.replace(/\s+/g, ""))}</IBAN>`,
+			"                    </AccountToBeCredited>",
+		] : []),
+		"                </Installment>",
+		"            </PaymentDetails>",
+		"        </Invoice>",
+		"    </Invoices>",
+		"</facturae:Facturae>"
+	);
+
+	return xmlParts.filter(Boolean).join("\n");
+};
+
+/**
+ * Build UBL 2.1 XML invoice (EN16931)
+ */
+const buildUblInvoiceXml = ({ invoice, me, contact, dir3, bankAccount }) => {
 	const issueDate = formatDate(invoice.emitted || invoice.created_at);
 	const dueDate = invoice.paybefore ? formatDate(invoice.paybefore) : null;
 	const invoiceId = invoice.code || `INV-${invoice.id}`;
@@ -113,25 +578,14 @@ const buildUblInvoiceXml = ({ invoice, me, contact, dir3 }) => {
 			totalVat += vatAmount;
 
 			const itemName = line.concept || `Línia ${index + 1}`;
-			const taxCategoryId = vat > 0 ? "S" : "E";
 
 			return [
 				"  <cac:InvoiceLine>",
 				`    <cbc:ID>${index + 1}</cbc:ID>`,
-				`    <cbc:InvoicedQuantity unitCode=\"C62\">${formatAmount(quantity)}</cbc:InvoicedQuantity>`,
+				`    <cbc:InvoicedQuantity unitCode=\"EA\">${formatAmount(quantity)}</cbc:InvoicedQuantity>`,
 				`    <cbc:LineExtensionAmount currencyID=\"${currency}\">${formatAmount(extension)}</cbc:LineExtensionAmount>`,
-				"    <cac:TaxTotal>",
-				`      <cbc:TaxAmount currencyID=\"${currency}\">${formatAmount(vatAmount)}</cbc:TaxAmount>`,
-				"    </cac:TaxTotal>",
 				"    <cac:Item>",
 				`      <cbc:Name>${escapeXml(itemName)}</cbc:Name>`,
-				"      <cac:ClassifiedTaxCategory>",
-				`        <cbc:ID>${taxCategoryId}</cbc:ID>`,
-				`        <cbc:Percent>${formatAmount(vat)}</cbc:Percent>`,
-				"        <cac:TaxScheme>",
-				"          <cbc:ID>VAT</cbc:ID>",
-				"        </cac:TaxScheme>",
-				"      </cac:ClassifiedTaxCategory>",
 				"    </cac:Item>",
 				"    <cac:Price>",
 				`      <cbc:PriceAmount currencyID=\"${currency}\">${formatAmount(base)}</cbc:PriceAmount>`,
@@ -141,18 +595,22 @@ const buildUblInvoiceXml = ({ invoice, me, contact, dir3 }) => {
 		})
 		.join("\n");
 
-	totalBase = round2(invoice.total_base || totalBase);
-	totalVat = round2(invoice.total_vat || totalVat);
-	const taxInclusive = round2(totalBase + totalVat);
-	const payable = round2(invoice.total || taxInclusive);
+	// EN16931 validation: totals MUST match sum of lines exactly
+	totalBase = round2(totalBase);
+	totalVat = round2(totalVat);
+	const taxInclusive = round2(totalBase + totalVat); // TotalGross = TotalNet + TotalVat
+	const payable = taxInclusive;
+	
+	// Calculate VAT percentage (default 21% if can't calculate)
+	const vatPercent = totalBase > 0 ? round2((totalVat / totalBase) * 100) : 21;
 
 	const xmlParts = [
 		'<?xml version="1.0" encoding="UTF-8"?>',
 		'<Invoice xmlns="urn:oasis:names:specification:ubl:schema:xsd:Invoice-2"',
 		'  xmlns:cac="urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2"',
 		'  xmlns:cbc="urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2">',
-		"  <cbc:UBLVersionID>2.1</cbc:UBLVersionID>",
 		"  <cbc:CustomizationID>urn:cen.eu:en16931:2017</cbc:CustomizationID>",
+	"  <cbc:ProfileID>urn:www.cenbii.eu:profile:bii04:ver2.0</cbc:ProfileID>",
 		`  <cbc:ID>${escapeXml(invoiceId)}</cbc:ID>`,
 		`  <cbc:IssueDate>${issueDate}</cbc:IssueDate>`,
 		...(dueDate ? [`  <cbc:DueDate>${dueDate}</cbc:DueDate>`] : []),
@@ -160,9 +618,9 @@ const buildUblInvoiceXml = ({ invoice, me, contact, dir3 }) => {
 		`  <cbc:DocumentCurrencyCode>${currency}</cbc:DocumentCurrencyCode>`,
 		"  <cac:AccountingSupplierParty>",
 		"    <cac:Party>",
-		`      <cbc:EndpointID>${escapeXml(supplierNif)}</cbc:EndpointID>`,
+
 		"      <cac:PartyIdentification>",
-		`        <cbc:ID>${escapeXml(supplierNif)}</cbc:ID>`,
+		`        <cbc:ID schemeID="VAT">ES${escapeXml(supplierNif)}</cbc:ID>`,
 		"      </cac:PartyIdentification>",
 		"      <cac:PartyName>",
 		`        <cbc:Name>${escapeXml(supplierName)}</cbc:Name>`,
@@ -176,7 +634,7 @@ const buildUblInvoiceXml = ({ invoice, me, contact, dir3 }) => {
 		"        </cac:Country>",
 		"      </cac:PostalAddress>",
 		"      <cac:PartyTaxScheme>",
-		`        <cbc:CompanyID>${escapeXml(supplierNif)}</cbc:CompanyID>`,
+		`        <cbc:CompanyID>ES${escapeXml(supplierNif)}</cbc:CompanyID>`,
 		"        <cac:TaxScheme>",
 		"          <cbc:ID>VAT</cbc:ID>",
 		"        </cac:TaxScheme>",
@@ -188,18 +646,8 @@ const buildUblInvoiceXml = ({ invoice, me, contact, dir3 }) => {
 		"  </cac:AccountingSupplierParty>",
 		"  <cac:AccountingCustomerParty>",
 		"    <cac:Party>",
-		`      <cbc:EndpointID>${escapeXml(customerNif)}</cbc:EndpointID>`,
-		"      <cac:PartyIdentification>",
-		`        <cbc:ID>${escapeXml(customerNif)}</cbc:ID>`,
-		"      </cac:PartyIdentification>",
-		"      <cac:PartyIdentification>",
-		`        <cbc:ID schemeID=\"DIR3-OC\">${escapeXml(dir3Oc)}</cbc:ID>`,
-		"      </cac:PartyIdentification>",
-		"      <cac:PartyIdentification>",
-		`        <cbc:ID schemeID=\"DIR3-OG\">${escapeXml(dir3Og)}</cbc:ID>`,
-		"      </cac:PartyIdentification>",
-		"      <cac:PartyIdentification>",
-		`        <cbc:ID schemeID=\"DIR3-UT\">${escapeXml(dir3Ut)}</cbc:ID>`,
+	"      <cac:PartyIdentification>",
+	`        <cbc:ID>${escapeXml(customerNif)}</cbc:ID>`,
 		"      </cac:PartyIdentification>",
 		"      <cac:PartyName>",
 		`        <cbc:Name>${escapeXml(customerName)}</cbc:Name>`,
@@ -212,20 +660,43 @@ const buildUblInvoiceXml = ({ invoice, me, contact, dir3 }) => {
 		`          <cbc:IdentificationCode>${escapeXml(customerCountry || "ES")}</cbc:IdentificationCode>`,
 		"        </cac:Country>",
 		"      </cac:PostalAddress>",
-		"      <cac:PartyTaxScheme>",
-		`        <cbc:CompanyID>${escapeXml(customerNif)}</cbc:CompanyID>`,
-		"        <cac:TaxScheme>",
-		"          <cbc:ID>VAT</cbc:ID>",
-		"        </cac:TaxScheme>",
-		"      </cac:PartyTaxScheme>",
-		"      <cac:PartyLegalEntity>",
-		`        <cbc:RegistrationName>${escapeXml(customerName)}</cbc:RegistrationName>`,
-		"      </cac:PartyLegalEntity>",
-		"    </cac:Party>",
-		"  </cac:AccountingCustomerParty>",
-		"  <cac:TaxTotal>",
-		`    <cbc:TaxAmount currencyID=\"${currency}\">${formatAmount(totalVat)}</cbc:TaxAmount>`,
-		"  </cac:TaxTotal>",
+
+	"    </cac:Party>",
+	"  </cac:AccountingCustomerParty>",
+	"  <cac:AdditionalDocumentReference>",
+	"    <cbc:ID>DIR3-OFICINA-CONTABLE</cbc:ID>",
+	`    <cbc:DocumentDescription>${escapeXml(dir3Oc)}</cbc:DocumentDescription>`,
+	"  </cac:AdditionalDocumentReference>",
+	"  <cac:AdditionalDocumentReference>",
+	"    <cbc:ID>DIR3-ORGANO-GESTOR</cbc:ID>",
+	`    <cbc:DocumentDescription>${escapeXml(dir3Og)}</cbc:DocumentDescription>`,
+	"  </cac:AdditionalDocumentReference>",
+	"  <cac:AdditionalDocumentReference>",
+	"    <cbc:ID>DIR3-UNIDAD-TRAMITADORA</cbc:ID>",
+	`    <cbc:DocumentDescription>${escapeXml(dir3Ut)}</cbc:DocumentDescription>`,
+	"  </cac:AdditionalDocumentReference>",
+	"  <cac:PaymentMeans>",
+	`    <cbc:PaymentMeansCode>${bankAccount && bankAccount.iban ? "30" : "31"}</cbc:PaymentMeansCode>`,
+	...(bankAccount && bankAccount.iban ? [
+		"    <cac:PayeeFinancialAccount>",
+		`      <cbc:ID>${escapeXml(bankAccount.iban)}</cbc:ID>`,
+		"    </cac:PayeeFinancialAccount>"
+	] : []),
+	"  </cac:PaymentMeans>",
+	"  <cac:TaxTotal>",
+	`    <cbc:TaxAmount currencyID=\"${currency}\">${formatAmount(totalVat)}</cbc:TaxAmount>`,
+	"    <cac:TaxSubtotal>",
+	`      <cbc:TaxableAmount currencyID=\"${currency}\">${formatAmount(totalBase)}</cbc:TaxableAmount>`,
+	`      <cbc:TaxAmount currencyID=\"${currency}\">${formatAmount(totalVat)}</cbc:TaxAmount>`,
+	"      <cac:TaxCategory>",
+	"        <cbc:ID>S</cbc:ID>",
+	`        <cbc:Percent>${formatAmount(vatPercent)}</cbc:Percent>`,
+	"        <cac:TaxScheme>",
+	"          <cbc:ID>VAT</cbc:ID>",
+	"        </cac:TaxScheme>",
+	"      </cac:TaxCategory>",
+	"    </cac:TaxSubtotal>",
+	"  </cac:TaxTotal>",
 		"  <cac:LegalMonetaryTotal>",
 		`    <cbc:LineExtensionAmount currencyID=\"${currency}\">${formatAmount(totalBase)}</cbc:LineExtensionAmount>`,
 		`    <cbc:TaxExclusiveAmount currencyID=\"${currency}\">${formatAmount(totalBase)}</cbc:TaxExclusiveAmount>`,
@@ -276,7 +747,7 @@ const submitInvoiceToFace = async ({ xml, nif, dir3, mode, me }) => {
 			throw new Error("Test endpoint not configured. Please configure face_test_endpoint in settings or contact FACe support for test environment URL.");
 		}
 		
-		const submitUrl = `${endpoint}/invoices/submit`;
+		const submitUrl = `${endpoint}/v1/invoices`;
 
 		// Get certificate configuration
 		if (!me.face_certificate || !me.face_certificate.url) {
@@ -292,25 +763,41 @@ const submitInvoiceToFace = async ({ xml, nif, dir3, mode, me }) => {
 		);
 
 		const httpsAgent = createFaceHttpsAgent(certificatePath, me.face_certificate_password);
+		
+		// Generate JWT token for authentication (valid for 5 minutes)
+		const jwtToken = generateFaceJWT(certificatePath, me.face_certificate_password);
+		
 	strapi.log.info(`[face-queue] Using certificate: ${certificatePath}`);
 	strapi.log.info(`[face-queue] Submitting to: ${submitUrl}`);
-		// Create multipart form data
-		const formData = new FormData();
-		formData.append("facturae", Buffer.from(xml, "utf-8"), {
+	strapi.log.info(`[face-queue] Certificate file size: ${fs.statSync(certificatePath).size} bytes`);
+	strapi.log.info(`[face-queue] Mode: ${mode}`);
+	strapi.log.info(`[face-queue] NIF: ${nif}`);
+	strapi.log.info(`[face-queue] JWT token generated (length: ${jwtToken.length})`);
+		
+		// FACe API expects JSON with base64-encoded XML, not multipart/form-data
+		const xmlBase64 = Buffer.from(xml, "utf-8").toString("base64");
+		
+		// Email is required by FACe API manual (page 9)
+		const emailAddress = me.email || "";
+		
+		const requestBody = {
 			filename: "invoice.xml",
-			contentType: "application/xml",
-		});
-		formData.append("nif", nif);
-		formData.append("dir3_oc", dir3.oc || "");
-		formData.append("dir3_og", dir3.og || "");
-		formData.append("dir3_ut", dir3.ut || "");
+			content: xmlBase64,
+			email: emailAddress,
+			attachments: []
+		};
+
+		strapi.log.info(`[face-queue] Request body size: ${JSON.stringify(requestBody).length} bytes`);
+		strapi.log.info(`[face-queue] Email for notifications: ${emailAddress || '(empty)'}`);
 
 		const config = {
 			method: "POST",
 			url: submitUrl,
-			data: formData,
+			data: requestBody,
 			headers: {
-				...formData.getHeaders(),
+				"Content-Type": "application/json",
+				"Accept": "application/json",
+				"Authorization": `Bearer ${jwtToken}`,
 				"User-Agent": "FACe-Client/1.0",
 			},
 			httpsAgent: httpsAgent,
@@ -352,7 +839,7 @@ const checkInvoiceStatus = async ({ registrationNumber, mode, me }) => {
 			throw new Error("Test endpoint not configured. Please configure face_test_endpoint in settings or contact FACe support for test environment URL.");
 		}
 		
-		const statusUrl = `${endpoint}/invoices/${registrationNumber}/status`;
+		const statusUrl = `${endpoint}/v1/invoices/${registrationNumber}`;
 
 		// Get certificate configuration
 		if (!me.face_certificate || !me.face_certificate.url) {
@@ -368,11 +855,15 @@ const checkInvoiceStatus = async ({ registrationNumber, mode, me }) => {
 		);
 
 		const httpsAgent = createFaceHttpsAgent(certificatePath, me.face_certificate_password);
+		
+		// Generate JWT token for authentication (valid for 5 minutes)
+		const jwtToken = generateFaceJWT(certificatePath, me.face_certificate_password);
 
 		const config = {
 			method: "GET",
 			url: statusUrl,
 			headers: {
+				"Authorization": `Bearer ${jwtToken}`,
 				"User-Agent": "FACe-Client/1.0",
 			},
 			httpsAgent: httpsAgent,
@@ -479,7 +970,7 @@ const startFaceProcess = async (faceQueueInput) => {
 
 	const invoice = await strapi.query("emitted-invoice").findOne(
 		{ id: emittedInvoiceId },
-		["lines", "contact", "contact_info"]
+		["lines", "contact", "contact_info", "bank_account"]
 	);
 
 	if (!invoice) {
@@ -497,7 +988,7 @@ const startFaceProcess = async (faceQueueInput) => {
 
 	const invoiceSnapshot = JSON.parse(JSON.stringify(invoice));
 
-	const me = await strapi.query("me").findOne();
+	const me = await strapi.query("me").findOne({}, ["bank_account_default", "face_certificate"]);
 	const contactId =
 		invoice.contact && typeof invoice.contact === "object"
 			? invoice.contact.id
@@ -553,23 +1044,82 @@ const startFaceProcess = async (faceQueueInput) => {
 		return;
 	}
 
-	const xml = buildUblInvoiceXml({ invoice, me, contact, dir3 });
+	// Resolve bank account: invoice override, else me default
+	const bankAccount =
+		(invoice.bank_account && typeof invoice.bank_account === "object"
+			? invoice.bank_account
+			: null) ||
+		(me.bank_account_default && typeof me.bank_account_default === "object"
+			? me.bank_account_default
+			: null);
 
-	if (!xml || !xml.includes("<Invoice") || !xml.includes("</Invoice>")) {
-		strapi.log.warn(`[face-queue] invalid generated xml queue=${faceQueue.id}`);
+	// Choose invoice format: UBL or Facturae
+	const invoiceFormat = me.face_invoice_format || "facturae";
+	const xml = invoiceFormat === "facturae" 
+		? buildFacturaeInvoiceXml({ invoice, me, contact, dir3, bankAccount })
+		: buildUblInvoiceXml({ invoice, me, contact, dir3, bankAccount });
+
+	const xmlRootTag = invoiceFormat === "facturae" ? "<facturae:Facturae" : "<Invoice";
+	const xmlEndTag = invoiceFormat === "facturae" ? "</facturae:Facturae>" : "</Invoice>";
+	const xmlFormatName = invoiceFormat === "facturae" ? "Facturae 3.2" : "UBL 2.1";
+
+	if (!xml || !xml.includes(xmlRootTag) || !xml.includes(xmlEndTag)) {
+		strapi.log.warn(`[face-queue] invalid generated xml queue=${faceQueue.id} format=${invoiceFormat}`);
 		await strapi.query("face-queue").update(
 			{ id: faceQueue.id },
 			{
 				_internal: true,
 				invoice: invoiceSnapshot,
 				status: "error",
-				response_body: "Invalid generated UBL XML",
+				response_body: `Invalid generated ${xmlFormatName} XML`,
 			}
 		);
 		return;
 	}
 
-	strapi.log.info(`[face-queue] xml validation skipped queue=${faceQueue.id}`);
+	strapi.log.info(`[face-queue] ${xmlFormatName} xml generated queue=${faceQueue.id}`);
+
+	// Sign Facturae XML with XAdES-BES (FACe requires signed Facturae)
+	let signedXml = xml;
+	if (invoiceFormat === "facturae") {
+		if (!me.face_certificate || !me.face_certificate.url) {
+			strapi.log.error(`[face-queue] cannot sign: face_certificate missing queue=${faceQueue.id}`);
+			await strapi.query("face-queue").update(
+				{ id: faceQueue.id },
+				{
+					_internal: true,
+					invoice: invoiceSnapshot,
+					request_body: xml,
+					status: "error",
+					response_body: "FACe certificate not configured in settings",
+				}
+			);
+			return;
+		}
+		try {
+			const certificateRelativePath = me.face_certificate.url.replace(/^\//, "");
+			const certificatePath = path.join(
+				process.cwd(),
+				strapi.config.paths.static,
+				certificateRelativePath
+			);
+			signedXml = await signFacturaeXml(xml, certificatePath, me.face_certificate_password);
+			strapi.log.info(`[face-queue] Facturae XAdES-BES signed queue=${faceQueue.id} bytes=${signedXml.length}`);
+		} catch (signError) {
+			strapi.log.error(`[face-queue] sign error queue=${faceQueue.id}:`, signError);
+			await strapi.query("face-queue").update(
+				{ id: faceQueue.id },
+				{
+					_internal: true,
+					invoice: invoiceSnapshot,
+					request_body: xml,
+					status: "error",
+					response_body: `XAdES sign error: ${signError.message}`,
+				}
+			);
+			return;
+		}
+	}
 
 const requestUrl = faceQueue.mode === "test" 
 			? (me.face_test_endpoint || "https://se-api.face.gob.es/providers")
@@ -595,7 +1145,7 @@ const requestUrl = faceQueue.mode === "test"
 			{
 				_internal: true,
 				invoice: invoiceSnapshot,
-				request_body: xml,
+				request_body: signedXml,
 				request_url: requestUrl,
 			status: "pending",
 		}
@@ -633,7 +1183,7 @@ const requestUrl = faceQueue.mode === "test"
 	// Submit to FACe REST API
 	try {
 		const submitResult = await submitInvoiceToFace({
-			xml,
+			xml: signedXml,
 			nif: me.nif,
 			dir3,
 			mode: faceQueue.mode,
@@ -648,6 +1198,7 @@ const requestUrl = faceQueue.mode === "test"
 					invoice: invoiceSnapshot,
 					registration_number: submitResult.registrationNumber,
 					response_body: JSON.stringify(submitResult.data, null, 2),
+					response_code: submitResult.statusCode,
 					status: "registered",
 					last_status_check: new Date(),
 					attempts: 0,
@@ -659,7 +1210,7 @@ const requestUrl = faceQueue.mode === "test"
 			);
 		} else {
 			const attempts = (faceQueue.attempts || 0) + 1;
-			const maxAttempts = 3;
+			const maxAttempts = 10;
 
 			await strapi.query("face-queue").update(
 				{ id: faceQueue.id },
@@ -667,6 +1218,7 @@ const requestUrl = faceQueue.mode === "test"
 					_internal: true,
 					invoice: invoiceSnapshot,
 					response_body: JSON.stringify(submitResult.error || submitResult.data, null, 2),
+					response_code: submitResult.statusCode,
 					status: attempts >= maxAttempts ? "error" : "pending",
 					attempts,
 				}
@@ -697,4 +1249,5 @@ const requestUrl = faceQueue.mode === "test"
 module.exports = {
 	startFaceProcess,
 	checkInvoiceStatus,
+	submitInvoiceToFace,
 };

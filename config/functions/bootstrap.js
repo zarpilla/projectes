@@ -2943,6 +2943,13 @@ async function initializeFaceEndpoints() {
       console.log("[FACE ENDPOINTS] Setting default production endpoint");
     }
 
+    // Set default invoice format to Facturae (Spanish standard)
+    if (!me.face_invoice_format) {
+      updates.face_invoice_format = "facturae";
+      needsUpdate = true;
+      console.log("[FACE ENDPOINTS] Setting default invoice format to Facturae 3.2.2");
+    }
+
     if (needsUpdate) {
       await strapi.query("me").update({ id: me.id }, updates);
       console.log("[FACE ENDPOINTS] FACe endpoints initialized successfully");

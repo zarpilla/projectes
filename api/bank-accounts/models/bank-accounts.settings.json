@@ -12,6 +12,9 @@
   "attributes": {
     "name": {
       "type": "string"
+    },
+    "iban": {
+      "type": "string"
     }
   }
 }

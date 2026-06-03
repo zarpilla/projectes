@@ -12,6 +12,8 @@
     "test": "node tests/aggregateRowsByYear.test.js"
   },
   "dependencies": {
+    "@e-invoice-eu/core": "^3.1.1",
+    "@peculiar/webcrypto": "^1.7.1",
     "axios": "^0.27.2",
     "crypto": "^1.0.1",
     "form-data": "^4.0.0",
@@ -21,6 +23,7 @@
     "lodash.merge": "^4.6.2",
     "moment": "^2.29.3",
     "mysql": "^2.18.1",
+    "node-forge": "^1.4.0",
     "node-ical": "^0.15.1",
     "pdf-merge": "^1.2.0",
     "pdfkit": "^0.13.0",
@@ -41,7 +44,11 @@
     "strapi-provider-email-sendgrid": "^3.6.8",
     "strapi-utils": "3.6.11",
     "transliteration": "^2.3.5",
-    "verifactu-node-lib": "^1.0.0"
+    "verifactu-node-lib": "^1.0.0",
+    "xadesjs": "^2.6.7",
+    "xml-crypto": "^6.1.2",
+    "xmldom": "^0.6.0",
+    "xmldsigjs": "^2.8.7"
   },
   "author": {
     "name": "A Strapi developer"

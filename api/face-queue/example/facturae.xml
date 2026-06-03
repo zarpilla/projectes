@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Facturae xmlns="http://www.facturae.gob.es/formato/Versiones/Facturaev3_2_2.xml">
+    <!-- 1. BLOQUE DE ENCABEZADO Y CABECERA DEL LOTE -->
+    <FileHeader>
+        <SchemaVersion>3.2.2</SchemaVersion>
+        <Modality>I</Modality>
+        <InvoiceIssuerType>RE</InvoiceIssuerType>
+        <BatchIdentifier>LOTE2026020</BatchIdentifier>
+        <BatchDate>2026-06-02</BatchDate>
+    </FileHeader>
+    <!-- 2. BLOQUE DE FACTURAS -->
+    <Invoices>
+        <Invoice>
+            <!-- 2.1. Datos de la Factura -->
+            <InvoiceHeader>
+                <InvoiceNumber>2026-020</InvoiceNumber>
+                <InvoiceSeriesCode>2026</InvoiceSeriesCode>
+                <InvoiceDocumentType>FC</InvoiceDocumentType>
+                <InvoiceClass>OO</InvoiceClass>
+                <InvoiceIssueDate>2026-06-02</InvoiceIssueDate>
+            </InvoiceHeader>
+            <!-- 2.2. Partes de la operación -->
+            <InvoiceParties>
+                <SellerParty>
+                    <TaxIdentification>
+                        <PersonTypeCode>F</PersonTypeCode>
+                        <TaxIdentificationNumber>39891236J</TaxIdentificationNumber>
+                    </TaxIdentification>
+                    <Individual>
+                        <Name>Jordi</Name>
+                        <FirstSurname>Sabaté</FirstSurname>
+                        <SecondSurname>Estopà</SecondSurname>
+                        <AddressInSpain>
+                            <Address>Bernat Saulet 25, 2-2</Address>
+                            <PostCode>17860</PostCode>
+                            <Town>Sant Joan de les Abadesses</Town>
+                            <Province>Sant Joan de les Abadesses</Province>
+                            <CountryCode>ESP</CountryCode>
+                        </AddressInSpain>
+                    </Individual>
+                </SellerParty>
+                <BuyerParty>
+                    <TaxIdentification>
+                        <PersonTypeCode>J</PersonTypeCode>
+                        <TaxIdentificationNumber>Q0818001J</TaxIdentificationNumber>
+                    </TaxIdentification>
+                    <AdministrativeCentres>
+                        <AdministrativeCentre>
+                            <CentreCode>U00400225</CentreCode>
+                            <RoleTypeCode>01</RoleTypeCode>
+                            <Name>Universitat de Barcelona</Name>
+                        </AdministrativeCentre>
+                        <AdministrativeCentre>
+                            <CentreCode>U00400001</CentreCode>
+                            <RoleTypeCode>02</RoleTypeCode>
+                            <Name>Universitat de Barcelona</Name>
+                        </AdministrativeCentre>
+                        <AdministrativeCentre>
+                            <CentreCode>U00400001</CentreCode>
+                            <RoleTypeCode>03</RoleTypeCode>
+                            <Name>Universitat de Barcelona</Name>
+                        </AdministrativeCentre>
+                    </AdministrativeCentres>
+                    <LegalEntity>
+                        <CorporateName>Universitat de Barcelona</CorporateName>
+                        <AddressInSpain>
+                            <Address> Gran Via de les Corts Catalanes 585</Address>
+                            <PostCode>08007</PostCode>
+                            <Town>Barcelona </Town>
+                            <Province>Barcelona </Province>
+                            <CountryCode>ESP</CountryCode>
+                        </AddressInSpain>
+                    </LegalEntity>
+                </BuyerParty>
+            </InvoiceParties>
+            <!-- 2.2. Datos de emisión -->
+            <InvoiceIssueData>
+                <IssueDate>2026-06-02</IssueDate>
+                <InvoiceCurrencyCode>EUR</InvoiceCurrencyCode>
+                <TaxCurrencyCode>EUR</TaxCurrencyCode>
+                <LanguageCode>es</LanguageCode>
+            </InvoiceIssueData>
+            <!-- 2.3. Impuestos repercutidos (IVA) -->
+            <TaxesOutputs>
+                <Tax>
+                    <TaxTypeCode>01</TaxTypeCode>
+                    <TaxRate>21.00</TaxRate>
+                    <TaxableBase>
+                        <TotalAmount>1.00</TotalAmount>
+                    </TaxableBase>
+                    <TaxAmount>
+                        <TotalAmount>0.21</TotalAmount>
+                    </TaxAmount>
+                </Tax>
+            </TaxesOutputs>
+            <!-- 2.4. Impuestos retenidos (IRPF) -->
+            <TaxesWithheld>
+                <Tax>
+                    <TaxTypeCode>04</TaxTypeCode>
+                    <TaxRate>0.00</TaxRate>
+                    <TaxableBase>
+                        <TotalAmount>0.00</TotalAmount>
+                    </TaxableBase>
+                    <TaxAmount>
+                        <TotalAmount>0.00</TotalAmount>
+                    </TaxAmount>
+                </Tax>
+            </TaxesWithheld>
+            <!-- 2.5. Detalles de los productos o servicios -->
+            <Items>
+                <InvoiceLine>
+                    <ItemDescription>1</ItemDescription>
+                    <Quantity>1.00</Quantity>
+                    <UnitOfMeasure>01</UnitOfMeasure>
+                    <UnitPriceWithoutTax>1.00</UnitPriceWithoutTax>
+                    <TotalAmount>1.00</TotalAmount>
+                    <TaxesOutputs>
+                        <Tax>
+                            <TaxTypeCode>01</TaxTypeCode>
+                            <TaxRate>21.00</TaxRate>
+                            <TaxableBase>1.00</TaxableBase>
+                            <TaxAmount>0.21</TaxAmount>
+                        </Tax>
+                    </TaxesOutputs>
+                </InvoiceLine>
+            </Items>
+            <!-- 2.6. Resumen de Impuestos y Totales -->
+            <InvoiceTotals>
+                <TotalGrossAmount>1.00</TotalGrossAmount>
+                <TotalGrossAmountBeforeTaxes>1.00</TotalGrossAmountBeforeTaxes>
+                <TotalTaxOutputs>0.21</TotalTaxOutputs>
+                <TotalTaxesWithheld>0.00</TotalTaxesWithheld>
+                <InvoiceTotal>1.21</InvoiceTotal>
+                <TotalOutstandingAmount>1.21</TotalOutstandingAmount>
+                <TotalExecutableAmount>1.21</TotalExecutableAmount>
+            </InvoiceTotals>
+            <!-- 2.7. Forma y condiciones de pago -->
+            <PaymentDetails>
+                <Installment>
+                    <InstallmentDueDate>2026-06-02</InstallmentDueDate>
+                    <InstallmentAmount>1.21</InstallmentAmount>
+                    <PaymentMethod>01</PaymentMethod>
+                </Installment>
+            </PaymentDetails>
+        </Invoice>
+    </Invoices>
+</Facturae>

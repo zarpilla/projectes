@@ -36,6 +36,9 @@
     "country": {
       "type": "string"
     },
+    "state": {
+      "type": "string"
+    },
     "logo": {
       "model": "file",
       "via": "related",
@@ -156,6 +159,14 @@
     },
     "face_real_endpoint": {
       "type": "string"
+    },
+    "face_invoice_format": {
+      "type": "enumeration",
+      "enum": [
+        "ubl",
+        "facturae"
+      ],
+      "default": "facturae"
     }
   }
 }
