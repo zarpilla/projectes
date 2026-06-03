@@ -1249,5 +1249,5 @@ const requestUrl = faceQueue.mode === "test"
 module.exports = {
 	startFaceProcess,
 	checkInvoiceStatus,
-	submitInvoiceToFace,
+	submitInvoiceToFace
 };
