@@ -54,9 +54,6 @@ const generateFaceJWT = (certificatePath, certificatePassword) => {
 			// Calculate SHA1 hash of the cleaned PEM for username
 			const username = crypto.createHash('sha1').update(pemCleaned).digest('hex');
 			
-			strapi.log.info(`[face-queue] PEM cleaned length: ${pemCleaned.length}`);
-			strapi.log.info(`[face-queue] Username (SHA1): ${username}`);
-			
 			// Generate timestamps (Unix timestamp in seconds)
 			const now = Math.floor(Date.now() / 1000);
 			const iat = now;
@@ -76,9 +73,6 @@ const generateFaceJWT = (certificatePath, certificatePassword) => {
 				exp: exp
 			};
 			
-			strapi.log.info(`[face-queue] JWT Header: ${JSON.stringify(header).substring(0, 200)}...`);
-			strapi.log.info(`[face-queue] JWT Payload: ${JSON.stringify(payload)}`);
-			
 			// Encode header and payload in base64url
 			const base64UrlEncode = (obj) => {
 				const json = JSON.stringify(obj);
@@ -91,9 +85,6 @@ const generateFaceJWT = (certificatePath, certificatePassword) => {
 			
 			const headerEncoded = base64UrlEncode(header);
 			const payloadEncoded = base64UrlEncode(payload);
-			
-			strapi.log.info(`[face-queue] Header encoded: ${headerEncoded.substring(0, 100)}...`);
-			strapi.log.info(`[face-queue] Payload encoded: ${payloadEncoded}`);
 			
 			// Create the signature input
 			const signatureInput = `${headerEncoded}.${payloadEncoded}`;
@@ -108,16 +99,11 @@ const generateFaceJWT = (certificatePath, certificatePassword) => {
 			let privateKey;
 			if (keyMatch) {
 				privateKey = keyMatch[0];
-				strapi.log.info(`[face-queue] Using PKCS#8 private key format`);
 			} else if (rsaKeyMatch) {
 				privateKey = rsaKeyMatch[0];
-				strapi.log.info(`[face-queue] Using RSA private key format`);
 			} else {
 				throw new Error('Could not extract private key from PFX');
 			}
-			
-			strapi.log.info(`[face-queue] Private key extracted (${privateKey.length} chars)`);
-			strapi.log.info(`[face-queue] Signing input length: ${signatureInput.length} chars`);
 			
 			// Sign with RS256 (RSA with SHA-256)
 			const signature = crypto.sign('RSA-SHA256', Buffer.from(signatureInput), {
@@ -132,21 +118,12 @@ const generateFaceJWT = (certificatePath, certificatePassword) => {
 				.replace(/\//g, '_')
 				.replace(/=/g, '');
 			
-			strapi.log.info(`[face-queue] Signature generated (${signature.length} bytes, ${signatureEncoded.length} chars encoded)`);
-			
 			// Construct the final JWT
 			const jwt = `${headerEncoded}.${payloadEncoded}.${signatureEncoded}`;
 			
 			// Clean up temporary files
 			fs.unlinkSync(tmpCertPath);
 			fs.unlinkSync(tmpKeyPath);
-			
-			strapi.log.info(`[face-queue] JWT generated successfully`);
-			strapi.log.info(`[face-queue] JWT parts: header=${headerEncoded.substring(0, 50)}...`);
-			strapi.log.info(`[face-queue] JWT parts: payload=${payloadEncoded.substring(0, 50)}...`);
-			strapi.log.info(`[face-queue] JWT parts: signature=${signatureEncoded.substring(0, 50)}...`);
-			strapi.log.info(`[face-queue] JWT length: ${jwt.length} chars`);
-			strapi.log.debug(`[face-queue] Full JWT: ${jwt}`);
 			
 			return jwt;
 			
@@ -253,6 +230,9 @@ const buildFacturaeInvoiceXml = ({ invoice, me, contact, dir3, bankAccount }) =>
 	const dir3Oc = dir3 && dir3.oc ? dir3.oc : "";
 	const dir3Og = dir3 && dir3.og ? dir3.og : "";
 	const dir3Ut = dir3 && dir3.ut ? dir3.ut : "";
+
+	// Check if this is a rectificative invoice
+	const isRectificative = invoice.serial && invoice.serial.rectificative === true;
 
 	let totalBase = 0;
 	let totalVat = 0;
@@ -380,6 +360,68 @@ const buildFacturaeInvoiceXml = ({ invoice, me, contact, dir3, bankAccount }) =>
 		);
 	}
 
+	// Generate Corrective section for rectificative invoices
+	let correctiveDetailsXml = [];
+	if (isRectificative) {
+		const rectified = invoice.rectified_invoice;
+		if (rectified) {
+			const reasonCode = invoice.rectification_reason_code || "80";
+			// Map reason code to valid ReasonDescription from Facturae enum
+			const reasonDescriptionMap = {
+				"80": "Base imponible modificada cuotas repercutidas no satisfechas. Auto de declaración de concurso",
+				"01": "Número de la factura",
+				"02": "Serie de la factura",
+				"03": "Fecha expedición",
+				"04": "Nombre y apellidos/Razón Social-Emisor",
+				"05": "Nombre y apellidos/Razón Social-Receptor",
+				"06": "Identificación fiscal Emisor/obligado",
+				"07": "Identificación fiscal Receptor",
+				"08": "Domicilio Emisor/Obligado",
+				"09": "Domicilio Receptor",
+				"10": "Detalle Operación",
+				"11": "Porcentaje impositivo a aplicar",
+				"12": "Cuota tributaria a aplicar",
+				"13": "Fecha/Periodo a aplicar",
+				"14": "Clase de factura",
+				"15": "Literales legales",
+				"16": "Base imponible",
+				"81": "Base imponible modificada por devolución de envases / embalajes",
+				"82": "Base imponible modificada por descuentos y bonificaciones",
+				"83": "Base imponible modificada por resolución firme, judicial o administrativa"
+			};
+			const reasonDescription = reasonDescriptionMap[reasonCode] || reasonDescriptionMap["80"];
+			const correctionMethod = invoice.rectification_method_code || "01";
+			const correctionMethodDescriptionMap = {
+				"01": "Rectificación íntegra",
+				"02": "Rectificación por diferencias",
+				"03": "Rectificación por descuento por volumen de operaciones durante un periodo",
+				"04": "Autorizadas por la Agencia Tributaria"
+			};
+			const correctionMethodDescription = correctionMethodDescriptionMap[correctionMethod] || correctionMethodDescriptionMap["01"];
+			
+			const rectifiedDate = formatDate(rectified.emitted || rectified.created_at);
+			const rectifiedYear = rectifiedDate.substring(0, 4);
+			const rectifiedMonth = rectifiedDate.substring(5, 7);
+			const rectifiedInvoiceNumber = rectified.code || `INV-${rectified.id}`;
+			const rectifiedSeriesCode = rectified.serial && rectified.serial.name ? rectified.serial.name : "";
+			
+			correctiveDetailsXml = [
+				"                <Corrective>",
+				`                    <InvoiceNumber>${escapeXml(rectifiedInvoiceNumber)}</InvoiceNumber>`,
+				...(rectifiedSeriesCode ? [`                    <InvoiceSeriesCode>${escapeXml(rectifiedSeriesCode)}</InvoiceSeriesCode>`] : []),
+				`                    <ReasonCode>${escapeXml(reasonCode)}</ReasonCode>`,
+				`                    <ReasonDescription>${escapeXml(reasonDescription)}</ReasonDescription>`,
+				"                    <TaxPeriod>",
+				`                        <StartDate>${rectifiedYear}-${rectifiedMonth}-01</StartDate>`,
+				`                        <EndDate>${rectifiedDate}</EndDate>`,
+				"                    </TaxPeriod>",
+				`                    <CorrectionMethod>${escapeXml(correctionMethod)}</CorrectionMethod>`,
+				`                    <CorrectionMethodDescription>${escapeXml(correctionMethodDescription)}</CorrectionMethodDescription>`,
+				"                </Corrective>"
+			];
+		}
+	}
+
 	xmlParts.push(
 		"        </SellerParty>",
 		"        <BuyerParty>",
@@ -453,7 +495,8 @@ const buildFacturaeInvoiceXml = ({ invoice, me, contact, dir3, bankAccount }) =>
 		"            <InvoiceHeader>",
 		`                <InvoiceNumber>${escapeXml(invoiceId)}</InvoiceNumber>`,
 		"                <InvoiceDocumentType>FC</InvoiceDocumentType>",
-		"                <InvoiceClass>OO</InvoiceClass>",
+		`                <InvoiceClass>${isRectificative ? "OR" : "OO"}</InvoiceClass>`,
+		...correctiveDetailsXml,
 		"            </InvoiceHeader>",
 		"            <InvoiceIssueData>",
 		`                <IssueDate>${issueDate}</IssueDate>`,
@@ -767,13 +810,6 @@ const submitInvoiceToFace = async ({ xml, nif, dir3, mode, me }) => {
 		// Generate JWT token for authentication (valid for 5 minutes)
 		const jwtToken = generateFaceJWT(certificatePath, me.face_certificate_password);
 		
-	strapi.log.info(`[face-queue] Using certificate: ${certificatePath}`);
-	strapi.log.info(`[face-queue] Submitting to: ${submitUrl}`);
-	strapi.log.info(`[face-queue] Certificate file size: ${fs.statSync(certificatePath).size} bytes`);
-	strapi.log.info(`[face-queue] Mode: ${mode}`);
-	strapi.log.info(`[face-queue] NIF: ${nif}`);
-	strapi.log.info(`[face-queue] JWT token generated (length: ${jwtToken.length})`);
-		
 		// FACe API expects JSON with base64-encoded XML, not multipart/form-data
 		const xmlBase64 = Buffer.from(xml, "utf-8").toString("base64");
 		
@@ -786,9 +822,6 @@ const submitInvoiceToFace = async ({ xml, nif, dir3, mode, me }) => {
 			email: emailAddress,
 			attachments: []
 		};
-
-		strapi.log.info(`[face-queue] Request body size: ${JSON.stringify(requestBody).length} bytes`);
-		strapi.log.info(`[face-queue] Email for notifications: ${emailAddress || '(empty)'}`);
 
 		const config = {
 			method: "POST",
@@ -970,7 +1003,7 @@ const startFaceProcess = async (faceQueueInput) => {
 
 	const invoice = await strapi.query("emitted-invoice").findOne(
 		{ id: emittedInvoiceId },
-		["lines", "contact", "contact_info", "bank_account"]
+		["lines", "contact", "contact_info", "bank_account", "serial", "rectified_invoice", "rectified_invoice.serial"]
 	);
 
 	if (!invoice) {
@@ -1042,6 +1075,25 @@ const startFaceProcess = async (faceQueueInput) => {
 			}
 		);
 		return;
+	}
+
+	// Validate rectificative invoices
+	if (invoice.serial && invoice.serial.rectificative === true) {
+		if (!invoice.rectified_invoice) {
+			strapi.log.warn(
+				`[face-queue] rectificative invoice without reference queue=${faceQueue.id} invoice=${emittedInvoiceId}`
+			);
+			await strapi.query("face-queue").update(
+				{ id: faceQueue.id },
+				{
+					_internal: true,
+					invoice: invoiceSnapshot,
+					status: "error",
+					response_body: "FACe pre-validation error: rectificative invoice must reference an original invoice (rectified_invoice field is required)",
+				}
+			);
+			return;
+		}
 	}
 
 	// Resolve bank account: invoice override, else me default

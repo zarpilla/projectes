@@ -150,6 +150,19 @@
     },
     "face": {
       "type": "boolean"
+    },
+    "rectified_invoice": {
+      "model": "emitted-invoice"
+    },
+    "rectification_reason_code": {
+      "type": "string"
+    },
+    "rectification_reason": {
+      "type": "text"
+    },
+    "rectification_method_code": {
+      "type": "string",
+      "default": "01"
     }
   }
 }
