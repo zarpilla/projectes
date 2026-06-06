@@ -5,7 +5,7 @@
       "path": "/years",
       "handler": "year.find",
       "config": {
-        "policies": []
+        "policies": ["global::isAdmin"]
       }
     },
     {
@@ -13,7 +13,7 @@
       "path": "/years/count",
       "handler": "year.count",
       "config": {
-        "policies": []
+        "policies": ["global::isAdmin"]
       }
     },
     {
@@ -21,7 +21,7 @@
       "path": "/years/:id",
       "handler": "year.findOne",
       "config": {
-        "policies": []
+        "policies": ["global::isAdmin"]
       }
     },
     {
@@ -29,7 +29,7 @@
       "path": "/years",
       "handler": "year.create",
       "config": {
-        "policies": []
+        "policies": ["global::isAdmin"]
       }
     },
     {
@@ -37,7 +37,7 @@
       "path": "/years/:id",
       "handler": "year.update",
       "config": {
-        "policies": []
+        "policies": ["global::isAdmin"]
       }
     },
     {
@@ -45,7 +45,7 @@
       "path": "/years/:id",
       "handler": "year.delete",
       "config": {
-        "policies": []
+        "policies": ["global::isAdmin"]
       }
     }
   ]

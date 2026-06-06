@@ -5,7 +5,7 @@
       "path": "/dedication-types",
       "handler": "dedication-type.find",
       "config": {
-        "policies": []
+        "policies": ["global::isAdmin"]
       }
     },
     {
@@ -13,7 +13,7 @@
       "path": "/dedication-types/count",
       "handler": "dedication-type.count",
       "config": {
-        "policies": []
+        "policies": ["global::isAdmin"]
       }
     },
     {
@@ -21,7 +21,7 @@
       "path": "/dedication-types/:id",
       "handler": "dedication-type.findOne",
       "config": {
-        "policies": []
+        "policies": ["global::isAdmin"]
       }
     },
     {
@@ -29,7 +29,7 @@
       "path": "/dedication-types",
       "handler": "dedication-type.create",
       "config": {
-        "policies": []
+        "policies": ["global::isAdmin"]
       }
     },
     {
@@ -37,7 +37,7 @@
       "path": "/dedication-types/:id",
       "handler": "dedication-type.update",
       "config": {
-        "policies": []
+        "policies": ["global::isAdmin"]
       }
     },
     {
@@ -45,7 +45,7 @@
       "path": "/dedication-types/:id",
       "handler": "dedication-type.delete",
       "config": {
-        "policies": []
+        "policies": ["global::isAdmin"]
       }
     }
   ]

@@ -5,7 +5,7 @@
       "path": "/payment-methods",
       "handler": "payment-method.find",
       "config": {
-        "policies": []
+        "policies": ["global::isAdmin"]
       }
     },
     {
@@ -13,7 +13,7 @@
       "path": "/payment-methods/count",
       "handler": "payment-method.count",
       "config": {
-        "policies": []
+        "policies": ["global::isAdmin"]
       }
     },
     {
@@ -21,7 +21,7 @@
       "path": "/payment-methods/:id",
       "handler": "payment-method.findOne",
       "config": {
-        "policies": []
+        "policies": ["global::isAdmin"]
       }
     },
     {
@@ -29,7 +29,7 @@
       "path": "/payment-methods",
       "handler": "payment-method.create",
       "config": {
-        "policies": []
+        "policies": ["global::isAdmin"]
       }
     },
     {
@@ -37,7 +37,7 @@
       "path": "/payment-methods/:id",
       "handler": "payment-method.update",
       "config": {
-        "policies": []
+        "policies": ["global::isAdmin"]
       }
     },
     {
@@ -45,7 +45,7 @@
       "path": "/payment-methods/:id",
       "handler": "payment-method.delete",
       "config": {
-        "policies": []
+        "policies": ["global::isAdmin"]
       }
     }
   ]

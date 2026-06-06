@@ -5,7 +5,7 @@
       "path": "/bank-accounts",
       "handler": "bank-accounts.find",
       "config": {
-        "policies": []
+        "policies": ["global::isAdmin"]
       }
     },
     {
@@ -13,7 +13,7 @@
       "path": "/bank-accounts/count",
       "handler": "bank-accounts.count",
       "config": {
-        "policies": []
+        "policies": ["global::isAdmin"]
       }
     },
     {
@@ -21,7 +21,7 @@
       "path": "/bank-accounts/:id",
       "handler": "bank-accounts.findOne",
       "config": {
-        "policies": []
+        "policies": ["global::isAdmin"]
       }
     },
     {
@@ -29,7 +29,7 @@
       "path": "/bank-accounts",
       "handler": "bank-accounts.create",
       "config": {
-        "policies": []
+        "policies": ["global::isAdmin"]
       }
     },
     {
@@ -37,7 +37,7 @@
       "path": "/bank-accounts/:id",
       "handler": "bank-accounts.update",
       "config": {
-        "policies": []
+        "policies": ["global::isAdmin"]
       }
     },
     {
@@ -45,7 +45,7 @@
       "path": "/bank-accounts/:id",
       "handler": "bank-accounts.delete",
       "config": {
-        "policies": []
+        "policies": ["global::isAdmin"]
       }
     }
   ]

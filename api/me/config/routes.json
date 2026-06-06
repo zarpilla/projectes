@@ -13,7 +13,7 @@
       "path": "/me",
       "handler": "me.update",
       "config": {
-        "policies": []
+        "policies": ["global::isAdmin"]
       }
     },
     {
@@ -21,7 +21,7 @@
       "path": "/me",
       "handler": "me.delete",
       "config": {
-        "policies": []
+        "policies": ["global::isAdmin"]
       }
     }
   ]

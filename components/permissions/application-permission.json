@@ -14,7 +14,8 @@
         "orders",
         "orders_admin",
         "orders_delivery",
-        "hours"
+        "hours",
+        "admin"
       ]
     }
   }

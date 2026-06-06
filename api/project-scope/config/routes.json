@@ -5,7 +5,7 @@
       "path": "/project-scopes",
       "handler": "project-scope.find",
       "config": {
-        "policies": []
+        "policies": ["global::isAdmin"]
       }
     },
     {
@@ -13,7 +13,7 @@
       "path": "/project-scopes/count",
       "handler": "project-scope.count",
       "config": {
-        "policies": []
+        "policies": ["global::isAdmin"]
       }
     },
     {
@@ -21,7 +21,7 @@
       "path": "/project-scopes/:id",
       "handler": "project-scope.findOne",
       "config": {
-        "policies": []
+        "policies": ["global::isAdmin"]
       }
     },
     {
@@ -29,7 +29,7 @@
       "path": "/project-scopes",
       "handler": "project-scope.create",
       "config": {
-        "policies": []
+        "policies": ["global::isAdmin"]
       }
     },
     {
@@ -37,7 +37,7 @@
       "path": "/project-scopes/:id",
       "handler": "project-scope.update",
       "config": {
-        "policies": []
+        "policies": ["global::isAdmin"]
       }
     },
     {
@@ -45,7 +45,7 @@
       "path": "/project-scopes/:id",
       "handler": "project-scope.delete",
       "config": {
-        "policies": []
+        "policies": ["global::isAdmin"]
       }
     }
   ]

@@ -138,7 +138,6 @@ async function importSeedData() {
     festive: ["create", "find", "findone", "update", "delete"],
     "daily-dedication": ["create", "find", "findone", "update", "delete"],
     "document-type": ["find", "findone"],
-    "users-permissions": ["me", "find", "findone"],
     regions: ["find", "findone"],
     task: ["create", "find", "findone", "update", "delete"],
     "task-state": ["find", "findone"],
@@ -188,9 +187,31 @@ async function importSeedData() {
     "verifactu-declaration": ["find", "findone", "create"],
     "face-queue": ["find", "findone", "create", "update", "delete", "checkStatus", "verifySetup"],
     "pivot-table-view": ["find", "findone", "create", "update", "delete"],
-    "bank-accounts": ["find", "findone"],
+    "bank-accounts": ["find", "findone", "create", "update", "delete"],
     incidences: ["create", "find", "findone", "update", "count", "delete", "infoall"],
     "vat-type": ["find"],
+    // Admin entity management permissions
+    "contact-type": ["create", "find", "findone", "update", "delete"],
+    "dedication-type": ["create", "find", "findone", "update", "delete"],
+    "expense-type": ["create", "find", "findone", "update", "delete"],
+    "income-type": ["create", "find", "findone", "update", "delete"],
+    "legal-form": ["create", "find", "findone", "update", "delete"],
+    "payment-method": ["create", "find", "findone", "update", "delete"],
+    "project-state": ["create", "find", "findone", "update", "delete"],
+    "project-type": ["create", "find", "findone", "update", "delete"],
+    "project-scope": ["create", "find", "findone", "update", "delete"],
+    sector: ["create", "find", "findone", "update", "delete"],
+    serie: ["create", "find", "findone", "update", "delete"],
+    "social-entity": ["create", "find", "findone", "update", "delete"],
+    strategy: ["create", "find", "findone", "update", "delete"],
+    year: ["create", "find", "findone", "update", "delete"],
+    "entity-metadata": ["adminentities"],
+    me: ["find", "update"],
+  });
+
+  await setPermissions("authenticated", "users-permissions", {
+    user: ["find", "findone", "create", "update", "count", "me"],
+    userspermissions: ["getroles"]
   });
 
   await setPermissions("authenticated", "upload", {

@@ -1,0 +1,12 @@
+{
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/entity-metadata/admin-entities",
+      "handler": "entity-metadata.adminEntities",
+      "config": {
+        "policies": ["plugins::users-permissions.isAuthenticated", "global::isAdmin"]
+      }
+    }
+  ]
+}

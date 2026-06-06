@@ -1,0 +1,60 @@
+{
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/users",
+      "handler": "user.find",
+      "config": {
+        "policies": ["global::isAdmin"]
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/users/me",
+      "handler": "user.me",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/users/:id",
+      "handler": "user.findOne",
+      "config": {
+        "policies": ["global::isAdmin"]
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/users",
+      "handler": "user.create",
+      "config": {
+        "policies": ["global::isAdmin"]
+      }
+    },
+    {
+      "method": "PUT",
+      "path": "/users/:id",
+      "handler": "user.update",
+      "config": {
+        "policies": ["global::isAdmin"]
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/users/count",
+      "handler": "user.count",
+      "config": {
+        "policies": ["global::isAdmin"]
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/users-permissions/roles",
+      "handler": "userspermissions.getRoles",
+      "config": {
+        "policies": ["global::isAdmin"]
+      }
+    }
+  ]
+}
