@@ -13,7 +13,7 @@
       "path": "/verifactu",
       "handler": "verifactu.update",
       "config": {
-        "policies": []
+        "policies": ["global::isAdmin"]
       }
     },
     {
@@ -21,7 +21,7 @@
       "path": "/verifactu",
       "handler": "verifactu.delete",
       "config": {
-        "policies": []
+        "policies": ["global::isAdmin"]
       }
     }
   ]

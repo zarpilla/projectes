@@ -24,9 +24,10 @@ module.exports = {
           }
         }
       }
-      if (me.verifactu === "test" || me.verifactu === "real") {
+      const verifactu = await strapi.query("verifactu").findOne();
+      if (verifactu && (verifactu.mode === "test" || verifactu.mode === "real")) {
         if (result && result.id) {
-          const verifactuChain = await strapi.query("verifactu-chain").findOne({ mode: me.verifactu, emitted_invoice: result.id });
+          const verifactuChain = await strapi.query("verifactu-chain").findOne({ mode: verifactu.mode, emitted_invoice: result.id });
           if (verifactuChain) {
             result.verifactu_chain = verifactuChain.state;
           }
