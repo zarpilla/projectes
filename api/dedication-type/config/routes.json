@@ -5,7 +5,7 @@
       "path": "/dedication-types",
       "handler": "dedication-type.find",
       "config": {
-        "policies": ["global::isAdmin"]
+        "policies": []
       }
     },
     {
@@ -13,7 +13,7 @@
       "path": "/dedication-types/count",
       "handler": "dedication-type.count",
       "config": {
-        "policies": ["global::isAdmin"]
+        "policies": []
       }
     },
     {
@@ -21,7 +21,7 @@
       "path": "/dedication-types/:id",
       "handler": "dedication-type.findOne",
       "config": {
-        "policies": ["global::isAdmin"]
+        "policies": []
       }
     },
     {

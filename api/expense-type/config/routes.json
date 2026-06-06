@@ -5,7 +5,7 @@
       "path": "/expense-types",
       "handler": "expense-type.find",
       "config": {
-        "policies": ["global::isAdmin"]
+        "policies": []
       }
     },
     {
@@ -13,7 +13,7 @@
       "path": "/expense-types/count",
       "handler": "expense-type.count",
       "config": {
-        "policies": ["global::isAdmin"]
+        "policies": []
       }
     },
     {
@@ -21,7 +21,7 @@
       "path": "/expense-types/:id",
       "handler": "expense-type.findOne",
       "config": {
-        "policies": ["global::isAdmin"]
+        "policies": []
       }
     },
     {

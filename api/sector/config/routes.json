@@ -5,7 +5,7 @@
       "path": "/sectors",
       "handler": "sector.find",
       "config": {
-        "policies": ["global::isAdmin"]
+        "policies": []
       }
     },
     {
@@ -13,7 +13,7 @@
       "path": "/sectors/count",
       "handler": "sector.count",
       "config": {
-        "policies": ["global::isAdmin"]
+        "policies": []
       }
     },
     {
@@ -21,7 +21,7 @@
       "path": "/sectors/:id",
       "handler": "sector.findOne",
       "config": {
-        "policies": ["global::isAdmin"]
+        "policies": []
       }
     },
     {

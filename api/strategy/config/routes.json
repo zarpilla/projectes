@@ -5,7 +5,7 @@
       "path": "/strategies",
       "handler": "strategy.find",
       "config": {
-        "policies": ["global::isAdmin"]
+        "policies": []
       }
     },
     {
@@ -13,7 +13,7 @@
       "path": "/strategies/count",
       "handler": "strategy.count",
       "config": {
-        "policies": ["global::isAdmin"]
+        "policies": []
       }
     },
     {
@@ -21,7 +21,7 @@
       "path": "/strategies/:id",
       "handler": "strategy.findOne",
       "config": {
-        "policies": ["global::isAdmin"]
+        "policies": []
       }
     },
     {

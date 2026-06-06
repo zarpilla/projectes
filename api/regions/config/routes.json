@@ -5,7 +5,7 @@
       "path": "/regions",
       "handler": "regions.find",
       "config": {
-        "policies": ["global::isAdmin"]
+        "policies": []
       }
     },
     {
@@ -13,7 +13,7 @@
       "path": "/regions/count",
       "handler": "regions.count",
       "config": {
-        "policies": ["global::isAdmin"]
+        "policies": []
       }
     },
     {
@@ -21,7 +21,7 @@
       "path": "/regions/:id",
       "handler": "regions.findOne",
       "config": {
-        "policies": ["global::isAdmin"]
+        "policies": []
       }
     },
     {
