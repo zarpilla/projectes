@@ -50,6 +50,10 @@ async function sendIncidenceEmail(incidence, action, currentUserId = null) {
         return;
     }
 
+    // Get config for front_url
+    const config = await strapi.query('config').findOne({});
+    const frontUrl = config && config.front_url ? config.front_url : '';
+
     const order = fullIncidence.order;
     const orderOwner = order.owner;
     const from = strapi.config.get("plugins.email.settings.defaultFrom", "");
@@ -117,7 +121,7 @@ async function sendIncidenceEmail(incidence, action, currentUserId = null) {
     
     const html = `
     <b>Incidència ${action === 'created' ? 'Creada' : 'Actualitzada'}</b><br><br>
-    <b>ID Incidència:</b> ${fullIncidence.id}<br>
+    <b>ID Incidència:</b> <a href="${frontUrl}incidences?id=${fullIncidence.id}" target="_blank">${fullIncidence.id}</a><br>
     <b>Comanda:</b> #${order.id}<br>
     <b>Propietari Comanda:</b> ${orderOwner ? (orderOwner.fullname || orderOwner.username) : 'N/A'} ${orderOwner && orderOwner.email ? `(${orderOwner.email})` : ''}<br>
     <b>Punt d'entrega:</b> ${deliveryPoint}<br>
