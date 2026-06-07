@@ -37,7 +37,7 @@
       "path": "/verifactu-chains/:id",
       "handler": "verifactu-chain.update",
       "config": {
-        "policies": []
+        "policies": ["global::isAdmin"]
       }
     },
     {
@@ -45,7 +45,7 @@
       "path": "/verifactu-chains/:id",
       "handler": "verifactu-chain.delete",
       "config": {
-        "policies": []
+        "policies": ["global::isAdmin"]
       }
     }
   ]

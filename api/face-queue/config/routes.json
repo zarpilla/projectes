@@ -53,7 +53,7 @@
       "path": "/face-queues/:id",
       "handler": "face-queue.update",
       "config": {
-        "policies": []
+        "policies": ["global::isAdmin"]
       }
     },
     {
@@ -61,7 +61,7 @@
       "path": "/face-queues/:id",
       "handler": "face-queue.delete",
       "config": {
-        "policies": []
+        "policies": ["global::isAdmin"]
       }
     }
   ]

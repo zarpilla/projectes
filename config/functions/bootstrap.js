@@ -185,6 +185,7 @@ async function importSeedData() {
     "phase-expense": ["find", "findassigned"],
     verifactu: ["find", "findone"],
     "verifactu-declaration": ["find", "findone", "create"],
+    "verifactu-chain": ["find", "findone", "create", "update", "delete", "count"],
     "face-queue": ["find", "findone", "create", "update", "delete", "checkStatus", "verifySetup"],
     "pivot-table-view": ["find", "findone", "create", "update", "delete"],
     "bank-accounts": ["find", "findone", "create", "update", "delete"],
@@ -3091,6 +3092,44 @@ async function recalculateTransferRoutes() {
   }
 }
 
+async function migrateFrontUrlToMe() {
+  try {
+    console.log("[MIGRATE FRONT_URL] Starting migration from config to me...");
+    
+    // Get config entity
+    const config = await strapi.query("config").findOne();
+    
+    if (!config || !config.front_url) {
+      console.log("[MIGRATE FRONT_URL] No front_url found in config, skipping migration");
+      return;
+    }
+    
+    // Get me entity
+    const me = await strapi.query("me").findOne();
+    
+    if (!me) {
+      console.log("[MIGRATE FRONT_URL] Me entity not found, skipping migration");
+      return;
+    }
+    
+    // Check if me already has front_url
+    if (me.front_url) {
+      console.log("[MIGRATE FRONT_URL] Me already has front_url, skipping migration");
+      return;
+    }
+    
+    // Copy front_url from config to me
+    await strapi.query("me").update(
+      { id: me.id },
+      { front_url: config.front_url }
+    );
+    
+    console.log(`[MIGRATE FRONT_URL] Successfully migrated front_url: ${config.front_url}`);
+  } catch (error) {
+    console.error("[MIGRATE FRONT_URL] Error:", error);
+  }
+}
+
 module.exports = async () => {
   await importSeedData();
   // await migrateGrantableDataToYears();
@@ -3142,6 +3181,11 @@ module.exports = async () => {
   await runStartupScript(
     "initializeFaceEndpoints",
     initializeFaceEndpoints,
+    { runOnce: true },
+  );
+  await runStartupScript(
+    "migrateFrontUrlToMe",
+    migrateFrontUrlToMe,
     { runOnce: true },
   );
 

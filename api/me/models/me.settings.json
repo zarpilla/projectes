@@ -167,6 +167,9 @@
         "facturae"
       ],
       "default": "facturae"
+    },
+    "front_url": {
+      "type": "string"
     }
   }
 }
