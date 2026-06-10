@@ -207,7 +207,7 @@ async function importSeedData() {
     strategy: ["create", "find", "findone", "update", "delete"],
     year: ["create", "find", "findone", "update", "delete"],
     "entity-metadata": ["adminentities"],
-    me: ["find", "update"],
+    me: ["find", "update", "dir3searchnif", "dir3searchname"],
   });
 
   await setPermissions("authenticated", "users-permissions", {

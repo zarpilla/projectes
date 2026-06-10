@@ -170,6 +170,12 @@
     },
     "front_url": {
       "type": "string"
+    },
+    "dir3_api_url": {
+      "type": "string"
+    },
+    "dir3_api_token": {
+      "type": "password"
     }
   }
 }

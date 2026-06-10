@@ -23,6 +23,22 @@
       "config": {
         "policies": ["global::isAdmin"]
       }
+    },
+    {
+      "method": "GET",
+      "path": "/me/dir3/search/nif/:nif",
+      "handler": "me.dir3SearchNif",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/me/dir3/search/name/:name",
+      "handler": "me.dir3SearchName",
+      "config": {
+        "policies": []
+      }
     }
   ]
 }
