@@ -205,6 +205,7 @@ async function importSeedData() {
     serie: ["create", "find", "findone", "update", "delete"],
     "social-entity": ["create", "find", "findone", "update", "delete"],
     strategy: ["create", "find", "findone", "update", "delete"],
+    "user-festive": ["create", "find", "findone", "update", "delete"],
     year: ["create", "find", "findone", "update", "delete"],
     "entity-metadata": ["adminentities"],
     me: ["find", "update", "dir3searchnif", "dir3searchname"],

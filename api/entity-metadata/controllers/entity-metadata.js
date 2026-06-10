@@ -33,6 +33,7 @@ module.exports = {
         'social-entity': 'social-entities',
         'strategy': 'strategies',
         'task-state': 'task-states',
+        'user-festive': 'user-festives',
         'year': 'years'
       };
 
@@ -104,6 +105,10 @@ module.exports = {
           displayName: 'Estats de tasca', 
           displayNameSingular: 'Estat de tasca' 
         },
+        'user-festive': { 
+          displayName: 'Festius d\'usuari', 
+          displayNameSingular: 'Festiu d\'usuari' 
+        },
         'year': { 
           displayName: 'Anys', 
           displayNameSingular: 'Any' 
@@ -170,6 +175,11 @@ module.exports = {
               if (attrConfig.model) {
                 metadata.attributes[attrName].model = attrConfig.model;
                 metadata.attributes[attrName].relationType = 'manyToOne';
+                
+                // Handle plugin relations (e.g., users-permissions)
+                if (attrConfig.plugin) {
+                  metadata.attributes[attrName].plugin = attrConfig.plugin;
+                }
               }
 
               // Add validation info
@@ -186,9 +196,16 @@ module.exports = {
         }
       }
 
+      // Extend entityToApiPath with common non-admin entities used in relations
+      const extendedEntityToApiPath = {
+        ...adminEntities,
+        'festive-type': 'festive-types',
+        'user': 'users' // For users-permissions plugin
+      };
+
       return {
         entities: entitiesMetadata,
-        entityToApiPath: adminEntities
+        entityToApiPath: extendedEntityToApiPath
       };
     } catch (error) {
       console.error('Error in adminEntities:', error);
