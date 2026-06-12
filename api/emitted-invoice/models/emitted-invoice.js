@@ -230,20 +230,17 @@ module.exports = {
       if (invoice.state === "real") {
         throw new Error("Cannot delete a real invoice");
       }
-      // check orders
+      // check orders - use raw SQL for bulk update to avoid triggering other hooks
       const orders = await strapi
         .query("orders")
-        .find({ emitted_invoice: params.id });
+        .find({ emitted_invoice: params.id, _limit: -1 });
       if (orders && orders.length > 0) {
-        // throw new Error("Cannot delete emitted invoice with associated orders");
-        for await (const o of orders) {
-          await strapi
-            .query("orders")
-            .update(
-              { id: o.id },
-              { emitted_invoice: null, status: "delivered" }
-            );
-        }
+        // Use raw SQL for efficient bulk update without triggering order hooks
+        const orderIds = orders.map((o) => o.id);
+        await strapi.connections.default.raw(
+          `UPDATE orders SET emitted_invoice = NULL, status = 'delivered', updated_at = NOW() WHERE id IN (${orderIds.map(() => '?').join(',')})`,
+          orderIds
+        );
       }
       scheduleFromEntityProjects(invoice);
     },

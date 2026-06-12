@@ -163,6 +163,9 @@
     "rectification_method_code": {
       "type": "string",
       "default": "01"
+    },
+    "document_concept": {
+      "type": "string"
     }
   }
 }

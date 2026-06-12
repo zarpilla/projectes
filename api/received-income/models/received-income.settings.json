@@ -121,6 +121,9 @@
       "type": "component",
       "repeatable": false,
       "component": "contact.contact-data"
+    },
+    "document_concept": {
+      "type": "string"
     }
   }
 }

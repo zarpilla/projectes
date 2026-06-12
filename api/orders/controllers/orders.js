@@ -164,6 +164,16 @@ module.exports = {
   },
   invoice: async (ctx) => {
     const { orders, project } = ctx.request.body;
+    const startTime = Date.now();
+    const timings = {};
+
+    const log = (stage, message = '') => {
+      const elapsed = Date.now() - startTime;
+      console.log(`[INVOICE][${elapsed}ms] ${stage}: ${message}`);
+      timings[stage] = elapsed;
+    };
+
+    log('START', `Processing ${orders.length} orders`);
 
     const uniqueProjects = [project];
     const year = new Date().getFullYear();
@@ -175,8 +185,10 @@ module.exports = {
       );
       return;
     }
+    log('SERIAL_LOADED', `Found serial: ${serial[0].id}`);
 
     const verifactu = await strapi.query("verifactu").findOne();
+    log('VERIFACTU_LOADED');
 
     const verifactuEnabled =
       verifactu.mode === "test" || verifactu.mode === "real";
@@ -184,21 +196,31 @@ module.exports = {
     const ordersEntities = await strapi
       .query("orders")
       .find({ id_in: orders, _limit: -1 });
+    log('ORDERS_FETCHED', `${ordersEntities.length} orders loaded`);
 
     const uniqueOwners = ordersEntities
       .map((o) => o.owner.id)
       .filter((value, index, self) => self.indexOf(value) === index);
+    log('OWNERS_IDENTIFIED', `${uniqueOwners.length} unique owners`);
 
     const payment_methods = await strapi.query("payment-method").find({});
     const payment_method =
       payment_methods.length > 0 ? payment_methods[0].id : null;
 
-    const allContacts = [];
-    for await (const owner of uniqueOwners) {
-      const contacts = await strapi
-        .query("contacts")
-        .find({ users_permissions_user: owner });
-      if (contacts.length === 0) {
+    // Fetch all contacts at once instead of sequentially per owner
+    const contactsByOwnerId = {};
+    const allContactsRaw = await strapi.query("contacts").find({
+      _limit: -1,
+    });
+    log('CONTACTS_FETCHED', `${allContactsRaw.length} contacts fetched`);
+
+    for (const owner of uniqueOwners) {
+      const ownerContacts = allContactsRaw.filter(
+        (c) =>
+          c.users_permissions_user &&
+          c.users_permissions_user.id === owner
+      );
+      if (ownerContacts.length === 0) {
         ctx.send(
           {
             done: false,
@@ -208,27 +230,71 @@ module.exports = {
         );
         return;
       }
-      const contact = contacts[0];
-      allContacts.push(contact);
+      contactsByOwnerId[owner] = ownerContacts[0];
     }
+    log('CONTACTS_MAPPED');
 
+    // Pre-fetch and cache all projects
+    const projectCache = {};
+    for (const p of uniqueProjects) {
+      const projectData = await strapi
+        .query("project")
+        .findOne({ id: p }, [
+          "project_phases",
+          "project_phases.incomes",
+          "project_phases.incomes.invoice",
+          "project_phases.incomes.income",
+        ]);
+
+      if (!projectData.project_phases || projectData.project_phases.length === 0) {
+        ctx.send(
+          {
+            done: false,
+            message: "ERROR. No hi ha fases per al projecte " + projectData.name,
+          },
+          500,
+        );
+        return;
+      }
+
+      const phase = projectData.project_phases[projectData.project_phases.length - 1];
+      if (!phase.incomes) {
+        ctx.send(
+          {
+            done: false,
+            message: "ERROR. No hi ha incomes per a la fase del projecte " + projectData.name,
+          },
+          500,
+        );
+        return;
+      }
+
+      projectCache[p] = projectData;
+    }
+    log('PROJECTS_CACHED');
+
+    // Process all owners in parallel
     const invoices = [];
-    for await (const owner of uniqueOwners) {
-      const contact = allContacts.find(
-        (c) => c.users_permissions_user.id === owner,
-      );
-      const contactOrders = ordersEntities.filter((o) => o.owner.id === owner);
-      // const uniqueProjects = ordersEntities
-      //   .filter((o) => o.owner.id === owner)
-      //   .map((o) => o.route.project)
-      //   .filter((value, index, self) => self.indexOf(value) === index);
-      const emittedInvoice = {
-        emitted: new Date(),
-        serial: serial[0].id,
-        contact: contact.id,
-        verifactu: verifactuEnabled,
-        payment_method: payment_method,
-        lines: contactOrders.map((o) => {
+    log('INVOICE_CREATION_START', `Creating ${uniqueOwners.length} invoices`);
+    const invoicesByOwner = await Promise.all(
+      uniqueOwners.map(async (owner) => {
+        const contact = contactsByOwnerId[owner];
+        const contactOrders = ordersEntities.filter((o) => o.owner.id === owner);
+
+        // Get month and year from the first order's route_date
+        const firstOrderDate = contactOrders[0]?.route_date || new Date();
+        const monthName = moment(firstOrderDate).locale('ca').format('MMMM');
+        const year = moment(firstOrderDate).format('YYYY');
+        const documentConcept = `Serveis logístics ${monthName} ${year}`;
+
+        const emittedInvoice = {
+          emitted: new Date(),
+          serial: serial[0].id,
+          contact: contact.id,
+          verifactu: verifactuEnabled,
+          payment_method: payment_method,
+          document_concept: documentConcept,
+          lines: contactOrders.map((o) => {
           return {
             concept: `Comanda ${o.estimated_delivery_date} | ${o.id
               .toString()
@@ -243,104 +309,69 @@ module.exports = {
               (o.contact_pickup_discount || 0),
           };
         }),
-        projects: [project],
-      };
+          projects: [project],
+        };
 
-      // validate project phases
-      for await (const p of uniqueProjects) {
-        const project = await strapi
-          .query("project")
-          .findOne({ id: p }, [
-            "project_phases",
-            "project_phases.incomes",
-            "project_phases.incomes.invoice",
-            "project_phases.incomes.income",
-          ]);
+        const invoice = await strapi
+          .query("emitted-invoice")
+          .create(emittedInvoice);
 
-        if (!project.project_phases || project.project_phases.length === 0) {
-          ctx.send(
-            {
-              done: false,
-              message: "ERROR. No hi ha fases per al projecte " + project.name,
-            },
-            500,
-          );
-          return;
-        } else {
-          const phase =
-            project.project_phases[project.project_phases.length - 1];
-          if (!phase.incomes) {
-            ctx.send(
-              {
-                done: false,
-                message:
-                  "ERROR. No hi ha fases per al projecte " + project.name,
-              },
-              500,
-            );
-            return;
-          }
-        }
-      }
+        return { invoice, contact, contactOrders, owner };
+      })
+    );
+    log('INVOICES_CREATED', `${invoicesByOwner.length} invoices created`);
 
-      const invoice = await strapi
-        .query("emitted-invoice")
-        .create(emittedInvoice);
+    for (const { invoice, contact, contactOrders } of invoicesByOwner) {
       invoices.push(invoice);
-      for await (const o of contactOrders) {
-        await strapi
-          .query("orders")
-          .update({ id: o.id }, { invoice: invoice.id, status: "invoiced", _internal: true });
+
+      // Bulk update all orders for this invoice using raw SQL (much faster than ORM)
+      const orderIds = contactOrders.map((o) => o.id);
+      log('ORDER_UPDATE_START', `Updating ${orderIds.length} orders for invoice ${invoice.id}`);
+      if (orderIds.length > 0) {
+        await strapi.connections.default.raw(
+          `UPDATE orders SET emitted_invoice = ?, emitted_invoice_datetime = NOW(), status = 'invoiced', updated_at = NOW() WHERE id IN (${orderIds.map(() => '?').join(',')})`,
+          [invoice.id, ...orderIds]
+        );
       }
-      for await (const p of uniqueProjects) {
-        const project = await strapi
-          .query("project")
-          .findOne({ id: p }, [
-            "project_phases",
-            "project_phases.incomes",
-            "project_phases.incomes.invoice",
-            "project_phases.incomes.income",
-          ]);
+      log('ORDER_UPDATE_END', `Updated ${orderIds.length} orders`);
+    }
 
-        if (!project.project_phases || project.project_phases.length === 0) {
-          ctx.send(
-            {
-              done: false,
-              message: "ERROR. No hi ha fases per al projecte " + project.name,
-            },
-            500,
-          );
-        }
-
+    // Update project phases and order tracking info in parallel
+    log('PROJECT_UPDATE_START');
+    await Promise.all(
+      uniqueProjects.map(async (p) => {
+        const project = projectCache[p];
         const phase = project.project_phases[project.project_phases.length - 1];
-        let price = 0;
-        for (const o of contactOrders) {
-          price +=
-            ((o.price || 0) - (o.volume_discount || 0)) *
-            (1 - (o.multidelivery_discount || 0) / 100) *
-            (1 - (o.contact_pickup_discount || 0) / 100);
-        }
 
-        if (!phase.incomes) {
-          phase.incomes = [];
-          phase.dirty = true;
-        }
+        // Calculate prices for all orders of all owners and add to project income
+        for (const { invoice, contact, contactOrders } of invoicesByOwner) {
+          let price = 0;
+          for (const o of contactOrders) {
+            price +=
+              ((o.price || 0) - (o.volume_discount || 0)) *
+              (1 - (o.multidelivery_discount || 0) / 100) *
+              (1 - (o.contact_pickup_discount || 0) / 100);
+          }
 
-        phase.incomes.push({
-          concept: `Factura #${invoice.code}# - ${
-            contact.trade_name || contact.name
-          }`,
-          quantity: 1,
-          amount: price,
-          total_amount: price,
-          date: new Date(),
-          income_type: 1,
-          invoice: invoice.id,
-          paid: true,
-          date_estimate_document: new Date(),
-          dirty: true,
-          vat_pct: 21,
-        });
+          if (!phase.incomes) {
+            phase.incomes = [];
+          }
+
+          phase.incomes.push({
+            concept: `Factura #${invoice.code}# - ${
+              contact.trade_name || contact.name
+            }`,
+            quantity: 1,
+            amount: price,
+            total_amount: price,
+            date: new Date(),
+            income_type: 1,
+            invoice: invoice.id,
+            paid: true,
+            date_estimate_document: new Date(),
+            vat_pct: 21,
+          });
+        }
 
         await strapi.query("project").update(
           { id: p },
@@ -350,27 +381,15 @@ module.exports = {
             _project_phases_updated: true,
           },
         );
-      }
+      })
+    );
+    log('PROJECT_UPDATE_END');
 
-      for await (const o of ordersEntities) {
-        await strapi.query("orders").update(
-          { id: o.id },
-          {
-            emitted_invoice: invoice.id,
-            emitted_invoice_datetime: new Date(),
-            _internal: true,
-          },
-        );
-      }
-    }
-
+    log('COMPLETE', `Total time: ${Date.now() - startTime}ms`);
     ctx.send({
       orders: orders,
-      ordersEntities,
-      serial,
-      uniqueOwners,
-      allContacts,
       invoices,
+      timings,
     });
   },
 

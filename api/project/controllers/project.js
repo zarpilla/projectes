@@ -261,8 +261,6 @@ module.exports = {
     // await strapi.query("treasury").delete({ _limit: -1 });
     // //// await strapi.query("year").delete({ _limit: -1 });
 
-    // const data = await strapi.db.connection.raw(`SELECT * from table`);
-
     // comment activity beforeDelete
     // delete users-permissions_user manually
     // to fill: year, festive
