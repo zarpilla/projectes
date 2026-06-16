@@ -881,38 +881,38 @@ module.exports = {
       const aggregatedAllByYear = _(allChildrenByYear)
         .groupBy("year")
         .map((rows, year) => {
-          const original_hours = sumBy(rows, (r) => parseFloat(r.total_original_hours || 0));
-          const original_hours_price = sumBy(rows, (r) => parseFloat(r.total_original_hours_price || 0));
-          
+          const original_hours = _.sumBy(rows, (r) => parseFloat(r.total_original_hours || 0));
+          const original_hours_price = _.sumBy(rows, (r) => parseFloat(r.total_original_hours_price || 0));
+
           return {
             year: year,
             // Original dimension
-            total_original_incomes: sumBy(rows, (r) => parseFloat(r.total_original_incomes || 0)),
-            total_original_expenses: sumBy(rows, (r) => parseFloat(r.total_original_expenses || 0)),
-            total_original_expenses_vat: sumBy(rows, (r) => parseFloat(r.total_original_expenses_vat || 0)),
+            total_original_incomes: _.sumBy(rows, (r) => parseFloat(r.total_original_incomes || 0)),
+            total_original_expenses: _.sumBy(rows, (r) => parseFloat(r.total_original_expenses || 0)),
+            total_original_expenses_vat: _.sumBy(rows, (r) => parseFloat(r.total_original_expenses_vat || 0)),
             total_original_hours: original_hours,
             total_original_hours_price: original_hours_price,
-            original_incomes_expenses: sumBy(rows, (r) => parseFloat(r.original_incomes_expenses || 0)),
+            original_incomes_expenses: _.sumBy(rows, (r) => parseFloat(r.original_incomes_expenses || 0)),
             // Estimated dimension
             // EXCEPTION: Estimated hours always copy from original hours
-            total_estimated_incomes: sumBy(rows, (r) => parseFloat(r.total_estimated_incomes || 0)),
-            total_estimated_expenses: sumBy(rows, (r) => parseFloat(r.total_estimated_expenses || 0)),
-            total_estimated_expenses_vat: sumBy(rows, (r) => parseFloat(r.total_estimated_expenses_vat || 0)),
+            total_estimated_incomes: _.sumBy(rows, (r) => parseFloat(r.total_estimated_incomes || 0)),
+            total_estimated_expenses: _.sumBy(rows, (r) => parseFloat(r.total_estimated_expenses || 0)),
+            total_estimated_expenses_vat: _.sumBy(rows, (r) => parseFloat(r.total_estimated_expenses_vat || 0)),
             total_estimated_hours: original_hours,
             total_estimated_hours_price: original_hours_price,
-            estimated_incomes_expenses: sumBy(rows, (r) => parseFloat(r.estimated_incomes_expenses || 0)),
+            estimated_incomes_expenses: _.sumBy(rows, (r) => parseFloat(r.estimated_incomes_expenses || 0)),
             // Real dimension
-            total_real_incomes: sumBy(rows, (r) => parseFloat(r.total_real_incomes || 0)),
-            total_real_expenses: sumBy(rows, (r) => parseFloat(r.total_real_expenses || 0)),
-            total_real_expenses_vat: sumBy(rows, (r) => parseFloat(r.total_real_expenses_vat || 0)),
-            total_real_hours: sumBy(rows, (r) => parseFloat(r.total_real_hours || 0)),
-            total_real_hours_price: sumBy(rows, (r) => parseFloat(r.total_real_hours_price || 0)),
-            total_real_incomes_expenses: sumBy(rows, (r) => parseFloat(r.total_real_incomes_expenses || 0)),
+            total_real_incomes: _.sumBy(rows, (r) => parseFloat(r.total_real_incomes || 0)),
+            total_real_expenses: _.sumBy(rows, (r) => parseFloat(r.total_real_expenses || 0)),
+            total_real_expenses_vat: _.sumBy(rows, (r) => parseFloat(r.total_real_expenses_vat || 0)),
+            total_real_hours: _.sumBy(rows, (r) => parseFloat(r.total_real_hours || 0)),
+            total_real_hours_price: _.sumBy(rows, (r) => parseFloat(r.total_real_hours_price || 0)),
+            total_real_incomes_expenses: _.sumBy(rows, (r) => parseFloat(r.total_real_incomes_expenses || 0)),
             // Backwards compatibility
-            total_incomes: sumBy(rows, (r) => parseFloat(r.total_estimated_incomes || r.total_incomes || 0)),
-            total_expenses: sumBy(rows, (r) => parseFloat(r.total_estimated_expenses || r.total_expenses || 0)),
-            total_expenses_vat: sumBy(rows, (r) => parseFloat(r.total_estimated_expenses_vat || r.total_expenses_vat || 0)),
-            incomes_expenses: sumBy(rows, (r) => parseFloat(r.estimated_incomes_expenses || r.incomes_expenses || 0)),
+            total_incomes: _.sumBy(rows, (r) => parseFloat(r.total_estimated_incomes || r.total_incomes || 0)),
+            total_expenses: _.sumBy(rows, (r) => parseFloat(r.total_estimated_expenses || r.total_expenses || 0)),
+            total_expenses_vat: _.sumBy(rows, (r) => parseFloat(r.total_estimated_expenses_vat || r.total_expenses_vat || 0)),
+            incomes_expenses: _.sumBy(rows, (r) => parseFloat(r.estimated_incomes_expenses || r.incomes_expenses || 0)),
           };
         })
         .value();

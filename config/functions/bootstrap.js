@@ -2587,6 +2587,17 @@ async function backfillStoredProjectTotals() {
   }
 }
 
+async function backfillTotalOriginalHours() {
+  console.log("[TOTAL ORIGINAL HOURS BACKFILL] Starting refresh to populate total_original_hours field...");
+  const summary = await refreshAllStoredTotals({ progressEvery: 50 });
+  console.log(
+    `[TOTAL ORIGINAL HOURS BACKFILL] Done. total=${summary.total}, processed=${summary.processed}, failed=${summary.failed}`,
+  );
+  if (summary.failed > 0) {
+    console.error("[TOTAL ORIGINAL HOURS BACKFILL] Errors:", summary.errors.slice(0, 20));
+  }
+}
+
 async function copyCanAssignActivitiesToDocuments() {
   try {
     console.log("Starting to copy can_assign_activities to can_assign_documents...");
@@ -3157,6 +3168,11 @@ module.exports = async () => {
   await runStartupScript(
     "backfillStoredProjectTotals",
     backfillStoredProjectTotals,
+    { runOnce: true },
+  );
+  await runStartupScript(
+    "backfillTotalOriginalHours",
+    backfillTotalOriginalHours,
     { runOnce: true },
   );
   await runStartupScript(

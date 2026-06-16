@@ -1056,6 +1056,7 @@ const STORED_TOTAL_FIELDS = [
   // Original dimension
   "total_original_incomes",
   "total_original_expenses",
+  "total_original_hours",
   "total_original_hours_price",
   "total_original_expenses_vat",
   "original_incomes_expenses",
