@@ -4,7 +4,7 @@ const {
 } = require("../../api/project/services/projectFinancials");
 
 /**
- * An asynchronous bootstrap function that runs before
+ * An asynchronous bootstrap function that runs 1 minute before
  * your application gets started.
  *
  * This gives you an opportunity to set up your data model,
@@ -121,6 +121,7 @@ async function importSeedData() {
       "findChildren",
       "calculateproject2",
       "findoneextended",
+      "finddedications",
     ],
     quote: ["create", "find", "findone", "update", "delete"],
     contacts: [
@@ -156,11 +157,11 @@ async function importSeedData() {
       "update",
       "delete",
       "createcsv",
-      "invoice",      
+      "invoice",
       "infoall",
       "pdfmultiple",
       "checkmultidelivery",
-      "collectionpointroutes"
+      "collectionpointroutes",
     ],
     "orders-imports": ["create", "find", "findone", "update"],
     "delivery-type": ["find"],
@@ -185,11 +186,34 @@ async function importSeedData() {
     "phase-expense": ["find", "findassigned"],
     verifactu: ["find", "findone"],
     "verifactu-declaration": ["find", "findone", "create"],
-    "verifactu-chain": ["find", "findone", "create", "update", "delete", "count"],
-    "face-queue": ["find", "findone", "create", "update", "delete", "checkStatus", "verifySetup"],
+    "verifactu-chain": [
+      "find",
+      "findone",
+      "create",
+      "update",
+      "delete",
+      "count",
+    ],
+    "face-queue": [
+      "find",
+      "findone",
+      "create",
+      "update",
+      "delete",
+      "checkStatus",
+      "verifySetup",
+    ],
     "pivot-table-view": ["find", "findone", "create", "update", "delete"],
     "bank-accounts": ["find", "findone", "create", "update", "delete"],
-    incidences: ["create", "find", "findone", "update", "count", "delete", "infoall"],
+    incidences: [
+      "create",
+      "find",
+      "findone",
+      "update",
+      "count",
+      "delete",
+      "infoall",
+    ],
     "vat-type": ["find"],
     // Admin entity management permissions
     "contact-type": ["create", "find", "findone", "update", "delete"],
@@ -213,7 +237,7 @@ async function importSeedData() {
 
   await setPermissions("authenticated", "users-permissions", {
     user: ["find", "findone", "create", "update", "count", "me"],
-    userspermissions: ["getroles"]
+    userspermissions: ["getroles"],
   });
 
   await setPermissions("authenticated", "upload", {
@@ -226,14 +250,14 @@ async function importSeedData() {
   // try {
   //   const allProjects = await strapi.query('project').find({ published_at_null: false, _limit: -1 });
   //   console.log(`[BOOTSTRAP] Found ${allProjects.length} projects to mark as dirty`);
-    
+
   //   for (const project of allProjects) {
   //     // Check if already in dirty queue
-  //     const existingQueue = await strapi.query('dirty-queue').findOne({ 
-  //       entity: 'project', 
-  //       entityId: project.id 
+  //     const existingQueue = await strapi.query('dirty-queue').findOne({
+  //       entity: 'project',
+  //       entityId: project.id
   //     });
-      
+
   //     if (!existingQueue) {
   //       await strapi.query('dirty-queue').create({
   //         entity: 'project',
@@ -246,7 +270,7 @@ async function importSeedData() {
   //       );
   //     }
   //   }
-    
+
   //   console.log("[BOOTSTRAP] Added all projects to dirty queue for recalculation");
   // } catch (error) {
   //   console.error("[BOOTSTRAP] Error adding projects to dirty queue:", error);
@@ -496,15 +520,13 @@ async function importSeedData() {
 
   // update software_version
   if (verifactu && verifactu.software_version !== "2025.11.18") {
-    await strapi
-      .query("verifactu")
-      .update(
-        { id: verifactu.id },
-        {
-          software_version: "2025.11.18",
-          software_date: "18 de noviembre de 2025",
-        },
-      );
+    await strapi.query("verifactu").update(
+      { id: verifactu.id },
+      {
+        software_version: "2025.11.18",
+        software_date: "18 de noviembre de 2025",
+      },
+    );
   }
 
   // insert verifactu-declarations
@@ -586,8 +608,6 @@ async function importSeedData() {
     }
 
     console.log("Default bank account setup completed");
-
-    
   }
 }
 
@@ -767,16 +787,14 @@ async function migrateContactInfo() {
       if (invoice.contact) {
         const contactInfo = await fillContactInfoFromContact(invoice.contact);
         if (contactInfo) {
-          await strapi
-            .query("emitted-invoice")
-            .update(
-              { id: invoice.id },
-              {
-                contact_info: contactInfo,
-                _internal: true,
-                updatable_admin: true,
-              },
-            );
+          await strapi.query("emitted-invoice").update(
+            { id: invoice.id },
+            {
+              contact_info: contactInfo,
+              _internal: true,
+              updatable_admin: true,
+            },
+          );
           emittedInvoicesMigrated++;
         }
       }
@@ -800,16 +818,14 @@ async function migrateContactInfo() {
       if (invoice.contact) {
         const contactInfo = await fillContactInfoFromContact(invoice.contact);
         if (contactInfo) {
-          await strapi
-            .query("received-invoice")
-            .update(
-              { id: invoice.id },
-              {
-                contact_info: contactInfo,
-                _internal: true,
-                updatable_admin: true,
-              },
-            );
+          await strapi.query("received-invoice").update(
+            { id: invoice.id },
+            {
+              contact_info: contactInfo,
+              _internal: true,
+              updatable_admin: true,
+            },
+          );
           receivedInvoicesMigrated++;
         }
       }
@@ -835,16 +851,14 @@ async function migrateContactInfo() {
       if (income.contact) {
         const contactInfo = await fillContactInfoFromContact(income.contact);
         if (contactInfo) {
-          await strapi
-            .query("received-income")
-            .update(
-              { id: income.id },
-              {
-                contact_info: contactInfo,
-                _internal: true,
-                updatable_admin: true,
-              },
-            );
+          await strapi.query("received-income").update(
+            { id: income.id },
+            {
+              contact_info: contactInfo,
+              _internal: true,
+              updatable_admin: true,
+            },
+          );
           receivedIncomesMigrated++;
         }
       }
@@ -868,16 +882,14 @@ async function migrateContactInfo() {
       if (expense.contact) {
         const contactInfo = await fillContactInfoFromContact(expense.contact);
         if (contactInfo) {
-          await strapi
-            .query("received-expense")
-            .update(
-              { id: expense.id },
-              {
-                contact_info: contactInfo,
-                _internal: true,
-                updatable_admin: true,
-              },
-            );
+          await strapi.query("received-expense").update(
+            { id: expense.id },
+            {
+              contact_info: contactInfo,
+              _internal: true,
+              updatable_admin: true,
+            },
+          );
           receivedExpensesMigrated++;
         }
       }
@@ -902,16 +914,14 @@ async function migrateContactInfo() {
       if (quote.contact) {
         const contactInfo = await fillContactInfoFromContact(quote.contact);
         if (contactInfo) {
-          await strapi
-            .query("quote")
-            .update(
-              { id: quote.id },
-              {
-                contact_info: contactInfo,
-                _internal: true,
-                updatable_admin: true,
-              },
-            );
+          await strapi.query("quote").update(
+            { id: quote.id },
+            {
+              contact_info: contactInfo,
+              _internal: true,
+              updatable_admin: true,
+            },
+          );
           quotesMigrated++;
         }
       }
@@ -983,7 +993,6 @@ async function calculateMotherProjects() {
     console.log(
       `Mother projects calculation completed: ${updatedCount} projects updated`,
     );
-
   } catch (error) {
     console.error("Error during mother projects calculation:", error);
     console.log("Calculation will be retried next time the server starts");
@@ -1000,7 +1009,9 @@ async function recalculatePhaseWarnings() {
       warning_null: true,
     });
 
-    console.log(`Found ${nullWarningIncomes.length} phase-incomes with null warnings`);
+    console.log(
+      `Found ${nullWarningIncomes.length} phase-incomes with null warnings`,
+    );
 
     let incomesUpdated = 0;
     const processedDocuments = new Set(); // Track processed documents to avoid duplicates
@@ -1014,17 +1025,30 @@ async function recalculatePhaseWarnings() {
 
         // Determine which document this income is linked to
         if (income.invoice) {
-          documentId = typeof income.invoice === 'object' ? income.invoice.id : income.invoice;
-          documentType = 'emitted-invoice';
-          document = await strapi.query("emitted-invoice").findOne({ id: documentId });
+          documentId =
+            typeof income.invoice === "object"
+              ? income.invoice.id
+              : income.invoice;
+          documentType = "emitted-invoice";
+          document = await strapi
+            .query("emitted-invoice")
+            .findOne({ id: documentId });
         } else if (income.grant) {
-          documentId = typeof income.grant === 'object' ? income.grant.id : income.grant;
-          documentType = 'received-grant';
-          document = await strapi.query("received-grant").findOne({ id: documentId });
+          documentId =
+            typeof income.grant === "object" ? income.grant.id : income.grant;
+          documentType = "received-grant";
+          document = await strapi
+            .query("received-grant")
+            .findOne({ id: documentId });
         } else if (income.income) {
-          documentId = typeof income.income === 'object' ? income.income.id : income.income;
-          documentType = 'received-income';
-          document = await strapi.query("received-income").findOne({ id: documentId });
+          documentId =
+            typeof income.income === "object"
+              ? income.income.id
+              : income.income;
+          documentType = "received-income";
+          document = await strapi
+            .query("received-income")
+            .findOne({ id: documentId });
         }
 
         // Skip if no document linked or already processed
@@ -1040,21 +1064,21 @@ async function recalculatePhaseWarnings() {
 
         // Find ALL phase-incomes that reference this document across all projects
         let allRelatedIncomes = [];
-        
-        if (documentType === 'emitted-invoice') {
+
+        if (documentType === "emitted-invoice") {
           allRelatedIncomes = await strapi.query("phase-income").find({
             _limit: -1,
-            invoice: documentId
+            invoice: documentId,
           });
-        } else if (documentType === 'received-grant') {
+        } else if (documentType === "received-grant") {
           allRelatedIncomes = await strapi.query("phase-income").find({
             _limit: -1,
-            grant: documentId
+            grant: documentId,
           });
-        } else if (documentType === 'received-income') {
+        } else if (documentType === "received-income") {
           allRelatedIncomes = await strapi.query("phase-income").find({
             _limit: -1,
-            income: documentId
+            income: documentId,
           });
         }
 
@@ -1064,8 +1088,9 @@ async function recalculatePhaseWarnings() {
 
         // Sum up all assigned amounts
         let totalAssigned = 0;
-        allRelatedIncomes.forEach(relatedIncome => {
-          const lineTotal = (relatedIncome.quantity || 0) * (relatedIncome.amount || 0);
+        allRelatedIncomes.forEach((relatedIncome) => {
+          const lineTotal =
+            (relatedIncome.quantity || 0) * (relatedIncome.amount || 0);
           totalAssigned += lineTotal;
         });
 
@@ -1075,23 +1100,28 @@ async function recalculatePhaseWarnings() {
 
         // Update ALL related incomes with the same warning value
         for (const relatedIncome of allRelatedIncomes) {
-          if (relatedIncome.warning === null || relatedIncome.warning === undefined) {
-            await strapi.query("phase-income").update(
-              { id: relatedIncome.id },
-              { warning: hasWarning }
-            );
+          if (
+            relatedIncome.warning === null ||
+            relatedIncome.warning === undefined
+          ) {
+            await strapi
+              .query("phase-income")
+              .update({ id: relatedIncome.id }, { warning: hasWarning });
             incomesUpdated++;
           }
         }
 
-        console.log(`Updated ${allRelatedIncomes.length} incomes for ${documentType} #${documentId} (total: ${document.total_base}, assigned: ${totalAssigned}, warning: ${hasWarning})`);
-
+        console.log(
+          `Updated ${allRelatedIncomes.length} incomes for ${documentType} #${documentId} (total: ${document.total_base}, assigned: ${totalAssigned}, warning: ${hasWarning})`,
+        );
       } catch (error) {
         console.error(`Error processing income ${income.id}:`, error.message);
       }
     }
 
-    console.log(`Phase-income warnings recalculation completed: ${incomesUpdated} records updated`);
+    console.log(
+      `Phase-income warnings recalculation completed: ${incomesUpdated} records updated`,
+    );
 
     // Get all phase-expenses with null warning
     const nullWarningExpenses = await strapi.query("phase-expense").find({
@@ -1099,7 +1129,9 @@ async function recalculatePhaseWarnings() {
       warning_null: true,
     });
 
-    console.log(`Found ${nullWarningExpenses.length} phase-expenses with null warnings`);
+    console.log(
+      `Found ${nullWarningExpenses.length} phase-expenses with null warnings`,
+    );
 
     let expensesUpdated = 0;
     const processedExpenseDocuments = new Set(); // Track processed documents to avoid duplicates
@@ -1113,17 +1145,32 @@ async function recalculatePhaseWarnings() {
 
         // Determine which document this expense is linked to
         if (expense.invoice) {
-          documentId = typeof expense.invoice === 'object' ? expense.invoice.id : expense.invoice;
-          documentType = 'received-invoice';
-          document = await strapi.query("received-invoice").findOne({ id: documentId });
+          documentId =
+            typeof expense.invoice === "object"
+              ? expense.invoice.id
+              : expense.invoice;
+          documentType = "received-invoice";
+          document = await strapi
+            .query("received-invoice")
+            .findOne({ id: documentId });
         } else if (expense.expense) {
-          documentId = typeof expense.expense === 'object' ? expense.expense.id : expense.expense;
-          documentType = 'received-expense';
-          document = await strapi.query("received-expense").findOne({ id: documentId });
+          documentId =
+            typeof expense.expense === "object"
+              ? expense.expense.id
+              : expense.expense;
+          documentType = "received-expense";
+          document = await strapi
+            .query("received-expense")
+            .findOne({ id: documentId });
         } else if (expense.grant) {
-          documentId = typeof expense.grant === 'object' ? expense.grant.id : expense.grant;
-          documentType = 'received-grant';
-          document = await strapi.query("received-grant").findOne({ id: documentId });
+          documentId =
+            typeof expense.grant === "object"
+              ? expense.grant.id
+              : expense.grant;
+          documentType = "received-grant";
+          document = await strapi
+            .query("received-grant")
+            .findOne({ id: documentId });
         }
 
         // Skip if no document linked or already processed
@@ -1139,21 +1186,21 @@ async function recalculatePhaseWarnings() {
 
         // Find ALL phase-expenses that reference this document across all projects
         let allRelatedExpenses = [];
-        
-        if (documentType === 'received-invoice') {
+
+        if (documentType === "received-invoice") {
           allRelatedExpenses = await strapi.query("phase-expense").find({
             _limit: -1,
-            invoice: documentId
+            invoice: documentId,
           });
-        } else if (documentType === 'received-expense') {
+        } else if (documentType === "received-expense") {
           allRelatedExpenses = await strapi.query("phase-expense").find({
             _limit: -1,
-            expense: documentId
+            expense: documentId,
           });
-        } else if (documentType === 'received-grant') {
+        } else if (documentType === "received-grant") {
           allRelatedExpenses = await strapi.query("phase-expense").find({
             _limit: -1,
-            grant: documentId
+            grant: documentId,
           });
         }
 
@@ -1163,8 +1210,9 @@ async function recalculatePhaseWarnings() {
 
         // Sum up all assigned amounts
         let totalAssigned = 0;
-        allRelatedExpenses.forEach(relatedExpense => {
-          const lineTotal = (relatedExpense.quantity || 0) * (relatedExpense.amount || 0);
+        allRelatedExpenses.forEach((relatedExpense) => {
+          const lineTotal =
+            (relatedExpense.quantity || 0) * (relatedExpense.amount || 0);
           totalAssigned += lineTotal;
         });
 
@@ -1174,25 +1222,31 @@ async function recalculatePhaseWarnings() {
 
         // Update ALL related expenses with the same warning value
         for (const relatedExpense of allRelatedExpenses) {
-          if (relatedExpense.warning === null || relatedExpense.warning === undefined) {
-            await strapi.query("phase-expense").update(
-              { id: relatedExpense.id },
-              { warning: hasWarning }
-            );
+          if (
+            relatedExpense.warning === null ||
+            relatedExpense.warning === undefined
+          ) {
+            await strapi
+              .query("phase-expense")
+              .update({ id: relatedExpense.id }, { warning: hasWarning });
             expensesUpdated++;
           }
         }
 
-        console.log(`Updated ${allRelatedExpenses.length} expenses for ${documentType} #${documentId} (total: ${document.total_base}, assigned: ${totalAssigned}, warning: ${hasWarning})`);
-
+        console.log(
+          `Updated ${allRelatedExpenses.length} expenses for ${documentType} #${documentId} (total: ${document.total_base}, assigned: ${totalAssigned}, warning: ${hasWarning})`,
+        );
       } catch (error) {
         console.error(`Error processing expense ${expense.id}:`, error.message);
       }
     }
 
-    console.log(`Phase-expense warnings recalculation completed: ${expensesUpdated} records updated`);
-    console.log(`Total warnings recalculated: ${incomesUpdated + expensesUpdated} records`);
-
+    console.log(
+      `Phase-expense warnings recalculation completed: ${expensesUpdated} records updated`,
+    );
+    console.log(
+      `Total warnings recalculated: ${incomesUpdated + expensesUpdated} records`,
+    );
   } catch (error) {
     console.error("Error during phase warnings recalculation:", error);
     console.log("Recalculation will be retried next time the server starts");
@@ -1201,12 +1255,14 @@ async function recalculatePhaseWarnings() {
 
 async function migrateEstimatedHoursToExecutionPhases() {
   try {
-    console.log("Starting estimated_hours migration with per-project checking...");
+    console.log(
+      "Starting estimated_hours migration with per-project checking...",
+    );
 
     // Get all projects with their phases and estimated hours
-    const allProjects = await strapi.query("project").find(
-      { _limit: -1, published_at_null: false },
-      [
+    const allProjects = await strapi
+      .query("project")
+      .find({ _limit: -1, published_at_null: false }, [
         "project_original_phases",
         "project_original_phases.incomes",
         "project_original_phases.incomes.estimated_hours",
@@ -1214,8 +1270,7 @@ async function migrateEstimatedHoursToExecutionPhases() {
         "project_phases",
         "project_phases.incomes",
         "project_phases.incomes.estimated_hours",
-      ]
-    );
+      ]);
 
     console.log(`Found ${allProjects.length} projects to process`);
 
@@ -1227,7 +1282,10 @@ async function migrateEstimatedHoursToExecutionPhases() {
 
     for (const project of allProjects) {
       // Skip if no original phases
-      if (!project.project_original_phases || project.project_original_phases.length === 0) {
+      if (
+        !project.project_original_phases ||
+        project.project_original_phases.length === 0
+      ) {
         projectsSkipped++;
         continue;
       }
@@ -1239,18 +1297,23 @@ async function migrateEstimatedHoursToExecutionPhases() {
       }
 
       // Check if THIS specific project already has hours in execution phases
-      const existingProjectHours = await strapi.connections.default.raw(`
+      const existingProjectHours = await strapi.connections.default.raw(
+        `
         SELECT COUNT(*) as count
         FROM estimated_hours eh
         JOIN phase_incomes pi ON eh.phase_income = pi.id
         JOIN project_phases pp ON pi.project_phase = pp.id
         WHERE pp.project = ?
-      `, [project.id]);
+      `,
+        [project.id],
+      );
 
       const projectHoursCount = existingProjectHours[0][0].count;
-      
+
       if (projectHoursCount > 0) {
-        console.log(`Project ${project.id} "${project.name}" already has ${projectHoursCount} hours in execution phases - skipping`);
+        console.log(
+          `Project ${project.id} "${project.name}" already has ${projectHoursCount} hours in execution phases - skipping`,
+        );
         projectsAlreadyMigrated++;
         continue;
       }
@@ -1261,7 +1324,7 @@ async function migrateEstimatedHoursToExecutionPhases() {
       for (const originalPhase of project.project_original_phases) {
         // Find matching execution phase by name
         let executionPhase = project.project_phases.find(
-          ep => ep.name === originalPhase.name
+          (ep) => ep.name === originalPhase.name,
         );
 
         // If no matching phase exists, create a new one for migrated hours
@@ -1283,13 +1346,16 @@ async function migrateEstimatedHoursToExecutionPhases() {
 
         // Iterate through incomes with estimated_hours
         for (const originalIncome of originalPhase.incomes) {
-          if (!originalIncome.estimated_hours || originalIncome.estimated_hours.length === 0) {
+          if (
+            !originalIncome.estimated_hours ||
+            originalIncome.estimated_hours.length === 0
+          ) {
             continue;
           }
 
           // Find matching execution income by concept
           let executionIncome = executionPhase.incomes?.find(
-            ei => ei.concept === originalIncome.concept
+            (ei) => ei.concept === originalIncome.concept,
           );
 
           // If no matching income exists, create one
@@ -1310,7 +1376,10 @@ async function migrateEstimatedHoursToExecutionPhases() {
           }
 
           // Check if execution income already has estimated_hours
-          if (executionIncome.estimated_hours && executionIncome.estimated_hours.length > 0) {
+          if (
+            executionIncome.estimated_hours &&
+            executionIncome.estimated_hours.length > 0
+          ) {
             hoursSkipped += originalIncome.estimated_hours.length;
             // Don't skip - still need to recalculate aggregate!
           } else {
@@ -1319,9 +1388,12 @@ async function migrateEstimatedHoursToExecutionPhases() {
               // Extract user ID safely - handle null, undefined, empty objects, or numeric IDs
               let userId = null;
               if (hour.users_permissions_user) {
-                if (typeof hour.users_permissions_user === 'number') {
+                if (typeof hour.users_permissions_user === "number") {
                   userId = hour.users_permissions_user;
-                } else if (typeof hour.users_permissions_user === 'object' && hour.users_permissions_user.id) {
+                } else if (
+                  typeof hour.users_permissions_user === "object" &&
+                  hour.users_permissions_user.id
+                ) {
                   userId = hour.users_permissions_user.id;
                 }
               }
@@ -1346,12 +1418,19 @@ async function migrateEstimatedHoursToExecutionPhases() {
           }
 
           // ALWAYS recalculate total_estimated_hours aggregate field
-          const copiedHours = await strapi.query("estimated-hours").find({ phase_income: executionIncome.id });
-          const totalHours = copiedHours.reduce((sum, h) => sum + (parseFloat(h.quantity) || 0), 0);
-          await strapi.query("phase-income").update(
-            { id: executionIncome.id },
-            { total_estimated_hours: totalHours }
+          const copiedHours = await strapi
+            .query("estimated-hours")
+            .find({ phase_income: executionIncome.id });
+          const totalHours = copiedHours.reduce(
+            (sum, h) => sum + (parseFloat(h.quantity) || 0),
+            0,
           );
+          await strapi
+            .query("phase-income")
+            .update(
+              { id: executionIncome.id },
+              { total_estimated_hours: totalHours },
+            );
           projectHadUpdates = true;
         }
       }
@@ -1367,7 +1446,6 @@ async function migrateEstimatedHoursToExecutionPhases() {
     console.log(`  - Projects skipped (no phases): ${projectsSkipped}`);
     console.log(`  - Hours copied: ${hoursCopied}`);
     console.log(`  - Hours skipped (already exist): ${hoursSkipped}`);
-
   } catch (error) {
     console.error("Error during estimated_hours migration:", error);
     console.log("Migration will be retried next time the server starts");
@@ -1379,17 +1457,16 @@ async function cleanupDuplicateExecutionPhaseHours() {
     console.log("Starting cleanup of duplicate execution phase hours...");
 
     // Get all projects with both original and execution phases
-    const allProjects = await strapi.query("project").find(
-      { _limit: -1, published_at_null: false },
-      [
+    const allProjects = await strapi
+      .query("project")
+      .find({ _limit: -1, published_at_null: false }, [
         "project_original_phases",
         "project_original_phases.incomes",
         "project_original_phases.incomes.estimated_hours",
         "project_phases",
         "project_phases.incomes",
         "project_phases.incomes.estimated_hours",
-      ]
-    );
+      ]);
 
     console.log(`Found ${allProjects.length} projects to check`);
 
@@ -1405,13 +1482,19 @@ async function cleanupDuplicateExecutionPhaseHours() {
       const isProject236 = project.id === 236;
       if (isProject236) {
         console.log(`\n=== DETAILED LOG FOR PROJECT 236 "${project.name}" ===`);
-        console.log(`Original phases (${project.project_original_phases.length}):`);
-        project.project_original_phases.forEach(op => {
-          console.log(`  - "${op.name}" (raw: "${op.name}", trimmed: "${op.name ? op.name.trim() : ''}", incomes: ${op.incomes?.length || 0})`);
+        console.log(
+          `Original phases (${project.project_original_phases.length}):`,
+        );
+        project.project_original_phases.forEach((op) => {
+          console.log(
+            `  - "${op.name}" (raw: "${op.name}", trimmed: "${op.name ? op.name.trim() : ""}", incomes: ${op.incomes?.length || 0})`,
+          );
         });
         console.log(`Execution phases (${project.project_phases.length}):`);
-        project.project_phases.forEach(ep => {
-          console.log(`  - "${ep.name}" (raw: "${ep.name}", trimmed: "${ep.name ? ep.name.trim() : ''}", incomes: ${ep.incomes?.length || 0})`);
+        project.project_phases.forEach((ep) => {
+          console.log(
+            `  - "${ep.name}" (raw: "${ep.name}", trimmed: "${ep.name ? ep.name.trim() : ""}", incomes: ${ep.incomes?.length || 0})`,
+          );
         });
       }
 
@@ -1419,39 +1502,55 @@ async function cleanupDuplicateExecutionPhaseHours() {
 
       // Check each execution phase against original phases
       for (const executionPhase of project.project_phases) {
-        const executionPhaseName = executionPhase.name ? executionPhase.name.trim() : '';
-        
+        const executionPhaseName = executionPhase.name
+          ? executionPhase.name.trim()
+          : "";
+
         // Find matching original phase by name
         const matchingOriginalPhase = project.project_original_phases.find(
-          op => op.name && op.name.trim() === executionPhaseName
+          (op) => op.name && op.name.trim() === executionPhaseName,
         );
 
         if (isProject236) {
-          console.log(`\n  Checking execution phase "${executionPhase.name}" (trimmed: "${executionPhaseName}")`);
+          console.log(
+            `\n  Checking execution phase "${executionPhase.name}" (trimmed: "${executionPhaseName}")`,
+          );
           if (matchingOriginalPhase) {
-            console.log(`    -> Found matching original phase: "${matchingOriginalPhase.name}"`);
+            console.log(
+              `    -> Found matching original phase: "${matchingOriginalPhase.name}"`,
+            );
           } else {
             console.log(`    -> No matching original phase found`);
           }
         }
 
-        if (!matchingOriginalPhase || !executionPhase.incomes || !matchingOriginalPhase.incomes) {
+        if (
+          !matchingOriginalPhase ||
+          !executionPhase.incomes ||
+          !matchingOriginalPhase.incomes
+        ) {
           continue;
         }
 
         // Check each income in execution phase
         for (const executionIncome of executionPhase.incomes) {
-          const executionConcept = executionIncome.concept ? executionIncome.concept.trim() : '';
-          
+          const executionConcept = executionIncome.concept
+            ? executionIncome.concept.trim()
+            : "";
+
           // Find matching original income by concept
           const matchingOriginalIncome = matchingOriginalPhase.incomes.find(
-            oi => oi.concept && oi.concept.trim() === executionConcept
+            (oi) => oi.concept && oi.concept.trim() === executionConcept,
           );
 
           if (isProject236) {
-            console.log(`    Checking income "${executionIncome.concept}" (trimmed: "${executionConcept}")`);
+            console.log(
+              `    Checking income "${executionIncome.concept}" (trimmed: "${executionConcept}")`,
+            );
             if (matchingOriginalIncome) {
-              console.log(`      -> Found matching original income: "${matchingOriginalIncome.concept}"`);
+              console.log(
+                `      -> Found matching original income: "${matchingOriginalIncome.concept}"`,
+              );
             } else {
               console.log(`      -> No matching original income found`);
             }
@@ -1464,16 +1563,18 @@ async function cleanupDuplicateExecutionPhaseHours() {
           // Get hours from both incomes
           const executionHours = await strapi.query("estimated-hours").find({
             phase_income: executionIncome.id,
-            _limit: -1
+            _limit: -1,
           });
 
           const originalHours = await strapi.query("estimated-hours").find({
             phase_income: matchingOriginalIncome.id,
-            _limit: -1
+            _limit: -1,
           });
 
           if (isProject236) {
-            console.log(`      Execution hours: ${executionHours.length}, Original hours: ${originalHours.length}`);
+            console.log(
+              `      Execution hours: ${executionHours.length}, Original hours: ${originalHours.length}`,
+            );
           }
 
           if (executionHours.length === 0 || originalHours.length === 0) {
@@ -1485,23 +1586,27 @@ async function cleanupDuplicateExecutionPhaseHours() {
 
           // Check if hours are duplicates (same users, quantities, dates)
           let areDuplicates = executionHours.length === originalHours.length;
-          
+
           if (areDuplicates) {
             for (const execHour of executionHours) {
-              const userId = typeof execHour.users_permissions_user === 'object' 
-                ? execHour.users_permissions_user?.id 
-                : execHour.users_permissions_user;
-              
-              const matchingOrigHour = originalHours.find(oh => {
-                const origUserId = typeof oh.users_permissions_user === 'object'
-                  ? oh.users_permissions_user?.id
-                  : oh.users_permissions_user;
-                
-                return origUserId === userId &&
+              const userId =
+                typeof execHour.users_permissions_user === "object"
+                  ? execHour.users_permissions_user?.id
+                  : execHour.users_permissions_user;
+
+              const matchingOrigHour = originalHours.find((oh) => {
+                const origUserId =
+                  typeof oh.users_permissions_user === "object"
+                    ? oh.users_permissions_user?.id
+                    : oh.users_permissions_user;
+
+                return (
+                  origUserId === userId &&
                   oh.quantity === execHour.quantity &&
                   oh.amount === execHour.amount &&
                   oh.from === execHour.from &&
-                  oh.to === execHour.to;
+                  oh.to === execHour.to
+                );
               });
 
               if (!matchingOrigHour) {
@@ -1517,19 +1622,20 @@ async function cleanupDuplicateExecutionPhaseHours() {
 
           // If duplicates found, delete hours from execution phase
           if (areDuplicates) {
-            console.log(`  Project ${project.id} "${project.name}": Removing ${executionHours.length} duplicate hours from "${executionPhaseName}" > "${executionConcept}"`);
-            
+            console.log(
+              `  Project ${project.id} "${project.name}": Removing ${executionHours.length} duplicate hours from "${executionPhaseName}" > "${executionConcept}"`,
+            );
+
             for (const hour of executionHours) {
               await strapi.query("estimated-hours").delete({ id: hour.id });
               hoursDeleted++;
             }
 
             // Clear total_estimated_hours
-            await strapi.query("phase-income").update(
-              { id: executionIncome.id },
-              { total_estimated_hours: 0 }
-            );
-            
+            await strapi
+              .query("phase-income")
+              .update({ id: executionIncome.id }, { total_estimated_hours: 0 });
+
             incomesCleared++;
             projectHadChanges = true;
           }
@@ -1549,7 +1655,6 @@ async function cleanupDuplicateExecutionPhaseHours() {
     console.log(`  - Projects processed: ${projectsProcessed}`);
     console.log(`  - Hours deleted: ${hoursDeleted}`);
     console.log(`  - Incomes cleared: ${incomesCleared}`);
-
   } catch (error) {
     console.error("Error during duplicate hours cleanup:", error);
     console.log("Cleanup will be retried next time the server starts");
@@ -1558,15 +1663,22 @@ async function cleanupDuplicateExecutionPhaseHours() {
 
 async function consolidateMigratedHoursPhases() {
   try {
-    console.log("Starting consolidation of 'Hores previstes migrades' phases...");
-
-    // Find all execution phases named "Hores previstes migrades"
-    const migratedPhases = await strapi.query("project-phases").find(
-      { name: "Hores previstes migrades", _limit: -1 },
-      ["incomes", "incomes.estimated_hours", "project"]
+    console.log(
+      "Starting consolidation of 'Hores previstes migrades' phases...",
     );
 
-    console.log(`Found ${migratedPhases.length} 'Hores previstes migrades' phases to consolidate`);
+    // Find all execution phases named "Hores previstes migrades"
+    const migratedPhases = await strapi
+      .query("project-phases")
+      .find({ name: "Hores previstes migrades", _limit: -1 }, [
+        "incomes",
+        "incomes.estimated_hours",
+        "project",
+      ]);
+
+    console.log(
+      `Found ${migratedPhases.length} 'Hores previstes migrades' phases to consolidate`,
+    );
 
     let phasesProcessed = 0;
     let hoursMoved = 0;
@@ -1575,54 +1687,72 @@ async function consolidateMigratedHoursPhases() {
 
     for (const migratedPhase of migratedPhases) {
       try {
-        const projectId = typeof migratedPhase.project === 'object' ? migratedPhase.project.id : migratedPhase.project;
-        
+        const projectId =
+          typeof migratedPhase.project === "object"
+            ? migratedPhase.project.id
+            : migratedPhase.project;
+
         // Get full project data with all phases
-        const project = await strapi.query("project").findOne(
-          { id: projectId },
-          [
+        const project = await strapi
+          .query("project")
+          .findOne({ id: projectId }, [
             "project_original_phases",
             "project_original_phases.incomes",
             "project_phases",
             "project_phases.incomes",
-            "project_phases.incomes.estimated_hours"
-          ]
-        );
+            "project_phases.incomes.estimated_hours",
+          ]);
 
         if (!project) {
-          console.log(`Project ${projectId} not found, skipping phase ${migratedPhase.id}`);
+          console.log(
+            `Project ${projectId} not found, skipping phase ${migratedPhase.id}`,
+          );
           continue;
         }
 
         const isProject236 = project.id === 236;
 
         console.log(`\nProcessing project ${project.id} "${project.name}"`);
-        
+
         if (isProject236) {
           console.log(`\n=== DETAILED CONSOLIDATION LOG FOR PROJECT 236 ===`);
           console.log(`Original phases:`);
-          project.project_original_phases?.forEach(op => {
-            console.log(`  - "${op.name}" (trimmed: "${op.name ? op.name.trim() : ''}")`);
-            op.incomes?.forEach(income => {
-              console.log(`    > "${income.concept}" (trimmed: "${income.concept ? income.concept.trim() : ''}")`);
+          project.project_original_phases?.forEach((op) => {
+            console.log(
+              `  - "${op.name}" (trimmed: "${op.name ? op.name.trim() : ""}")`,
+            );
+            op.incomes?.forEach((income) => {
+              console.log(
+                `    > "${income.concept}" (trimmed: "${income.concept ? income.concept.trim() : ""}")`,
+              );
             });
           });
           console.log(`Execution phases (excluding migrated):`);
-          project.project_phases?.filter(ep => ep.id !== migratedPhase.id).forEach(ep => {
-            console.log(`  - "${ep.name}" (trimmed: "${ep.name ? ep.name.trim() : ''}")`);
-            ep.incomes?.forEach(income => {
-              console.log(`    > "${income.concept}" (trimmed: "${income.concept ? income.concept.trim() : ''}")`);
+          project.project_phases
+            ?.filter((ep) => ep.id !== migratedPhase.id)
+            .forEach((ep) => {
+              console.log(
+                `  - "${ep.name}" (trimmed: "${ep.name ? ep.name.trim() : ""}")`,
+              );
+              ep.incomes?.forEach((income) => {
+                console.log(
+                  `    > "${income.concept}" (trimmed: "${income.concept ? income.concept.trim() : ""}")`,
+                );
+              });
             });
-          });
           console.log(`Migrated phase incomes:`);
-          migratedPhase.incomes?.forEach(income => {
-            console.log(`  - "${income.concept}" (trimmed: "${income.concept ? income.concept.trim() : ''}")`);
+          migratedPhase.incomes?.forEach((income) => {
+            console.log(
+              `  - "${income.concept}" (trimmed: "${income.concept ? income.concept.trim() : ""}")`,
+            );
           });
         }
-        
+
         // Skip if no incomes in migrated phase
         if (!migratedPhase.incomes || migratedPhase.incomes.length === 0) {
-          console.log(`  Phase ${migratedPhase.id} has no incomes, deleting empty phase`);
+          console.log(
+            `  Phase ${migratedPhase.id} has no incomes, deleting empty phase`,
+          );
           await strapi.query("project-phases").delete({ id: migratedPhase.id });
           phasesDeleted++;
           continue;
@@ -1635,19 +1765,25 @@ async function consolidateMigratedHoursPhases() {
           // Get all estimated hours for this income
           const estimatedHours = await strapi.query("estimated-hours").find({
             phase_income: migratedIncome.id,
-            _limit: -1
+            _limit: -1,
           });
 
           if (isProject236) {
-            console.log(`\n  Processing migrated income "${migratedIncome.concept}" (has ${estimatedHours?.length || 0} hours)`);
+            console.log(
+              `\n  Processing migrated income "${migratedIncome.concept}" (has ${estimatedHours?.length || 0} hours)`,
+            );
           }
 
           if (!estimatedHours || estimatedHours.length === 0) {
-            console.log(`  Income ${migratedIncome.id} "${migratedIncome.concept}" has no hours, skipping`);
+            console.log(
+              `  Income ${migratedIncome.id} "${migratedIncome.concept}" has no hours, skipping`,
+            );
             continue;
           }
 
-          console.log(`  Processing income "${migratedIncome.concept}" with ${estimatedHours.length} hour entries`);
+          console.log(
+            `  Processing income "${migratedIncome.concept}" with ${estimatedHours.length} hour entries`,
+          );
 
           // Group estimated hours by year (based on 'from' date)
           const hoursByYear = {};
@@ -1660,39 +1796,54 @@ async function consolidateMigratedHoursPhases() {
               hoursByYear[year].push(hour);
             } else {
               // If no 'from' date, put in special group
-              if (!hoursByYear['unknown']) {
-                hoursByYear['unknown'] = [];
+              if (!hoursByYear["unknown"]) {
+                hoursByYear["unknown"] = [];
               }
-              hoursByYear['unknown'].push(hour);
+              hoursByYear["unknown"].push(hour);
             }
           }
 
           if (isProject236) {
-            console.log(`    -> Hours grouped by year:`, Object.keys(hoursByYear).map(y => `${y}: ${hoursByYear[y].length}`).join(', '));
+            console.log(
+              `    -> Hours grouped by year:`,
+              Object.keys(hoursByYear)
+                .map((y) => `${y}: ${hoursByYear[y].length}`)
+                .join(", "),
+            );
           }
 
           // Process each year group separately
           for (const [year, yearHours] of Object.entries(hoursByYear)) {
             if (isProject236) {
-              console.log(`    -> Processing ${yearHours.length} hours for year ${year}`);
+              console.log(
+                `    -> Processing ${yearHours.length} hours for year ${year}`,
+              );
             }
 
             // Find execution phase matching this year
             let targetExecutionPhase = null;
-            const migratedConceptTrimmed = migratedIncome.concept ? migratedIncome.concept.trim() : '';
+            const migratedConceptTrimmed = migratedIncome.concept
+              ? migratedIncome.concept.trim()
+              : "";
 
             // If year is 'unknown', try to use the first matching phase
-            if (year === 'unknown') {
+            if (year === "unknown") {
               // Find the best matching original phase income by concept (with trim)
-              for (const originalPhase of project.project_original_phases || []) {
+              for (const originalPhase of project.project_original_phases ||
+                []) {
                 if (originalPhase.incomes) {
                   const found = originalPhase.incomes.find(
-                    oi => oi.concept && oi.concept.trim() === migratedConceptTrimmed
+                    (oi) =>
+                      oi.concept &&
+                      oi.concept.trim() === migratedConceptTrimmed,
                   );
                   if (found) {
                     const targetPhaseName = originalPhase.name.trim();
                     targetExecutionPhase = project.project_phases.find(
-                      ep => ep.name && ep.name.trim() === targetPhaseName && ep.id !== migratedPhase.id
+                      (ep) =>
+                        ep.name &&
+                        ep.name.trim() === targetPhaseName &&
+                        ep.id !== migratedPhase.id,
                     );
                     if (targetExecutionPhase) break;
                   }
@@ -1701,41 +1852,58 @@ async function consolidateMigratedHoursPhases() {
             } else {
               // Try to find execution phase by year name
               targetExecutionPhase = project.project_phases.find(
-                ep => ep.name && ep.name.trim() === year && ep.id !== migratedPhase.id
+                (ep) =>
+                  ep.name &&
+                  ep.name.trim() === year &&
+                  ep.id !== migratedPhase.id,
               );
 
               if (isProject236) {
                 if (targetExecutionPhase) {
-                  console.log(`      -> Found execution phase "${targetExecutionPhase.name}" for year ${year}`);
+                  console.log(
+                    `      -> Found execution phase "${targetExecutionPhase.name}" for year ${year}`,
+                  );
                 } else {
-                  console.log(`      -> No execution phase found for year ${year}`);
+                  console.log(
+                    `      -> No execution phase found for year ${year}`,
+                  );
                 }
               }
 
               // If no execution phase with that year name exists, create it
               if (!targetExecutionPhase) {
-                console.log(`  Creating new execution phase "${year}" for year-based hours`);
-                targetExecutionPhase = await strapi.query("project-phases").create({
-                  name: year,
-                  project: project.id,
-                  order: parseInt(year) - 2020 // Order by year
-                });
+                console.log(
+                  `  Creating new execution phase "${year}" for year-based hours`,
+                );
+                targetExecutionPhase = await strapi
+                  .query("project-phases")
+                  .create({
+                    name: year,
+                    project: project.id,
+                    order: parseInt(year) - 2020, // Order by year
+                  });
               }
             }
 
             if (!targetExecutionPhase) {
-              console.log(`  Warning: Could not find or create target phase for year ${year}, skipping ${yearHours.length} hours`);
+              console.log(
+                `  Warning: Could not find or create target phase for year ${year}, skipping ${yearHours.length} hours`,
+              );
               continue;
             }
 
             // Find or create matching income in target phase (with trim)
-            const migratedConcept = migratedIncome.concept ? migratedIncome.concept.trim() : '';
+            const migratedConcept = migratedIncome.concept
+              ? migratedIncome.concept.trim()
+              : "";
             let targetIncome = targetExecutionPhase.incomes?.find(
-              ei => ei.concept && ei.concept.trim() === migratedConcept
+              (ei) => ei.concept && ei.concept.trim() === migratedConcept,
             );
 
             if (!targetIncome) {
-              console.log(`  Creating new income "${migratedConcept}" in phase "${targetExecutionPhase.name}"`);
+              console.log(
+                `  Creating new income "${migratedConcept}" in phase "${targetExecutionPhase.name}"`,
+              );
               targetIncome = await strapi.query("phase-income").create({
                 concept: migratedConcept,
                 quantity: migratedIncome.quantity || 0,
@@ -1747,25 +1915,31 @@ async function consolidateMigratedHoursPhases() {
 
             // Move estimated hours for this year to target income
             for (const hour of yearHours) {
-              await strapi.query("estimated-hours").update(
-                { id: hour.id },
-                { phase_income: targetIncome.id }
-              );
+              await strapi
+                .query("estimated-hours")
+                .update({ id: hour.id }, { phase_income: targetIncome.id });
               hoursMoved++;
             }
 
             // Recalculate total_estimated_hours for target income
-            const allTargetHours = await strapi.query("estimated-hours").find({ 
+            const allTargetHours = await strapi.query("estimated-hours").find({
               phase_income: targetIncome.id,
-              _limit: -1 
+              _limit: -1,
             });
-            const totalHours = allTargetHours.reduce((sum, h) => sum + (parseFloat(h.quantity) || 0), 0);
-            await strapi.query("phase-income").update(
-              { id: targetIncome.id },
-              { total_estimated_hours: totalHours }
+            const totalHours = allTargetHours.reduce(
+              (sum, h) => sum + (parseFloat(h.quantity) || 0),
+              0,
             );
+            await strapi
+              .query("phase-income")
+              .update(
+                { id: targetIncome.id },
+                { total_estimated_hours: totalHours },
+              );
 
-            console.log(`  Moved ${yearHours.length} hour entries to "${targetExecutionPhase.name}" > "${targetIncome.concept}"`);
+            console.log(
+              `  Moved ${yearHours.length} hour entries to "${targetExecutionPhase.name}" > "${targetIncome.concept}"`,
+            );
             incomesProcessed++;
             phaseHadChanges = true;
           }
@@ -1773,18 +1947,18 @@ async function consolidateMigratedHoursPhases() {
 
         if (phaseHadChanges) {
           phasesProcessed++;
-          
+
           // Check if migrated phase is now empty and delete if so
           const remainingIncomes = await strapi.query("phase-income").find({
             project_phase: migratedPhase.id,
-            _limit: -1
+            _limit: -1,
           });
 
           let hasRemainingHours = false;
           for (const income of remainingIncomes) {
             const hours = await strapi.query("estimated-hours").find({
               phase_income: income.id,
-              _limit: 1
+              _limit: 1,
             });
             if (hours.length > 0) {
               hasRemainingHours = true;
@@ -1798,20 +1972,26 @@ async function consolidateMigratedHoursPhases() {
               await strapi.query("phase-income").delete({ id: income.id });
             }
             // Delete the phase itself
-            await strapi.query("project-phases").delete({ id: migratedPhase.id });
+            await strapi
+              .query("project-phases")
+              .delete({ id: migratedPhase.id });
             console.log(`  Deleted empty migrated phase ${migratedPhase.id}`);
             phasesDeleted++;
           } else {
-            console.log(`  Note: Migrated phase still has some hours that couldn't be moved`);
+            console.log(
+              `  Note: Migrated phase still has some hours that couldn't be moved`,
+            );
           }
         }
 
         if (isProject236) {
           console.log(`\n=== END PROJECT 236 CONSOLIDATION LOG ===\n`);
         }
-
       } catch (error) {
-        console.error(`Error processing migrated phase ${migratedPhase.id}:`, error);
+        console.error(
+          `Error processing migrated phase ${migratedPhase.id}:`,
+          error,
+        );
       }
     }
 
@@ -1820,9 +2000,11 @@ async function consolidateMigratedHoursPhases() {
     console.log(`  - Incomes processed: ${incomesProcessed}`);
     console.log(`  - Hours moved: ${hoursMoved}`);
     console.log(`  - Empty phases deleted: ${phasesDeleted}`);
-
   } catch (error) {
-    console.error("Error during consolidation of migrated hours phases:", error);
+    console.error(
+      "Error during consolidation of migrated hours phases:",
+      error,
+    );
     console.log("Consolidation will be retried next time the server starts");
   }
 }
@@ -1899,7 +2081,7 @@ async function populateVatTypes() {
     }
 
     console.log(
-      `[VAT TYPES] Done. Created: ${createdCount}, Already existed: ${existingCount}`
+      `[VAT TYPES] Done. Created: ${createdCount}, Already existed: ${existingCount}`,
     );
   } catch (error) {
     console.error("Error during VAT types population:", error);
@@ -1908,14 +2090,20 @@ async function populateVatTypes() {
 
 async function backfillPhaseVatPercentages() {
   try {
-    console.log("Starting VAT percentage backfill for phase incomes and expenses...");
+    console.log(
+      "Starting VAT percentage backfill for phase incomes and expenses...",
+    );
 
     let updatedIncomes = 0;
     let updatedExpenses = 0;
 
     // Process phase incomes
-    const phaseIncomes = await strapi.query("phase-income").find({ _limit: -1 });
-    console.log(`[VAT BACKFILL] Found ${phaseIncomes.length} phase incomes to process`);
+    const phaseIncomes = await strapi
+      .query("phase-income")
+      .find({ _limit: -1 });
+    console.log(
+      `[VAT BACKFILL] Found ${phaseIncomes.length} phase incomes to process`,
+    );
 
     for (const phaseIncome of phaseIncomes) {
       // Skip if vat_pct is already set
@@ -1927,29 +2115,39 @@ async function backfillPhaseVatPercentages() {
 
       // Get the income type
       if (phaseIncome.income_type) {
-        const incomeTypeId = typeof phaseIncome.income_type === 'object' 
-          ? phaseIncome.income_type.id 
-          : phaseIncome.income_type;
-        
-        const incomeType = await strapi.query("income-type").findOne({ id: incomeTypeId });
-        
-        if (incomeType && incomeType.vat_pct !== null && incomeType.vat_pct !== undefined) {
+        const incomeTypeId =
+          typeof phaseIncome.income_type === "object"
+            ? phaseIncome.income_type.id
+            : phaseIncome.income_type;
+
+        const incomeType = await strapi
+          .query("income-type")
+          .findOne({ id: incomeTypeId });
+
+        if (
+          incomeType &&
+          incomeType.vat_pct !== null &&
+          incomeType.vat_pct !== undefined
+        ) {
           vatPct = incomeType.vat_pct;
         }
       }
 
       // Update the phase income
-      await strapi.query("phase-income").update(
-        { id: phaseIncome.id },
-        { vat_pct: vatPct }
-      );
+      await strapi
+        .query("phase-income")
+        .update({ id: phaseIncome.id }, { vat_pct: vatPct });
 
       updatedIncomes++;
     }
 
     // Process phase expenses
-    const phaseExpenses = await strapi.query("phase-expense").find({ _limit: -1 });
-    console.log(`[VAT BACKFILL] Found ${phaseExpenses.length} phase expenses to process`);
+    const phaseExpenses = await strapi
+      .query("phase-expense")
+      .find({ _limit: -1 });
+    console.log(
+      `[VAT BACKFILL] Found ${phaseExpenses.length} phase expenses to process`,
+    );
 
     for (const phaseExpense of phaseExpenses) {
       // Skip if vat_pct is already set
@@ -1961,28 +2159,34 @@ async function backfillPhaseVatPercentages() {
 
       // Get the expense type
       if (phaseExpense.expense_type) {
-        const expenseTypeId = typeof phaseExpense.expense_type === 'object' 
-          ? phaseExpense.expense_type.id 
-          : phaseExpense.expense_type;
-        
-        const expenseType = await strapi.query("expense-type").findOne({ id: expenseTypeId });
-        
-        if (expenseType && expenseType.vat_pct !== null && expenseType.vat_pct !== undefined) {
+        const expenseTypeId =
+          typeof phaseExpense.expense_type === "object"
+            ? phaseExpense.expense_type.id
+            : phaseExpense.expense_type;
+
+        const expenseType = await strapi
+          .query("expense-type")
+          .findOne({ id: expenseTypeId });
+
+        if (
+          expenseType &&
+          expenseType.vat_pct !== null &&
+          expenseType.vat_pct !== undefined
+        ) {
           vatPct = expenseType.vat_pct;
         }
       }
 
       // Update the phase expense
-      await strapi.query("phase-expense").update(
-        { id: phaseExpense.id },
-        { vat_pct: vatPct }
-      );
+      await strapi
+        .query("phase-expense")
+        .update({ id: phaseExpense.id }, { vat_pct: vatPct });
 
       updatedExpenses++;
     }
 
     console.log(
-      `[VAT BACKFILL] Done. Updated incomes: ${updatedIncomes}, Updated expenses: ${updatedExpenses}`
+      `[VAT BACKFILL] Done. Updated incomes: ${updatedIncomes}, Updated expenses: ${updatedExpenses}`,
     );
   } catch (error) {
     console.error("Error during VAT percentage backfill:", error);
@@ -1997,7 +2201,9 @@ async function backfillCollectionGroupingFields() {
       pickup: true,
       _limit: -1,
     });
-    const pickupEnabledIds = (pickupEnabledRecords || []).map((record) => record.id);
+    const pickupEnabledIds = (pickupEnabledRecords || []).map(
+      (record) => record.id,
+    );
 
     if (pickupEnabledIds.length === 0) {
       console.log(
@@ -2154,7 +2360,8 @@ async function runStartupScript(scriptName, scriptHandler, options = {}) {
     _limit: 1,
   });
 
-  const lastRun = existingRuns && existingRuns.length > 0 ? existingRuns[0] : null;
+  const lastRun =
+    existingRuns && existingRuns.length > 0 ? existingRuns[0] : null;
 
   if (runOnce && lastRun && lastRun.end) {
     console.log(
@@ -2181,10 +2388,9 @@ async function runStartupScript(scriptName, scriptHandler, options = {}) {
 
   try {
     await scriptHandler();
-    await strapi.query("startup-scripts").update(
-      { id: execution.id },
-      { end: new Date() },
-    );
+    await strapi
+      .query("startup-scripts")
+      .update({ id: execution.id }, { end: new Date() });
     console.log(
       `[STARTUP SCRIPT] Completed ${scriptName} (execution #${execution.id})`,
     );
@@ -2241,15 +2447,13 @@ async function ensureCollectionOrderForDate(
     _limit: -1,
   });
 
-  const exactDateMatches = (candidates || []).filter(
-    (candidate) => {
-      const candidateDate = normalizeDate(
-        candidate.collection_pickup_date || candidate.estimated_delivery_date,
-      );
-      const candidateRouteId = getCollectionRouteId(candidate);
-      return candidateDate === targetDate && candidateRouteId === routeId;
-    },
-  );
+  const exactDateMatches = (candidates || []).filter((candidate) => {
+    const candidateDate = normalizeDate(
+      candidate.collection_pickup_date || candidate.estimated_delivery_date,
+    );
+    const candidateRouteId = getCollectionRouteId(candidate);
+    return candidateDate === targetDate && candidateRouteId === routeId;
+  });
 
   if (exactDateMatches.length > 0) {
     return exactDateMatches[0];
@@ -2315,7 +2519,9 @@ async function ensureCollectionOrderForDate(
 
 async function reconcileDateContaminatedCollectionOrders() {
   try {
-    console.log("Starting date contamination reconciliation for collection orders...");
+    console.log(
+      "Starting date contamination reconciliation for collection orders...",
+    );
 
     const collectionOrders = await strapi.query("orders").find({
       is_collection_order: true,
@@ -2399,10 +2605,12 @@ async function reconcileDateContaminatedCollectionOrders() {
         );
 
         for (const orderToMove of bucket.orders) {
-          await strapi.query("orders").update(
-            { id: orderToMove.id },
-            { collection_order: targetCollectionOrder.id, _internal: true },
-          );
+          await strapi
+            .query("orders")
+            .update(
+              { id: orderToMove.id },
+              { collection_order: targetCollectionOrder.id, _internal: true },
+            );
           relinkedCount++;
         }
 
@@ -2416,7 +2624,10 @@ async function reconcileDateContaminatedCollectionOrders() {
       `[COLLECTION DATE RECONCILE] Done. Contaminated groups: ${contaminatedCount}, relinked orders: ${relinkedCount}`,
     );
   } catch (error) {
-    console.error("Error during collection date contamination reconciliation:", error);
+    console.error(
+      "Error during collection date contamination reconciliation:",
+      error,
+    );
   }
 }
 
@@ -2437,7 +2648,9 @@ async function reconcileDuplicateCollectionOrders() {
         typeof co.contact === "object" ? co.contact?.id : co.contact;
       const routeId = getCollectionRouteId(co);
       const groupingDate =
-        normalizeDate(co.collection_pickup_date || co.estimated_delivery_date) || "";
+        normalizeDate(
+          co.collection_pickup_date || co.estimated_delivery_date,
+        ) || "";
 
       const key = `${ownerId}|${contactId}|${routeId}|${groupingDate}`;
       if (!grouped[key]) {
@@ -2506,13 +2719,18 @@ async function reconcileDuplicateCollectionOrders() {
       `[COLLECTION RECONCILE] Done. Duplicate groups: ${duplicateGroups}, relinked regular orders: ${relinkedOrders}, cancelled duplicates: ${cancelledDuplicates}`,
     );
   } catch (error) {
-    console.error("Error during duplicate collection orders reconciliation:", error);
+    console.error(
+      "Error during duplicate collection orders reconciliation:",
+      error,
+    );
   }
 }
 
 async function reconcileDeliveredCollectionOrders() {
   try {
-    console.log("Starting delivered status reconciliation for collection orders...");
+    console.log(
+      "Starting delivered status reconciliation for collection orders...",
+    );
 
     const collectionOrders = await strapi.query("orders").find({
       is_collection_order: true,
@@ -2553,10 +2771,12 @@ async function reconcileDeliveredCollectionOrders() {
       );
 
       if (allDeliveredOrInvoiced && collectionOrder.status !== "delivered") {
-        await strapi.query("orders").update(
-          { id: collectionOrder.id },
-          { status: "delivered", _internal: true },
-        );
+        await strapi
+          .query("orders")
+          .update(
+            { id: collectionOrder.id },
+            { status: "delivered", _internal: true },
+          );
 
         updated++;
         console.log(
@@ -2577,66 +2797,93 @@ async function reconcileDeliveredCollectionOrders() {
 }
 
 async function backfillStoredProjectTotals() {
-  console.log("[STORED TOTALS BACKFILL] Starting bulk refresh of project total_* columns...");
+  console.log(
+    "[STORED TOTALS BACKFILL] Starting bulk refresh of project total_* columns...",
+  );
   const summary = await refreshAllStoredTotals({ progressEvery: 50 });
   console.log(
     `[STORED TOTALS BACKFILL] Done. total=${summary.total}, processed=${summary.processed}, failed=${summary.failed}`,
   );
   if (summary.failed > 0) {
-    console.error("[STORED TOTALS BACKFILL] Errors:", summary.errors.slice(0, 20));
+    console.error(
+      "[STORED TOTALS BACKFILL] Errors:",
+      summary.errors.slice(0, 20),
+    );
   }
 }
 
 async function backfillTotalOriginalHours() {
-  console.log("[TOTAL ORIGINAL HOURS BACKFILL] Starting refresh to populate total_original_hours field...");
+  console.log(
+    "[TOTAL ORIGINAL HOURS BACKFILL] Starting refresh to populate total_original_hours field...",
+  );
   const summary = await refreshAllStoredTotals({ progressEvery: 50 });
   console.log(
     `[TOTAL ORIGINAL HOURS BACKFILL] Done. total=${summary.total}, processed=${summary.processed}, failed=${summary.failed}`,
   );
   if (summary.failed > 0) {
-    console.error("[TOTAL ORIGINAL HOURS BACKFILL] Errors:", summary.errors.slice(0, 20));
+    console.error(
+      "[TOTAL ORIGINAL HOURS BACKFILL] Errors:",
+      summary.errors.slice(0, 20),
+    );
   }
 }
 
 async function copyCanAssignActivitiesToDocuments() {
   try {
-    console.log("Starting to copy can_assign_activities to can_assign_documents...");
+    console.log(
+      "Starting to copy can_assign_activities to can_assign_documents...",
+    );
 
-    const projectStates = await strapi.query("project-state").find({ _limit: -1 });
+    const projectStates = await strapi
+      .query("project-state")
+      .find({ _limit: -1 });
 
-    console.log(`[PROJECT STATE] Found ${projectStates.length} project states to process`);
+    console.log(
+      `[PROJECT STATE] Found ${projectStates.length} project states to process`,
+    );
 
     let updatedCount = 0;
 
     for (const state of projectStates) {
       // Copy can_assign_activities value to can_assign_documents
-      const canAssignActivities = state.can_assign_activities !== null && state.can_assign_activities !== undefined
-        ? state.can_assign_activities
-        : false;
+      const canAssignActivities =
+        state.can_assign_activities !== null &&
+        state.can_assign_activities !== undefined
+          ? state.can_assign_activities
+          : false;
 
-      await strapi.query("project-state").update(
-        { id: state.id },
-        { can_assign_documents: canAssignActivities }
-      );
+      await strapi
+        .query("project-state")
+        .update(
+          { id: state.id },
+          { can_assign_documents: canAssignActivities },
+        );
 
       updatedCount++;
-      console.log(`[PROJECT STATE] Updated state "${state.name}" (id: ${state.id}): can_assign_documents = ${canAssignActivities}`);
+      console.log(
+        `[PROJECT STATE] Updated state "${state.name}" (id: ${state.id}): can_assign_documents = ${canAssignActivities}`,
+      );
     }
 
     console.log(`[PROJECT STATE] Done. Updated ${updatedCount} project states`);
   } catch (error) {
-    console.error("Error copying can_assign_activities to can_assign_documents:", error);
+    console.error(
+      "Error copying can_assign_activities to can_assign_documents:",
+      error,
+    );
   }
 }
 
 async function restoreLostOriginalHours() {
   try {
-    console.log("Starting restoration of lost original hours to execution phases...");
+    console.log(
+      "Starting restoration of lost original hours to execution phases...",
+    );
 
     // Get all projects with their phases and estimated hours
-    const allProjects = await strapi.query("project").find(
-      { _limit: -1, published_at_null: false },
-      [
+    const allProjects = await strapi
+      .query("project")
+      .find({ _limit: -1, published_at_null: false }, [
         "project_original_phases",
         "project_original_phases.incomes",
         "project_original_phases.incomes.estimated_hours",
@@ -2644,10 +2891,11 @@ async function restoreLostOriginalHours() {
         "project_phases",
         "project_phases.incomes",
         "project_phases.incomes.estimated_hours",
-      ]
-    );
+      ]);
 
-    console.log(`[RESTORE HOURS] Found ${allProjects.length} projects to check`);
+    console.log(
+      `[RESTORE HOURS] Found ${allProjects.length} projects to check`,
+    );
 
     let projectsRestored = 0;
     let hoursRestored = 0;
@@ -2655,7 +2903,10 @@ async function restoreLostOriginalHours() {
 
     for (const project of allProjects) {
       // Skip if no original phases
-      if (!project.project_original_phases || project.project_original_phases.length === 0) {
+      if (
+        !project.project_original_phases ||
+        project.project_original_phases.length === 0
+      ) {
         projectsSkipped++;
         continue;
       }
@@ -2667,38 +2918,46 @@ async function restoreLostOriginalHours() {
       }
 
       // Check if execution phases have ANY hours at all
-      const executionHoursQuery = await strapi.connections.default.raw(`
+      const executionHoursQuery = await strapi.connections.default.raw(
+        `
         SELECT COUNT(*) as count
         FROM estimated_hours eh
         JOIN phase_incomes pi ON eh.phase_income = pi.id
         JOIN project_phases pp ON pi.project_phase = pp.id
         WHERE pp.project = ?
-      `, [project.id]);
+      `,
+        [project.id],
+      );
 
       const executionHoursCount = executionHoursQuery[0][0].count;
-      
+
       // If execution phases already have hours, skip this project
       if (executionHoursCount > 0) {
         continue;
       }
 
       // Check if original phases have any hours
-      const originalHoursQuery = await strapi.connections.default.raw(`
+      const originalHoursQuery = await strapi.connections.default.raw(
+        `
         SELECT COUNT(*) as count
         FROM estimated_hours eh
         JOIN phase_incomes pi ON eh.phase_income = pi.id
         JOIN project_original_phases pop ON pi.project_original_phase = pop.id
         WHERE pop.project = ?
-      `, [project.id]);
+      `,
+        [project.id],
+      );
 
       const originalHoursCount = originalHoursQuery[0][0].count;
-      
+
       // If no original hours, nothing to restore
       if (originalHoursCount === 0) {
         continue;
       }
 
-      console.log(`[RESTORE HOURS] Project ${project.id} "${project.name}" has ${originalHoursCount} original hours but 0 execution hours - restoring...`);
+      console.log(
+        `[RESTORE HOURS] Project ${project.id} "${project.name}" has ${originalHoursCount} original hours but 0 execution hours - restoring...`,
+      );
 
       let projectHadRestores = false;
       let projectHoursCount = 0;
@@ -2715,7 +2974,10 @@ async function restoreLostOriginalHours() {
 
         // Try to find matching execution phase by name
         let targetPhase = project.project_phases.find(
-          ep => ep.name && originalPhase.name && ep.name.trim() === originalPhase.name.trim()
+          (ep) =>
+            ep.name &&
+            originalPhase.name &&
+            ep.name.trim() === originalPhase.name.trim(),
         );
 
         // If no matching phase found, use or create "Hores migrades" phase
@@ -2723,9 +2985,9 @@ async function restoreLostOriginalHours() {
           if (!migratedPhase) {
             // Try to find existing "Hores migrades" phase
             migratedPhase = project.project_phases.find(
-              ep => ep.name === "Hores migrades"
+              (ep) => ep.name === "Hores migrades",
             );
-            
+
             // Create "Hores migrades" phase if it doesn't exist
             if (!migratedPhase) {
               migratedPhase = await strapi.query("project-phases").create({
@@ -2743,7 +3005,10 @@ async function restoreLostOriginalHours() {
 
         // Iterate through incomes with estimated_hours
         for (const originalIncome of originalPhase.incomes) {
-          if (!originalIncome.estimated_hours || originalIncome.estimated_hours.length === 0) {
+          if (
+            !originalIncome.estimated_hours ||
+            originalIncome.estimated_hours.length === 0
+          ) {
             continue;
           }
 
@@ -2753,9 +3018,10 @@ async function restoreLostOriginalHours() {
             quantity: originalIncome.quantity || 0,
             amount: originalIncome.amount || 0,
             total_amount: originalIncome.total_amount || 0,
-            income_type: typeof originalIncome.income_type === 'object' 
-              ? originalIncome.income_type?.id 
-              : originalIncome.income_type,
+            income_type:
+              typeof originalIncome.income_type === "object"
+                ? originalIncome.income_type?.id
+                : originalIncome.income_type,
             project_phase: targetPhase.id,
             vat_pct: originalIncome.vat_pct || 21,
           });
@@ -2765,9 +3031,12 @@ async function restoreLostOriginalHours() {
             // Extract user ID safely
             let userId = null;
             if (hour.users_permissions_user) {
-              if (typeof hour.users_permissions_user === 'number') {
+              if (typeof hour.users_permissions_user === "number") {
                 userId = hour.users_permissions_user;
-              } else if (typeof hour.users_permissions_user === 'object' && hour.users_permissions_user.id) {
+              } else if (
+                typeof hour.users_permissions_user === "object" &&
+                hour.users_permissions_user.id
+              ) {
                 userId = hour.users_permissions_user.id;
               }
             }
@@ -2792,20 +3061,27 @@ async function restoreLostOriginalHours() {
           }
 
           // Recalculate total_estimated_hours aggregate field
-          const restoredHours = await strapi.query("estimated-hours").find({ 
-            phase_income: restoredIncome.id 
+          const restoredHours = await strapi.query("estimated-hours").find({
+            phase_income: restoredIncome.id,
           });
-          const totalHours = restoredHours.reduce((sum, h) => sum + (parseFloat(h.quantity) || 0), 0);
-          await strapi.query("phase-income").update(
-            { id: restoredIncome.id },
-            { total_estimated_hours: totalHours }
+          const totalHours = restoredHours.reduce(
+            (sum, h) => sum + (parseFloat(h.quantity) || 0),
+            0,
           );
+          await strapi
+            .query("phase-income")
+            .update(
+              { id: restoredIncome.id },
+              { total_estimated_hours: totalHours },
+            );
         }
       }
 
       if (projectHadRestores) {
         projectsRestored++;
-        console.log(`[RESTORE HOURS]   Restored ${projectHoursCount} hours for project "${project.name}"`);
+        console.log(
+          `[RESTORE HOURS]   Restored ${projectHoursCount} hours for project "${project.name}"`,
+        );
       }
     }
 
@@ -2813,7 +3089,6 @@ async function restoreLostOriginalHours() {
     console.log(`  - Projects restored: ${projectsRestored}`);
     console.log(`  - Projects skipped: ${projectsSkipped}`);
     console.log(`  - Total hours restored: ${hoursRestored}`);
-
   } catch (error) {
     console.error("Error during restoration of lost original hours:", error);
     console.log("Restoration will be retried next time the server starts");
@@ -2834,7 +3109,7 @@ async function backfillTransferRouteData() {
       const transferRoutes = await strapi.query("route").find({
         is_transfer_route: true,
         active: true,
-        _limit: -1
+        _limit: -1,
       });
 
       if (!transferRoutes || transferRoutes.length === 0) {
@@ -2865,11 +3140,11 @@ async function backfillTransferRouteData() {
         // Check if any transfer route operates on this day
         for (const route of transferRoutes) {
           const routeDayOfWeek = getRouteDayOfWeek(route);
-          
+
           if (routeDayOfWeek === currentDayOfWeek) {
             return {
               transfer_route: route.id,
-              transfer_route_date: currentDate.format("YYYY-MM-DD")
+              transfer_route_date: currentDate.format("YYYY-MM-DD"),
             };
           }
         }
@@ -2890,7 +3165,9 @@ async function backfillTransferRouteData() {
       _limit: -1,
     });
 
-    console.log(`[TRANSFER ROUTE BACKFILL] Found ${transferOrders.length} transfer orders to process`);
+    console.log(
+      `[TRANSFER ROUTE BACKFILL] Found ${transferOrders.length} transfer orders to process`,
+    );
 
     let updatedCount = 0;
     let skippedCount = 0;
@@ -2905,39 +3182,46 @@ async function backfillTransferRouteData() {
 
       // Skip if no estimated_delivery_date
       if (!order.estimated_delivery_date) {
-        console.log(`[TRANSFER ROUTE BACKFILL] Order #${order.id} has no estimated_delivery_date, skipping`);
+        console.log(
+          `[TRANSFER ROUTE BACKFILL] Order #${order.id} has no estimated_delivery_date, skipping`,
+        );
         skippedCount++;
         continue;
       }
 
       // Calculate transfer route
-      const transferRouteInfo = await calculateTransferRoute(order.estimated_delivery_date);
+      const transferRouteInfo = await calculateTransferRoute(
+        order.estimated_delivery_date,
+      );
 
       // Update the order if a transfer route was found
-      if (transferRouteInfo.transfer_route && transferRouteInfo.transfer_route_date) {
+      if (
+        transferRouteInfo.transfer_route &&
+        transferRouteInfo.transfer_route_date
+      ) {
         await strapi.query("orders").update(
           { id: order.id },
           {
             transfer_route: transferRouteInfo.transfer_route,
             transfer_route_date: transferRouteInfo.transfer_route_date,
             _internal: true,
-          }
+          },
         );
 
         updatedCount++;
         console.log(
-          `[TRANSFER ROUTE BACKFILL] Updated order #${order.id} with transfer_route=${transferRouteInfo.transfer_route}, transfer_route_date=${transferRouteInfo.transfer_route_date}`
+          `[TRANSFER ROUTE BACKFILL] Updated order #${order.id} with transfer_route=${transferRouteInfo.transfer_route}, transfer_route_date=${transferRouteInfo.transfer_route_date}`,
         );
       } else {
         noRouteFoundCount++;
         console.log(
-          `[TRANSFER ROUTE BACKFILL] No transfer route found for order #${order.id} with delivery date ${order.estimated_delivery_date}`
+          `[TRANSFER ROUTE BACKFILL] No transfer route found for order #${order.id} with delivery date ${order.estimated_delivery_date}`,
         );
       }
     }
 
     console.log(
-      `[TRANSFER ROUTE BACKFILL] Done. Updated: ${updatedCount}, Skipped (already has data): ${skippedCount}, No route found: ${noRouteFoundCount}`
+      `[TRANSFER ROUTE BACKFILL] Done. Updated: ${updatedCount}, Skipped (already has data): ${skippedCount}, No route found: ${noRouteFoundCount}`,
     );
   } catch (error) {
     console.error("Error during transfer route data backfill:", error);
@@ -2947,9 +3231,15 @@ async function backfillTransferRouteData() {
 async function initializeFaceEndpoints() {
   try {
     console.log("[FACE ENDPOINTS] Initializing FACe endpoint configuration...");
-    console.log("[FACE ENDPOINTS] Note: Since Feb 27, 2026, FACe has new portal structure");
-    console.log("[FACE ENDPOINTS] Production: https://api.face.gob.es/providers");
-    console.log("[FACE ENDPOINTS] Test: https://se-api.face.gob.es/providers (probable)");
+    console.log(
+      "[FACE ENDPOINTS] Note: Since Feb 27, 2026, FACe has new portal structure",
+    );
+    console.log(
+      "[FACE ENDPOINTS] Production: https://api.face.gob.es/providers",
+    );
+    console.log(
+      "[FACE ENDPOINTS] Test: https://se-api.face.gob.es/providers (probable)",
+    );
 
     const me = await strapi.query("me").findOne();
 
@@ -2981,7 +3271,9 @@ async function initializeFaceEndpoints() {
     if (!me.face_invoice_format) {
       updates.face_invoice_format = "facturae";
       needsUpdate = true;
-      console.log("[FACE ENDPOINTS] Setting default invoice format to Facturae 3.2.2");
+      console.log(
+        "[FACE ENDPOINTS] Setting default invoice format to Facturae 3.2.2",
+      );
     }
 
     if (needsUpdate) {
@@ -2997,46 +3289,54 @@ async function initializeFaceEndpoints() {
 
 async function recalculateTransferRoutes() {
   try {
-    console.log("[RECALCULATE TRANSFER ROUTES] Starting recalculation with new is_transfer_route_date logic...");
-    
+    console.log(
+      "[RECALCULATE TRANSFER ROUTES] Starting recalculation with new is_transfer_route_date logic...",
+    );
+
     // Find all orders with transfer=true and status pending or processed
     const ordersWithTransfer = await strapi.query("orders").find({
       transfer: true,
       status_in: ["pending", "processed"],
-      _limit: -1
+      _limit: -1,
     });
-    
-    console.log(`[RECALCULATE TRANSFER ROUTES] Found ${ordersWithTransfer.length} orders to process`);
-    
+
+    console.log(
+      `[RECALCULATE TRANSFER ROUTES] Found ${ordersWithTransfer.length} orders to process`,
+    );
+
     let updatedCount = 0;
     let skippedCount = 0;
-    
+
     // Import moment at the beginning
     const moment = require("moment");
-    
+
     for (const order of ordersWithTransfer) {
       // Skip if missing required fields
       if (!order.estimated_delivery_date) {
-        console.log(`[RECALCULATE TRANSFER ROUTES] Skipping order ${order.id} - missing estimated_delivery_date`);
+        console.log(
+          `[RECALCULATE TRANSFER ROUTES] Skipping order ${order.id} - missing estimated_delivery_date`,
+        );
         skippedCount++;
         continue;
       }
-      
+
       const estimatedDeliveryDate = order.estimated_delivery_date;
-      
+
       // Get all active transfer routes
       const transferRoutes = await strapi.query("route").find({
         is_transfer_route: true,
         active: true,
-        _limit: -1
+        _limit: -1,
       });
-      
+
       if (!transferRoutes || transferRoutes.length === 0) {
-        console.log(`[RECALCULATE TRANSFER ROUTES] Skipping order ${order.id} - no active transfer routes found`);
+        console.log(
+          `[RECALCULATE TRANSFER ROUTES] Skipping order ${order.id} - no active transfer routes found`,
+        );
         skippedCount++;
         continue;
       }
-      
+
       // Helper function to get day of week from route
       const getRouteDayOfWeek = (route) => {
         if (route.monday) return 1;
@@ -3048,20 +3348,23 @@ async function recalculateTransferRoutes() {
         if (route.sunday) return 0;
         return -1;
       };
-      
+
       let currentDate = moment(estimatedDeliveryDate);
       let maxIterations = 14;
       let iterations = 0;
       let foundRoute = null;
       let foundDate = null;
-      
+
       while (iterations < maxIterations) {
         const currentDayOfWeek = currentDate.day();
-        const isSameDay = currentDate.isSame(moment(estimatedDeliveryDate), 'day');
-        
+        const isSameDay = currentDate.isSame(
+          moment(estimatedDeliveryDate),
+          "day",
+        );
+
         for (const tRoute of transferRoutes) {
           const routeDayOfWeek = getRouteDayOfWeek(tRoute);
-          
+
           if (routeDayOfWeek === currentDayOfWeek) {
             // Check date restriction based on is_transfer_route_date
             if (tRoute.is_transfer_route_date === "only_same_day") {
@@ -3069,74 +3372,254 @@ async function recalculateTransferRoutes() {
             } else if (tRoute.is_transfer_route_date === "only_previous_days") {
               if (isSameDay) continue;
             }
-            
+
             foundRoute = tRoute.id;
             foundDate = currentDate.format("YYYY-MM-DD");
             break;
           }
         }
-        
+
         if (foundRoute) break;
-        
+
         currentDate = currentDate.subtract(1, "day");
         iterations++;
       }
-      
+
       // Update order with new transfer route data
       const updateData = {
         transfer_route: foundRoute,
         transfer_route_date: foundDate,
-        _internal: true
+        _internal: true,
       };
-      
-      await strapi.query("orders").update(
-        { id: order.id },
-        updateData
+
+      await strapi.query("orders").update({ id: order.id }, updateData);
+
+      console.log(
+        `[RECALCULATE TRANSFER ROUTES] Updated order ${order.id} - route: ${foundRoute}, date: ${foundDate}`,
       );
-      
-      console.log(`[RECALCULATE TRANSFER ROUTES] Updated order ${order.id} - route: ${foundRoute}, date: ${foundDate}`);
       updatedCount++;
     }
-    
-    console.log(`[RECALCULATE TRANSFER ROUTES] Completed - Updated: ${updatedCount}, Skipped: ${skippedCount}`);
+
+    console.log(
+      `[RECALCULATE TRANSFER ROUTES] Completed - Updated: ${updatedCount}, Skipped: ${skippedCount}`,
+    );
   } catch (error) {
     console.error("[RECALCULATE TRANSFER ROUTES] Error:", error);
+  }
+}
+
+async function backfillPhaseDocumentDates() {
+  try {
+    console.log(
+      "[PHASE DATES BACKFILL] Starting backfill of date_estimate_document and date for paid phases with attached documents...",
+    );
+
+    /**
+     * Given a document object, compute the target dates based on priority:
+     *
+     * For `date` (payment forecast - "Previsió pag."):
+     *   1. paid_date  (actual payment date — best match since the phase is paid)
+     *   2. paybefore  (payment deadline)
+     *   3. emitted    (invoice issue date as last-resort fallback)
+     *
+     * For `date_estimate_document` (document/invoice forecast - "Previsió fac."):
+     *   1. emitted    (when the document was issued)
+     *   2. paybefore  (payment deadline as fallback)
+     *   3. paid_date  (last resort)
+     *
+     * Only fills in dates that are currently null (does not overwrite existing values).
+     */
+    const computeDatesFromDocument = (doc) => {
+      if (!doc) return null;
+
+      const paymentDate = doc.paid_date || doc.paybefore || doc.emitted || null;
+      const documentDate =
+        doc.emitted || doc.paybefore || doc.paid_date || null;
+
+      return { paymentDate, documentDate };
+    };
+
+    // phase-income document relations → Strapi models
+    const incomeDocumentConfigs = [
+      { field: "invoice", model: "emitted-invoice" },
+      { field: "grant", model: "received-grant" },
+      { field: "income", model: "received-income" },
+    ];
+
+    // phase-expense document relations → Strapi models
+    const expenseDocumentConfigs = [
+      { field: "invoice", model: "received-invoice" },
+      { field: "expense", model: "received-expense" },
+      { field: "grant", model: "received-grant" },
+      { field: "ticket", model: "ticket" },
+      { field: "diet", model: "diet" },
+    ];
+
+    // === Process phase-incomes ===
+    console.log("[PHASE DATES BACKFILL] Processing phase-incomes...");
+    const paidIncomes = await strapi.query("phase-income").find({
+      _limit: -1,
+      paid: true,
+    });
+
+    console.log(
+      `[PHASE DATES BACKFILL] Found ${paidIncomes.length} paid phase-incomes`,
+    );
+
+    let incomesUpdated = 0;
+
+    for (const income of paidIncomes) {
+      const needsDate = !income.date;
+      const needsEstimate = !income.date_estimate_document;
+
+      if (!needsDate && !needsEstimate) continue;
+
+      // Find the attached document
+      let document = null;
+      for (const config of incomeDocumentConfigs) {
+        if (income[config.field]) {
+          const docId =
+            typeof income[config.field] === "object"
+              ? income[config.field].id
+              : income[config.field];
+          if (docId) {
+            document = await strapi.query(config.model).findOne({ id: docId });
+            if (document) break;
+          }
+        }
+      }
+
+      if (!document) continue;
+
+      const dates = computeDatesFromDocument(document);
+      if (!dates) continue;
+
+      const updateData = {};
+      if (needsDate && dates.paymentDate) {
+        updateData.date = dates.paymentDate;
+      }
+      if (needsEstimate && dates.documentDate) {
+        updateData.date_estimate_document = dates.documentDate;
+      }
+
+      if (Object.keys(updateData).length > 0) {
+        await strapi
+          .query("phase-income")
+          .update({ id: income.id }, updateData);
+        incomesUpdated++;
+      }
+    }
+
+    console.log(
+      `[PHASE DATES BACKFILL] Updated ${incomesUpdated} phase-incomes`,
+    );
+
+    // === Process phase-expenses ===
+    console.log("[PHASE DATES BACKFILL] Processing phase-expenses...");
+    const paidExpenses = await strapi.query("phase-expense").find({
+      _limit: -1,
+      paid: true,
+    });
+
+    console.log(
+      `[PHASE DATES BACKFILL] Found ${paidExpenses.length} paid phase-expenses`,
+    );
+
+    let expensesUpdated = 0;
+
+    for (const expense of paidExpenses) {
+      const needsDate = !expense.date;
+      const needsEstimate = !expense.date_estimate_document;
+
+      if (!needsDate && !needsEstimate) continue;
+
+      // Find the attached document
+      let document = null;
+      for (const config of expenseDocumentConfigs) {
+        if (expense[config.field]) {
+          const docId =
+            typeof expense[config.field] === "object"
+              ? expense[config.field].id
+              : expense[config.field];
+          if (docId) {
+            document = await strapi.query(config.model).findOne({ id: docId });
+            if (document) break;
+          }
+        }
+      }
+
+      if (!document) continue;
+
+      const dates = computeDatesFromDocument(document);
+      if (!dates) continue;
+
+      const updateData = {};
+      if (needsDate && dates.paymentDate) {
+        updateData.date = dates.paymentDate;
+      }
+      if (needsEstimate && dates.documentDate) {
+        updateData.date_estimate_document = dates.documentDate;
+      }
+
+      if (Object.keys(updateData).length > 0) {
+        await strapi
+          .query("phase-expense")
+          .update({ id: expense.id }, updateData);
+        expensesUpdated++;
+      }
+    }
+
+    console.log(
+      `[PHASE DATES BACKFILL] Updated ${expensesUpdated} phase-expenses`,
+    );
+    console.log(
+      `[PHASE DATES BACKFILL] Done. Total updated: ${incomesUpdated + expensesUpdated}`,
+    );
+  } catch (error) {
+    console.error("[PHASE DATES BACKFILL] Error:", error);
   }
 }
 
 async function migrateFrontUrlToMe() {
   try {
     console.log("[MIGRATE FRONT_URL] Starting migration from config to me...");
-    
+
     // Get config entity
     const config = await strapi.query("config").findOne();
-    
+
     if (!config || !config.front_url) {
-      console.log("[MIGRATE FRONT_URL] No front_url found in config, skipping migration");
+      console.log(
+        "[MIGRATE FRONT_URL] No front_url found in config, skipping migration",
+      );
       return;
     }
-    
+
     // Get me entity
     const me = await strapi.query("me").findOne();
-    
+
     if (!me) {
-      console.log("[MIGRATE FRONT_URL] Me entity not found, skipping migration");
+      console.log(
+        "[MIGRATE FRONT_URL] Me entity not found, skipping migration",
+      );
       return;
     }
-    
+
     // Check if me already has front_url
     if (me.front_url) {
-      console.log("[MIGRATE FRONT_URL] Me already has front_url, skipping migration");
+      console.log(
+        "[MIGRATE FRONT_URL] Me already has front_url, skipping migration",
+      );
       return;
     }
-    
+
     // Copy front_url from config to me
-    await strapi.query("me").update(
-      { id: me.id },
-      { front_url: config.front_url }
+    await strapi
+      .query("me")
+      .update({ id: me.id }, { front_url: config.front_url });
+
+    console.log(
+      `[MIGRATE FRONT_URL] Successfully migrated front_url: ${config.front_url}`,
     );
-    
-    console.log(`[MIGRATE FRONT_URL] Successfully migrated front_url: ${config.front_url}`);
   } catch (error) {
     console.error("[MIGRATE FRONT_URL] Error:", error);
   }
@@ -3155,11 +3638,9 @@ module.exports = async () => {
   //   backfillCollectionGroupingFields,
   //   { runOnce: true },
   // );
-  await runStartupScript(
-    "populateVatTypes",
-    populateVatTypes,
-    { runOnce: true },
-  );
+  await runStartupScript("populateVatTypes", populateVatTypes, {
+    runOnce: true,
+  });
   await runStartupScript(
     "backfillPhaseVatPercentages",
     backfillPhaseVatPercentages,
@@ -3180,11 +3661,9 @@ module.exports = async () => {
     copyCanAssignActivitiesToDocuments,
     { runOnce: true },
   );
-  await runStartupScript(
-    "restoreLostOriginalHours",
-    restoreLostOriginalHours,
-    { runOnce: true },
-  );
+  await runStartupScript("restoreLostOriginalHours", restoreLostOriginalHours, {
+    runOnce: true,
+  });
   await runStartupScript(
     "backfillTransferRouteData",
     backfillTransferRouteData,
@@ -3195,14 +3674,15 @@ module.exports = async () => {
     recalculateTransferRoutes,
     { runOnce: true },
   );
+  await runStartupScript("initializeFaceEndpoints", initializeFaceEndpoints, {
+    runOnce: true,
+  });
+  await runStartupScript("migrateFrontUrlToMe", migrateFrontUrlToMe, {
+    runOnce: true,
+  });
   await runStartupScript(
-    "initializeFaceEndpoints",
-    initializeFaceEndpoints,
-    { runOnce: true },
-  );
-  await runStartupScript(
-    "migrateFrontUrlToMe",
-    migrateFrontUrlToMe,
+    "backfillPhaseDocumentDates",
+    backfillPhaseDocumentDates,
     { runOnce: true },
   );
 

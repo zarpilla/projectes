@@ -74,6 +74,14 @@
     },
     {
       "method": "GET",
+      "path": "/projects/dedications",
+      "handler": "project.findDedications",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "GET",
       "path": "/projects/economic-detail",
       "handler": "project.findWithEconomicDetail",
       "config": {

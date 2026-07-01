@@ -424,6 +424,45 @@ module.exports = {
       .filter((p) => p.published_at !== "" && p.published_at !== null);
   },
 
+  // Returns the fully aggregated dedication Gantt table (leaders, periods and
+  // precomputed cells) plus the per-day dedications rows used by the Excel
+  // export. Moves the expensive per-day expansion + re-aggregation previously
+  // done client-side (DedicationGantt.vue / DedicationGanttChart.vue) to the
+  // server. Query params mirror /projects/phases:
+  //   _where[project_state_in]=1,2,3   (required, comma-separated)
+  //   hoursType=previstes|original      (default previstes)
+  //   year=2026                         (default current year)
+  //   view=month|week                   (default month)
+  async findDedications(ctx) {
+    const { buildDedicationGantt } = require("../services/dedicationGantt");
+
+    const hoursType = ctx.query.hoursType || "previstes";
+    const view = ctx.query.view === "week" ? "week" : "month";
+    const year = ctx.query.year ? parseInt(ctx.query.year, 10) : null;
+
+    let projectStateIds = [];
+    const raw =
+      (ctx.query._where && ctx.query._where.project_state_in) ||
+      ctx.query.project_state_in;
+    if (raw) {
+      projectStateIds = String(raw)
+        .split(",")
+        .map((s) => parseInt(s.trim(), 10))
+        .filter((n) => !isNaN(n));
+    }
+
+    if (!projectStateIds.length) {
+      return ctx.badRequest("project_state_in is required");
+    }
+
+    return await buildDedicationGantt({
+      projectStateIds,
+      hoursType,
+      year,
+      view,
+    });
+  },
+
   async findWithEconomicDetail(ctx) {
     // Calling the default core action
 
