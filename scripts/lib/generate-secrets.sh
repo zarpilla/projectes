@@ -17,11 +17,14 @@ generate_password() {
     local upper=$(tr -dc 'A-Z' < /dev/urandom | head -c 3)
     local lower=$(tr -dc 'a-z' < /dev/urandom | head -c 3)
     local digit=$(tr -dc '0-9' < /dev/urandom | head -c 3)
-    local special=$(tr -dc '!@#$%^&*()-_=+' < /dev/urandom | head -c 2)
+    # NOTE: '-' must be the LAST char in the bracket expr, otherwise tr treats
+    # it as a range (e.g. ')-_' admitted comma, backslash, etc.). '&' is also
+    # excluded because it is special in sed(1) replacements (s|...|&...|).
+    local special=$(tr -dc '!@#$%^*()_=+-' < /dev/urandom | head -c 2)
     
     # Combine and add random chars to reach desired length
     local remaining=$((length - 11))
-    local random=$(tr -dc 'A-Za-z0-9!@#$%^&*()-_=+' < /dev/urandom | head -c "$remaining")
+    local random=$(tr -dc 'A-Za-z0-9!@#$%^*()_=+-' < /dev/urandom | head -c "$remaining")
     
     # Combine all parts and shuffle
     echo "${upper}${lower}${digit}${special}${random}" | fold -w1 | shuf | tr -d '\n'
@@ -42,8 +45,12 @@ generate_all_secrets() {
 
 # Generate secrets and export as environment variables
 export_secrets() {
-    while IFS='=' read -r key value; do
-        export "$key=$value"
+    local line key value
+    # Split on the FIRST '=' only so base64 padding ('==') in values survives.
+    while IFS= read -r line; do
+        key="${line%%=*}"
+        value="${line#*=}"
+        [[ -n "$key" ]] && export "$key=$value"
     done < <(generate_all_secrets)
 }
 

@@ -208,8 +208,9 @@ fi
 if [ "$START_PHASE" -gt 2 ]; then
     info "Generating secrets (required for later phases)..."
     
-    # Generate and explicitly export all secrets
-    eval $(generate_all_secrets)
+    # Generate and export all secrets (eval is unsafe: secrets contain
+    # shell metacharacters like '$', '(', ')'. export_secrets reads them safely.)
+    export_secrets
     export DB_PASSWORD APP_KEY_1 APP_KEY_2 APP_KEY_3 API_TOKEN_SALT ADMIN_JWT_SECRET TRANSFER_TOKEN_SALT JWT_SECRET
     
     info "Secrets generated and exported"
@@ -301,8 +302,8 @@ echo -e "${BLUE}=== Phase 2: Generate Secrets ===${NC}"
 
 info "Generating secure secrets..."
 
-# Generate and explicitly export all secrets
-eval $(generate_all_secrets)
+# Generate and export all secrets safely (see note above on export_secrets)
+export_secrets
 export DB_PASSWORD APP_KEY_1 APP_KEY_2 APP_KEY_3 API_TOKEN_SALT ADMIN_JWT_SECRET TRANSFER_TOKEN_SALT JWT_SECRET
 
 success "All secrets generated"
@@ -489,7 +490,7 @@ if [ "$DRY_RUN" = false ]; then
         -e "s|{{SMTP_USER}}|$DEFAULT_SMTP_USER|g" \
         -e "s|{{SMTP_PASS}}|$DEFAULT_SMTP_PASS|g" \
         "$SCRIPT_DIR/templates/pm2-app.config.js.template" > "$PM2_CONFIG_FILE"
-    
+
     success "PM2 config created: $PM2_CONFIG_FILE"
 else
     echo -e "${YELLOW}[DRY-RUN]${NC} Would create PM2 config at: $PM2_CONFIG_FILE"

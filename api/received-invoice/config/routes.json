@@ -41,6 +41,14 @@
       }
     },
     {
+      "method": "POST",
+      "path": "/received-invoices/upload",
+      "handler": "received-invoice.upload",
+      "config": {
+        "policies": []
+      }
+    },
+    {
       "method": "PUT",
       "path": "/received-invoices/:id",
       "handler": "received-invoice.update",

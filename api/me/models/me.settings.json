@@ -171,10 +171,20 @@
     "front_url": {
       "type": "string"
     },
+    "pdf_invoice_parser": {
+      "type": "boolean",
+      "default": false
+    },
     "dir3_api_url": {
       "type": "string"
     },
     "dir3_api_token": {
+      "type": "password"
+    },
+    "invoice_parser_api_url": {
+      "type": "string"
+    },
+    "invoice_parser_api_token": {
       "type": "password"
     }
   }

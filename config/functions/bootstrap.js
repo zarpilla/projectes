@@ -87,6 +87,7 @@ async function importSeedData() {
       "findone",
       "update",
       "delete",
+      "upload",
     ],
     "received-income": [
       "create",
@@ -103,6 +104,7 @@ async function importSeedData() {
       "findone",
       "update",
       "delete",
+      "upload",
     ],
     payroll: ["create", "find", "findone", "update", "delete", "createAll"],
     project: [
