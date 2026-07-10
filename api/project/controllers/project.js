@@ -289,6 +289,7 @@ module.exports = {
         .search(ctx.query, [
           "leader",
           "project_scope",
+          "project_likelihood",
           "project_state",
           "project_type",
           "clients",
@@ -301,6 +302,7 @@ module.exports = {
         .find(ctx.query, [
           "leader",
           "project_scope",
+          "project_likelihood",
           "project_state",
           "project_type",
           "clients",
@@ -514,6 +516,7 @@ module.exports = {
             "project_state",
             "activities",
             "project_scope",
+            "project_likelihood",
             "project_type",
             "leader",
             "project_phases",
@@ -1176,6 +1179,7 @@ module.exports = {
         "default_dedication_type",
         "mother",
         "region",
+        "project_likelihood",
         "documents",
         "project_type",
         "strategies",
@@ -1231,6 +1235,7 @@ module.exports = {
       .findOne({ id: id }, [
         "leader",
         "project_scope",
+        "project_likelihood",
         "project_state",
         "project_type",
         "clients",

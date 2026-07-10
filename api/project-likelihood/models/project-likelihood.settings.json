@@ -1,0 +1,17 @@
+{
+  "kind": "collectionType",
+  "collectionName": "project_likelihoods",
+  "info": {
+    "name": "project_likelihood"
+  },
+  "options": {
+    "increments": true,
+    "timestamps": true,
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "name": {
+      "type": "string"
+    }
+  }
+}

@@ -91,6 +91,7 @@ module.exports = {
         'income-type': 'income-types',
         'legal-form': 'legal-forms',
         'payment-method': 'payment-methods',
+        'project-likelihood': 'project-likelihoods',
         'project-state': 'project-states',
         'project-type': 'project-types',
         'regions': 'regions',
@@ -136,9 +137,13 @@ module.exports = {
           displayName: 'Mètodes de pagament', 
           displayNameSingular: 'Mètode de pagament' 
         },
-        'project-state': { 
-          displayName: 'Estats de projecte', 
-          displayNameSingular: 'Estat de projecte' 
+        'project-likelihood': {
+          displayName: 'Probabilitats de projecte',
+          displayNameSingular: 'Probabilitat de projecte'
+        },
+        'project-state': {
+          displayName: 'Estats de projecte',
+          displayNameSingular: 'Estat de projecte'
         },
         'project-type': { 
           displayName: 'Tipus de projecte', 

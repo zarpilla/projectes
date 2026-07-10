@@ -483,6 +483,10 @@ const buildProjectInfo = (p) => ({
     p.project_state && p.project_state.id ? p.project_state.name : "",
   project_type:
     p.project_type && p.project_type.id ? p.project_type.name : "",
+  project_likelihood:
+    p.project_likelihood && p.project_likelihood.id
+      ? p.project_likelihood.name
+      : "",
   project_leader: p.leader && p.leader.id ? p.leader.username : "",
   mother: p.mother && p.mother.id ? p.mother.name : p.name,
   structural_expenses: p.structural_expenses,

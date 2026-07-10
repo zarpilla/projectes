@@ -10,6 +10,15 @@ module.exports = {
         PORT: '{{BACKEND_PORT}}',
         NODE_ENV: 'production',
         URL: 'https://{{DOMAIN}}',
+        // --- Structured logging for centralized collection (Loki/Grafana) ---
+        // Strapi 3.6.11 uses Pino. PRETTY_PRINT=false makes it emit one JSON
+        // object per line (level, time, msg, err...) instead of colored text.
+        // The Promtail shipper parses these JSON lines so you can filter/group
+        // in Grafana by level, instance, etc.
+        //   pino numeric levels: 30=info 40=warn 50=error 60=fatal
+        STRAPI_LOG_PRETTY_PRINT: 'false',
+        STRAPI_LOG_TIMESTAMP: 'true',
+        STRAPI_LOG_LEVEL: process.env.STRAPI_LOG_LEVEL || 'info',
         DATABASE_CLIENT: 'mysql',
         DATABASE_HOST: '127.0.0.1',
         DATABASE_PORT: '3306',

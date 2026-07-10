@@ -27,6 +27,9 @@
     "project_scope": {
       "model": "project-scope"
     },
+    "project_likelihood": {
+      "model": "project-likelihood"
+    },
     "leader": {
       "plugin": "users-permissions",
       "model": "user"

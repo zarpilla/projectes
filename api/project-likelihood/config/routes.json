@@ -1,0 +1,52 @@
+{
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/project-likelihoods",
+      "handler": "project-likelihood.find",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/project-likelihoods/count",
+      "handler": "project-likelihood.count",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/project-likelihoods/:id",
+      "handler": "project-likelihood.findOne",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/project-likelihoods",
+      "handler": "project-likelihood.create",
+      "config": {
+        "policies": ["global::isAdmin"]
+      }
+    },
+    {
+      "method": "PUT",
+      "path": "/project-likelihoods/:id",
+      "handler": "project-likelihood.update",
+      "config": {
+        "policies": ["global::isAdmin"]
+      }
+    },
+    {
+      "method": "DELETE",
+      "path": "/project-likelihoods/:id",
+      "handler": "project-likelihood.delete",
+      "config": {
+        "policies": ["global::isAdmin"]
+      }
+    }
+  ]
+}

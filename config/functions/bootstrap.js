@@ -225,6 +225,7 @@ async function importSeedData() {
     "legal-form": ["create", "find", "findone", "update", "delete"],
     "payment-method": ["create", "find", "findone", "update", "delete"],
     "project-state": ["create", "find", "findone", "update", "delete"],
+    "project-likelihood": ["create", "find", "findone", "update", "delete"],
     "project-type": ["create", "find", "findone", "update", "delete"],
     "project-scope": ["create", "find", "findone", "update", "delete"],
     sector: ["create", "find", "findone", "update", "delete"],
