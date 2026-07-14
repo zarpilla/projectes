@@ -82,6 +82,14 @@
     },
     {
       "method": "GET",
+      "path": "/projects/real-dedications",
+      "handler": "project.findRealDedications",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "GET",
       "path": "/projects/economic-detail",
       "handler": "project.findWithEconomicDetail",
       "config": {

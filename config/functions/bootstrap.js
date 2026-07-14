@@ -124,6 +124,7 @@ async function importSeedData() {
       "calculateproject2",
       "findoneextended",
       "finddedications",
+      "findrealdedications",
     ],
     quote: ["create", "find", "findone", "update", "delete"],
     contacts: [

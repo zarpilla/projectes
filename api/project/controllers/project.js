@@ -465,6 +465,40 @@ module.exports = {
     });
   },
 
+  // Real (done) counterpart of findDedications: aggregates logged `activity`
+  // hours instead of estimated hours. Same { leaders, periods, cells,
+  // dedications } contract so the client reuses DedicationGanttChart.vue.
+  //   _where[project_state_in]=1,2,3   (required, comma-separated)
+  //   year=2026                         (default current year)
+  //   view=month|week                   (default month)
+  async findRealDedications(ctx) {
+    const { buildRealDedicationGantt } = require("../services/realDedicationGantt");
+
+    const view = ctx.query.view === "week" ? "week" : "month";
+    const year = ctx.query.year ? parseInt(ctx.query.year, 10) : null;
+
+    let projectStateIds = [];
+    const raw =
+      (ctx.query._where && ctx.query._where.project_state_in) ||
+      ctx.query.project_state_in;
+    if (raw) {
+      projectStateIds = String(raw)
+        .split(",")
+        .map((s) => parseInt(s.trim(), 10))
+        .filter((n) => !isNaN(n));
+    }
+
+    if (!projectStateIds.length) {
+      return ctx.badRequest("project_state_in is required");
+    }
+
+    return await buildRealDedicationGantt({
+      projectStateIds,
+      year,
+      view,
+    });
+  },
+
   async findWithEconomicDetail(ctx) {
     // Calling the default core action
 
