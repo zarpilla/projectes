@@ -82,28 +82,62 @@ module.exports = {
     // This ensures we only process real projects, not container/mother projects
     const allProjects = allProjectsRaw.filter(p => p.is_mother !== true);
     
-    // Also filter projects with the specified state filter for the return list
-    const projects = allProjects.filter(p => {
-      // If no specific filter, return all non-mother projects
-      if (!ctx.query || (!ctx.query.project_states && !ctx.query.filter)) {
-        return true;
-      }
-      
-      // Apply project_states filter
-      if (ctx.query.project_states) {
-        const states = ctx.query.project_states.split(",").map((x) => parseInt(x));
-        return states.includes(p.project_state);
-      }
-      
-      // Apply filter shortcuts
+    // Filter projects by state, type and likelihood.
+    // Each filter is a comma-separated id list; "null" is a valid token that
+    // represents the "Sense" bucket (projects with no value set).
+    //   - param absent (undefined)        => no filter on that field
+    //   - param present but empty ("")    => match NOTHING (all deselected)
+    //   - param present with ids/"null"   => only those ids (+ null bucket)
+    const parseIdList = (raw) => {
+      if (raw === undefined || raw === null) return null; // not sent -> no filter
+      if (raw === "") return [];                          // sent empty -> match nothing
+      return raw.split(",").map((x) => (x === "null" ? null : parseInt(x)));
+    };
+
+    let selectedStates = parseIdList(ctx.query.project_states);
+    // Legacy filter shortcuts (only honored when project_states is not sent)
+    if (selectedStates === null && ctx.query.filter) {
       if (ctx.query.filter === "approved") {
-        return [1, 2].includes(p.project_state);
+        selectedStates = [1, 2];
       } else if (ctx.query.filter === "requested") {
-        return p.project_state === 3;
+        selectedStates = [3];
       }
-      
-      return true;
-    });
+    }
+    const selectedTypes = parseIdList(ctx.query.project_types);
+    const selectedLikelihoods = parseIdList(ctx.query.project_likelihoods);
+
+    // Some projects store a non-FK sentinel (0) instead of NULL for
+    // project_type / project_likelihood — legacy dirty data. Treat any falsy
+    // value (null, 0, undefined) as the "Sense" bucket, so the null bucket
+    // (selected via the "null" token) covers them too.
+    const bucket = (val) => (val ? val : null);
+
+    const inSet = (val, set) => (set === null ? true : set.includes(val));
+
+    const projects = allProjects.filter(
+      p =>
+        inSet(p.project_state, selectedStates) &&
+        inSet(bucket(p.project_type), selectedTypes) &&
+        inSet(bucket(p.project_likelihood), selectedLikelihoods)
+    );
+
+    // Set of project ids that pass the filter, used to also scope the realized
+    // rows (emitted/received invoices & incomes/expenses, treasury operations).
+    // A realized document is kept only if at least one of its linked projects
+    // (single `.project` or many `.projects`) is in this set. Documents with no
+    // project link are kept (they are not project-scoped data).
+    const allowedProjectIds = new Set(projects.map(p => p.id));
+    const projectInFilter = (doc) => {
+      const ids = [];
+      if (doc.project && doc.project.id) ids.push(doc.project.id);
+      if (Array.isArray(doc.projects)) {
+        for (const pr of doc.projects) {
+          if (pr && pr.id) ids.push(pr.id);
+        }
+      }
+      if (ids.length === 0) return true; // not project-scoped -> keep
+      return ids.some(id => allowedProjectIds.has(id));
+    };
 
     const years = 
     await strapi.query("year").find({ _limit: -1 })
@@ -316,6 +350,7 @@ module.exports = {
     }
 
     treasuries.forEach((e) => {
+      if (!projectInFilter(e)) return;
       let expense;
       const validationKey = getValidationKey('treasuries', e.id);
       
@@ -417,6 +452,7 @@ module.exports = {
     
     // emitted
     for (let i of emitted) {
+      if (!projectInFilter(i)) continue;
       const date = i.paid_date
         ? moment(i.paid_date, "YYYY-MM-DD")
         : i.estimated_payment
@@ -483,6 +519,7 @@ module.exports = {
       }
     }
     for (let i of receivedIncomes) {
+      if (!projectInFilter(i)) continue;
       const date = i.paid_date
         ? moment(i.paid_date, "YYYY-MM-DD")
         : i.estimated_payment
@@ -551,6 +588,7 @@ module.exports = {
     }
     // received
     for (let e of received) {
+      if (!projectInFilter(e)) continue;
       const date = e.paid_date
         ? moment(e.paid_date, "YYYY-MM-DD")
         : e.paybefore
@@ -654,6 +692,7 @@ module.exports = {
       }
     }
     for (let e of receivedExpenses) {
+      if (!projectInFilter(e)) continue;
       const date = e.paid_date
         ? moment(e.paid_date, "YYYY-MM-DD")
         : e.paybefore

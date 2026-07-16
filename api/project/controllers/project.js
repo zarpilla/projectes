@@ -386,7 +386,12 @@ module.exports = {
     let projects;
     const { published_at_null, _limit, activities, hoursType, ...where } = ctx.query;
 
-    const project_state_in = where._where.project_state_in;
+    // project_state_in is optional: when omitted, no state filter is applied
+    // and all published projects are returned. Accept either
+    // _where[project_state_in]=1,2,3 or project_state_in=1,2,3 (same shape the
+    // dedications endpoints use).
+    const project_state_in =
+      (where._where && where._where.project_state_in) || where.project_state_in;
 
     // Determine which phase type to use based on hoursType parameter
     const phaseType = hoursType === 'previstes' ? 'project_phases' : 'project_original_phases';
@@ -407,14 +412,21 @@ module.exports = {
         .query("project")
         .model.fetchAll({ withRelated: [phaseType] });
     } else {
+      // Normalize the (optional) state filter into an array of integer ids.
+      const stateIds = project_state_in
+        ? String(project_state_in)
+            .split(",")
+            .map((s) => parseInt(s.trim(), 10))
+            .filter((n) => !isNaN(n))
+        : [];
+
       projects = await strapi
         .query("project")
         .model.query((qb) => {
-          qb.select("id", "name", "published_at").where(
-            "project_state",
-            "in",
-            project_state_in.split(",").map((s) => parseInt(s))
-          );
+          qb.select("id", "name", "published_at");
+          if (stateIds.length) {
+            qb.where("project_state", "in", stateIds);
+          }
         })
         .fetchAll({
           withRelated: withRelated,

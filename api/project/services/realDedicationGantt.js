@@ -89,7 +89,14 @@ async function buildRealDedicationGantt({ projectStateIds, year, view = "month" 
         });
       }
     })
-    .fetchAll({ withRelated: ["project", "users_permissions_user"] });
+    .fetchAll({
+      withRelated: [
+        "project",
+        "project.project_type",
+        "project.project_likelihood",
+        "users_permissions_user",
+      ],
+    });
 
   const activities = activitiesCollection.map((entity) =>
     sanitizeEntity(entity, { model: strapi.models.activity })
@@ -146,6 +153,14 @@ async function buildRealDedicationGantt({ projectStateIds, year, view = "month" 
     periodKeysSet.add(periodKey);
 
     const projectName = a.project && a.project.name ? a.project.name : "-";
+    const typeName =
+      a.project && a.project.project_type && a.project.project_type.name
+        ? a.project.project_type.name
+        : "-";
+    const likelihoodName =
+      a.project && a.project.project_likelihood && a.project.project_likelihood.name
+        ? a.project.project_likelihood.name
+        : "-";
 
     // Row for the Excel export (sparse shape consistent with dedicationGantt).
     dedications.push({
@@ -168,7 +183,14 @@ async function buildRealDedicationGantt({ projectStateIds, year, view = "month" 
       b[periodKey] = entry;
     }
     entry.total += a.hours;
-    entry.projects[projectName] = (entry.projects[projectName] || 0) + a.hours;
+    if (!entry.projects[projectName]) {
+      entry.projects[projectName] = {
+        hours: 0,
+        type: typeName,
+        likelihood: likelihoodName,
+      };
+    }
+    entry.projects[projectName].hours += a.hours;
   }
 
   // 4) Periods: sorted union of activity period keys (matches the
@@ -217,7 +239,7 @@ async function buildRealDedicationGantt({ projectStateIds, year, view = "month" 
         hours = entry.total.toFixed(2);
 
         // Expected hours: working days in the month x daily dedication hours
-        // for that period. Identical to the forecast page so the two are
+        // for that period. Identical to to the forecast page so the two are
         // directly comparable.
         const startDate = period.key + "-01";
         const dailyHours = dailyHoursForFirstMatch(
@@ -236,23 +258,46 @@ async function buildRealDedicationGantt({ projectStateIds, year, view = "month" 
           else cssClass = "dedication-good";
         }
 
-        const tooltipLines = [];
+        // Per-project breakdown (hours + type + likelihood) so the client can
+        // regroup the tooltip on the fly without refetching.
+        const breakdown = [];
         const projectNames = Object.keys(entry.projects);
         for (let i = 0; i < projectNames.length; i++) {
           const name = projectNames[i];
-          const hrs = entry.projects[name];
-          if (hrs) {
-            tooltipLines.push(`${name}: ${hrs.toFixed(2)}h`);
-          }
+          const info = entry.projects[name];
+          breakdown.push({
+            project: name,
+            type: info.type,
+            likelihood: info.likelihood,
+            hours: info.hours,
+          });
+        }
+        // Highest hours first — stable display order across groupings.
+        breakdown.sort((a, b) => b.hours - a.hours);
+
+        const diff = expectedHours - entry.total;
+
+        const tooltipLines = [];
+        for (let i = 0; i < breakdown.length; i++) {
+          tooltipLines.push(`${breakdown[i].project}: ${breakdown[i].hours.toFixed(2)}h`);
         }
         tooltipLines.push("");
         tooltipLines.push(`Hores període: ${expectedHours.toFixed(2)}h`);
-        const diff = expectedHours - entry.total;
         if (diff > 0) tooltipLines.push(`Falten: ${diff.toFixed(2)}h`);
         else if (diff < 0)
           tooltipLines.push(`Sobren: ${Math.abs(diff).toFixed(2)}h`);
-
         tooltip = tooltipLines.join("\n");
+
+        cells[leader.id][period.key] = {
+          hours,
+          percentage,
+          cssClass,
+          tooltip,
+          breakdown,
+          expected: expectedHours,
+          diff,
+        };
+        return;
       }
 
       cells[leader.id][period.key] = { hours, percentage, cssClass, tooltip };

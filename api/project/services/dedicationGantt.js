@@ -173,12 +173,23 @@ async function buildDedicationGantt({
     `${phaseType}.incomes`,
     `${phaseType}.incomes.estimated_hours`,
     `${phaseType}.incomes.estimated_hours.users_permissions_user`,
+    "project_type",
+    "project_likelihood",
   ];
 
   const projectsCollection = await strapi
     .query("project")
     .model.query((qb) => {
-      qb.select("id", "name", "published_at").where(
+      // Include project_type / project_likelihood FK columns so the nested
+      // withRelated relations below can populate (Bookshelf eager-loading
+      // needs the FK value present on the loaded model).
+      qb.select(
+        "id",
+        "name",
+        "published_at",
+        "project_type",
+        "project_likelihood"
+      ).where(
         "project_state",
         "in",
         projectStateIds.map((s) => parseInt(s, 10))
@@ -269,6 +280,33 @@ async function buildDedicationGantt({
     bucket[leader.id] = {};
   });
 
+  // Project metadata by name so each tooltip row can carry its type /
+  // likelihood without re-resolving it per row. Festive-type names (used as a
+  // synthetic project name in 5b) fall back to the defaults below.
+  const projectMeta = Object.create(null);
+  for (let pi = 0; pi < projectList.length; pi++) {
+    const p = projectList[pi];
+    projectMeta[p.name] = {
+      type:
+        p.project_type && p.project_type.name ? p.project_type.name : "-",
+      likelihood:
+        p.project_likelihood && p.project_likelihood.name
+          ? p.project_likelihood.name
+          : "-",
+    };
+  }
+  const EMPTY_META = { type: "-", likelihood: "-" };
+
+  // Helper: add hours to a project entry, promoting it to object form on first
+  // touch so it carries type/likelihood for the tooltip breakdown.
+  function addProjectHours(entry, name, hrs) {
+    if (!entry.projects[name]) {
+      const meta = projectMeta[name] || EMPTY_META;
+      entry.projects[name] = { hours: 0, type: meta.type, likelihood: meta.likelihood };
+    }
+    entry.projects[name].hours += hrs;
+  }
+
   // 5a) Dedications.
   for (let i = 0; i < dedications.length; i++) {
     const d = dedications[i];
@@ -289,8 +327,7 @@ async function buildDedicationGantt({
     }
     entry.total += d.estimated_hours;
     entry.dedications.push(d);
-    entry.projects[d.project_name] =
-      (entry.projects[d.project_name] || 0) + d.estimated_hours;
+    addProjectHours(entry, d.project_name, d.estimated_hours);
   }
 
   // 5b) Festives, resolved per leader using that leader's daily dedications.
@@ -341,7 +378,7 @@ async function buildDedicationGantt({
           estimated_hours: dailyHours,
           username: leader.username,
         });
-        entry.projects[fname] = (entry.projects[fname] || 0) + dailyHours;
+        addProjectHours(entry, fname, dailyHours);
       }
     }
   });
@@ -421,23 +458,46 @@ async function buildDedicationGantt({
           else cssClass = "dedication-good";
         }
 
-        const tooltipLines = [];
+        // Per-project breakdown (hours + type + likelihood) so the client can
+        // regroup the tooltip on the fly without refetching.
+        const breakdown = [];
         const projectNames = Object.keys(entry.projects);
         for (let i = 0; i < projectNames.length; i++) {
           const name = projectNames[i];
-          const hrs = entry.projects[name];
-          if (hrs) {
-            tooltipLines.push(`${name}: ${hrs.toFixed(2)}h`);
-          }
+          const info = entry.projects[name];
+          breakdown.push({
+            project: name,
+            type: info.type,
+            likelihood: info.likelihood,
+            hours: info.hours,
+          });
+        }
+        // Highest hours first — stable display order across groupings.
+        breakdown.sort((a, b) => b.hours - a.hours);
+
+        const diff = expectedHours - entry.total;
+
+        const tooltipLines = [];
+        for (let i = 0; i < breakdown.length; i++) {
+          tooltipLines.push(`${breakdown[i].project}: ${breakdown[i].hours.toFixed(2)}h`);
         }
         tooltipLines.push("");
         tooltipLines.push(`Hores període: ${expectedHours.toFixed(2)}h`);
-        const diff = expectedHours - entry.total;
         if (diff > 0) tooltipLines.push(`Falten: ${diff.toFixed(2)}h`);
         else if (diff < 0)
           tooltipLines.push(`Sobren: ${Math.abs(diff).toFixed(2)}h`);
-
         tooltip = tooltipLines.join("\n");
+
+        cells[leader.id][period.key] = {
+          hours,
+          percentage,
+          cssClass,
+          tooltip,
+          breakdown,
+          expected: expectedHours,
+          diff,
+        };
+        return;
       }
 
       cells[leader.id][period.key] = { hours, percentage, cssClass, tooltip };
