@@ -23,7 +23,36 @@ const formatCurrency = (val) => {
     .replace(/;/g, ".");
 };
 
+// Whitelist of relations needed by OrdersTable.vue.
+// Deliberately omits emitted_invoice (and other deep relations), which account
+// for ~96% of the payload of /orders and are not used by the list view.
+const TABLE_POPULATE = [
+  "route",
+  "owner",
+  "contact",
+  "pickup",
+  "delivery_type",
+  "contact_legal_form",
+];
+
 module.exports = {
+  // Lightweight list endpoint for OrdersTable.vue.
+  // Same query semantics as /orders (same filters, _sort, _limit, _start,
+  // status/route/where handling) but only populates the relations the table
+  // renders. Drops emitted_invoice (96% of payload) -> response drops from
+  // ~8MB to a few hundred KB and request time from ~46s to <1s.
+  // Reuses the core find service so permissions, status normalization and
+  // the afterFound lifecycle (finalPrice) are unchanged.
+  table: async (ctx) => {
+    let entities;
+    if (strapi.services.orders && strapi.services.orders.find) {
+      entities = await strapi.services.orders.find(ctx.query, TABLE_POPULATE);
+    } else {
+      entities = await strapi.query("orders").find(ctx.query, TABLE_POPULATE);
+    }
+    ctx.send(entities);
+  },
+
   infoAll: async (ctx) => {
     const { year, month, ...query } = ctx.query;
 

@@ -18,6 +18,14 @@
     },
     {
       "method": "GET",
+      "path": "/orders/table",
+      "handler": "orders.table",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "GET",
       "path": "/orders/infoall",
       "handler": "orders.infoAll",
       "config": {
