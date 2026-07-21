@@ -83,7 +83,22 @@ function patchConfig(file) {
   } else {
     console.log(`already ok : ${file}`);
   }
-  return changed;
+  // Return the (possibly patched) config so main can re-start the apps in it.
+  return changed ? cfg : null;
+}
+
+// pm2's `restart`/`reload`/`reload --update-env` do NOT re-read the
+// `env:` block of a .config.js file — they re-inject the snapshot the
+// daemon holds in memory (often from ~/.pm2/dump.pm2). The ONLY way to
+// make pm2 re-read the file is to delete the app and start it again
+// from the config file. This touches just the apps in this file.
+function restartApps(cfg, file) {
+  for (const app of cfg.apps || []) {
+    if (!app.name) continue;
+    console.log(`  restarting ${app.name} (delete + start from config)...`);
+    execSync(`pm2 delete "${app.name}" 2>/dev/null || true`, { stdio: 'inherit' });
+    execSync(`pm2 start "${file}"`, { stdio: 'inherit' });
+  }
 }
 
 function main() {
@@ -94,24 +109,27 @@ function main() {
   }
   console.log(`Mode: ${APPLY ? 'APPLY (will write files)' : 'DRY-RUN (--apply to write)'}`);
   console.log('----');
-  let any = false;
-  for (const f of files) if (patchConfig(f)) any = true;
+  const patched = [];
+  for (const f of files) {
+    const cfg = patchConfig(f);
+    if (cfg) patched.push({ cfg, file: f });
+  }
 
   if (!APPLY) {
     console.log('\nDry-run only. Re-run with --apply to write & restart pm2.');
     return;
   }
-  if (!any) {
+  if (!patched.length) {
     console.log('\nNothing to change.');
     return;
   }
-  console.log('\nReloading pm2 (zero-downtime reload where possible)...');
+  console.log('\nRestarting patched apps so pm2 re-reads their env...');
+  for (const { cfg, file } of patched) restartApps(cfg, file);
   try {
-    execSync('pm2 reload all', { stdio: 'inherit' });
     execSync('pm2 save', { stdio: 'inherit' });
     console.log('Done. New logs are now JSON.');
   } catch (e) {
-    console.error('pm2 reload failed. Try `pm2 restart all` manually.');
+    console.error('pm2 save failed. Run `pm2 save` manually.');
     process.exit(1);
   }
 }
