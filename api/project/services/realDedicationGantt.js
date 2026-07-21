@@ -35,22 +35,6 @@ function periodKeyFromDate(dateStr, view) {
   return `${year}-W${String(week).padStart(2, "0")}`;
 }
 
-// Mirrors DedicationGanttChart.vue numberOfWorkingDays: weekdays from the
-// given date to the end of its month. Used to compute the expected hours per
-// cell so the real page stays comparable with the forecast page.
-function numberOfWorkingDays(dayStr) {
-  const init = moment(dayStr, "YYYY-MM-DD");
-  if (!init.isValid()) return 0;
-  const end = init.clone().endOf("month");
-  const days = Math.round(moment.duration(end.diff(init)).asDays());
-  let n = 0;
-  for (let i = 0; i < days; i++) {
-    const currentDay = init.clone().add(i, "day");
-    if (![0, 6].includes(currentDay.day())) n++;
-  }
-  return n;
-}
-
 // cellData daily-hours resolution: first matching range wins, default 8
 // (matches DedicationGanttChart.vue cellData handling).
 function dailyHoursForFirstMatch(dailyDedications, dateStr) {
@@ -63,6 +47,76 @@ function dailyHoursForFirstMatch(dailyDedications, dateStr) {
     }
   }
   return 8;
+}
+
+// Expected hours for a month period, faithful to /dedicacio-saldo semantics
+// (see DedicationSaldo.vue): each weekday contributes its daily-dedication
+// hours, weekends contribute 0, AND festive days contribute 0 — festive days
+// zero the theoretical capacity rather than being subtracted as a lump.
+//
+// `festivesSet` is a Set of "YYYY-MM-DD" strings applicable to the user
+// (global festives ∪ user-specific festives). Iterates every day from the
+// first of the period's month to its end, resolving dailyHours per-day so
+// mid-month daily-dedication range changes are honored.
+//
+// Returns { expected, festive } where `festive` is the total daily-dedication
+// hours the festive weekdays consumed (i.e. the capacity removed by holidays),
+// surfaced to the tooltip as a single festive/holiday total.
+function capacityForMonth(periodKey, dailyDedications, festivesSet) {
+  const start = moment(periodKey + "-01", "YYYY-MM-DD");
+  if (!start.isValid()) return { expected: 0, festive: 0 };
+  const end = start.clone().endOf("month");
+  const totalDays = Math.round(moment.duration(end.diff(start)).asDays());
+
+  let expected = 0;
+  let festive = 0;
+  for (let i = 0; i <= totalDays; i++) {
+    const day = start.clone().add(i, "day");
+    const dow = day.day();
+    // Weekend -> 0 expected (matches saldo `day !== 0 && day !== 6` guard).
+    if (dow === 0 || dow === 6) continue;
+    const dateStr = day.format("YYYY-MM-DD");
+    const dh = dailyHoursForFirstMatch(dailyDedications, dateStr);
+    // Festive (global or user-specific) -> 0 expected, but its hours count
+    // toward the festive total so the tooltip can show holiday capacity.
+    if (festivesSet && festivesSet.has(dateStr)) {
+      festive += dh;
+      continue;
+    }
+    expected += dh;
+  }
+  return { expected, festive };
+}
+
+// Expected hours for an ISO-week period, festive-aware (saldo-equivalent).
+// A week is taken as 5 working days (Mon-Fri); festive weekdays reduce the
+// count just like in the month view. Returns { expected, festive } — see
+// capacityForMonth for the festive semantics.
+function capacityForWeek(periodKey, dailyDedications, festivesSet) {
+  const parts = periodKey.split("-W");
+  const year = parseInt(parts[0], 10);
+  const week = parseInt(parts[1], 10);
+  if (!year || !week) return { expected: 0, festive: 0 };
+
+  // Monday of the ISO week.
+  const monday = moment().isoWeekYear(year).isoWeek(week).isoWeekday(1);
+  if (!monday.isValid()) return { expected: 0, festive: 0 };
+
+  let expected = 0;
+  let festive = 0;
+  for (let d = 0; d < 7; d++) {
+    const day = monday.clone().add(d, "day");
+    const dow = day.day();
+    if (dow === 0 || dow === 6) continue;
+    const dateStr = day.format("YYYY-MM-DD");
+    const dh = dailyHoursForFirstMatch(dailyDedications, dateStr);
+    if (festivesSet && festivesSet.has(dateStr)) {
+      festive += dh;
+      continue;
+    }
+    expected += dh;
+  }
+  return { expected, festive };
 }
 
 // Builds the real (done) dedication Gantt table from `activity` records,
@@ -101,6 +155,33 @@ async function buildRealDedicationGantt({ projectStateIds, year, view = "month" 
   const activities = activitiesCollection.map((entity) =>
     sanitizeEntity(entity, { model: strapi.models.activity })
   );
+
+  // 1b) Festives for the target year, with festive_type and user. Used to
+  //     zero festive days out of each cell's expected capacity, mirroring
+  //     /dedicacio-saldo (global festives apply to everyone, user-specific
+  //     ones apply only to that user).
+  const festives = await strapi
+    .query("festive")
+    .find({ date_gte: `${targetYear}-01-01`, date_lte: `${targetYear}-12-31`, _limit: -1 }, [
+      "festive_type",
+      "users_permissions_user",
+    ]);
+
+  // Global festive dates (users_permissions_user === null).
+  const globalFestiveDates = new Set();
+  // Per-user festive dates, keyed by user id.
+  const festivesByUserId = Object.create(null);
+  for (let i = 0; i < festives.length; i++) {
+    const f = festives[i];
+    if (!f.date) continue;
+    const u = f.users_permissions_user;
+    if (u === null || u === undefined) {
+      globalFestiveDates.add(f.date);
+    } else if (u.id != null) {
+      if (!festivesByUserId[u.id]) festivesByUserId[u.id] = new Set();
+      festivesByUserId[u.id].add(f.date);
+    }
+  }
 
   // 2) Users (leaders) with their daily dedications — needed both for the
   //    leaders payload and to compute each cell's expected hours.
@@ -194,8 +275,9 @@ async function buildRealDedicationGantt({ projectStateIds, year, view = "month" 
   }
 
   // 4) Periods: sorted union of activity period keys (matches the
-  //    DedicationGanttChart.vue periods computed property, without festives
-  //    since real hours naturally exclude holidays).
+  //    DedicationGanttChart.vue periods computed property). Periods are driven
+  //    by where real hours were logged; festives reduce each cell's expected
+  //    capacity but do not add periods on their own.
   const periods = Array.from(periodKeysSet)
     .sort()
     .map((key) => {
@@ -238,16 +320,27 @@ async function buildRealDedicationGantt({ projectStateIds, year, view = "month" 
       if (entry) {
         hours = entry.total.toFixed(2);
 
-        // Expected hours: working days in the month x daily dedication hours
-        // for that period. Identical to to the forecast page so the two are
-        // directly comparable.
-        const startDate = period.key + "-01";
-        const dailyHours = dailyHoursForFirstMatch(
-          leader.daily_dedications,
-          startDate
-        );
-        const expectedHours =
-          (safeView === "month" ? numberOfWorkingDays(startDate) : 5) * dailyHours;
+        // Expected hours for this period, festive-aware (matches
+        // /dedicacio-saldo): weekends and festive days contribute 0; each
+        // other weekday contributes the user's daily-dedication hours.
+        const userFestiveDates = festivesByUserId[leader.id];
+        // Per-leader festive set = global festives ∪ this user's festives.
+        // Built lazily once per leader and cached on the leader object.
+        let festivesSet = leader._festivesSet;
+        if (!festivesSet) {
+          festivesSet = new Set(globalFestiveDates);
+          if (userFestiveDates) {
+            userFestiveDates.forEach((d) => festivesSet.add(d));
+          }
+          leader._festivesSet = festivesSet;
+        }
+
+        const capacity =
+          safeView === "month"
+            ? capacityForMonth(period.key, leader.daily_dedications, festivesSet)
+            : capacityForWeek(period.key, leader.daily_dedications, festivesSet);
+        const expectedHours = capacity.expected;
+        const festiveHours = capacity.festive;
 
         if (expectedHours > 0) {
           const pct = (entry.total / expectedHours) * 100;
@@ -295,6 +388,7 @@ async function buildRealDedicationGantt({ projectStateIds, year, view = "month" 
           tooltip,
           breakdown,
           expected: expectedHours,
+          festive: festiveHours,
           diff,
         };
         return;
