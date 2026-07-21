@@ -495,6 +495,9 @@ module.exports = {
         to: `/document/${i.id}/emitted-invoices`,
         bank_account: getBankAccountName(i.bank_account, me.bank_account_default),
         conceptProject,
+        // Signed VAT (positive for income documents) so the forecast totals can
+        // strip the VAT portion from the gross total_amount on the client.
+        signed_vat: i.total_vat ? i.total_vat : 0,
         validation_key: validationKey,
         is_validated: validationMap[validationKey] || false
       };
@@ -564,6 +567,9 @@ module.exports = {
         to: `/document/${i.id}/received-incomes`,
         bank_account: getBankAccountName(i.bank_account, me.bank_account_default),
         conceptProject,
+        // Signed VAT (positive for income documents) so the forecast totals can
+        // strip the VAT portion from the gross total_amount on the client.
+        signed_vat: i.total_vat ? i.total_vat : 0,
         validation_key: validationKey,
         is_validated: validationMap[validationKey] || false
       };
@@ -629,6 +635,9 @@ module.exports = {
         to: `/document/${e.id}/received-invoices`,
         bank_account: getBankAccountName(e.bank_account, me.bank_account_default),
         conceptProject,
+        // Signed VAT (negative for expense documents) so the forecast totals can
+        // strip the VAT portion from the gross total_amount on the client.
+        signed_vat: e.total_vat ? -1 * e.total_vat : 0,
         validation_key: validationKey,
         is_validated: validationMap[validationKey] || false
       };
@@ -735,6 +744,9 @@ module.exports = {
         to: `/document/${e.id}/received-expenses`,
         bank_account: getBankAccountName(e.bank_account, me.bank_account_default),
         conceptProject,
+        // Signed VAT (negative for expense documents) so the forecast totals can
+        // strip the VAT portion from the gross total_amount on the client.
+        signed_vat: e.total_vat ? -1 * e.total_vat : 0,
         validation_key: validationKey,
         is_validated: validationMap[validationKey] || false
       };
