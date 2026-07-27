@@ -3630,6 +3630,123 @@ async function migrateFrontUrlToMe() {
   }
 }
 
+// Remove duplicate payrolls (same user + year + month) created by the
+// concurrent-request bug in payrolls/create-all. For each duplicate group we
+// keep the "best" record (prefer paid/paid_date/validated/bank_account, then
+// lowest id = original) and delete the rest, re-pointing any
+// treasury_validations that referenced the deleted rows.
+async function cleanupDuplicatePayrolls() {
+  try {
+    console.log("[CLEANUP DUPLICATE PAYROLLS] Starting...");
+
+    const relId = (value) => {
+      if (!value) return null;
+      return typeof value === "object" ? value.id || null : value;
+    };
+
+    const payrolls = await strapi.query("payroll").find(
+      { _limit: -1 },
+      ["year", "month", "users_permissions_user", "bank_account"],
+    );
+    console.log(
+      `[CLEANUP DUPLICATE PAYROLLS] Found ${payrolls.length} payrolls`,
+    );
+
+    // Group by (users_permissions_user, year, month)
+    const groups = new Map();
+    for (const p of payrolls) {
+      const userId = relId(p.users_permissions_user);
+      const yearId = relId(p.year);
+      const monthId = relId(p.month);
+      // Rows missing the key relations can't be safely deduplicated here.
+      if (!userId || !yearId || !monthId) continue;
+      const key = `${userId}|${yearId}|${monthId}`;
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(p);
+    }
+
+    // treasury_validations reference payrolls by (entity_type='payrolls',
+    // entity_id=<payroll id>). Index them by payroll id so we can re-point
+    // validations from deleted duplicates to the keeper (and avoid leaving
+    // orphaned rows pointing at deleted ids).
+    const validations = await strapi
+      .query("treasury-validation")
+      .find({ entity_type: "payrolls", _limit: -1 });
+    const validationsByPayroll = new Map();
+    for (const v of validations) {
+      if (!validationsByPayroll.has(v.entity_id))
+        validationsByPayroll.set(v.entity_id, []);
+      validationsByPayroll.get(v.entity_id).push(v);
+    }
+
+    // Rank a payroll: the record carrying the most real state is the keeper.
+    const keeperScore = (p) => {
+      const vCount = (validationsByPayroll.get(p.id) || []).length;
+      return (
+        (p.paid ? 100000 : 0) +
+        (p.paid_date ? 10000 : 0) +
+        vCount * 1000 +
+        (relId(p.bank_account) ? 100 : 0)
+      );
+    };
+
+    let totalDeleted = 0;
+    let groupsCleaned = 0;
+
+    for (const [key, items] of groups) {
+      if (items.length <= 1) continue;
+      groupsCleaned++;
+
+      // Highest score first; tie-break by lowest id (oldest = original).
+      const sorted = items.slice().sort((a, b) => {
+        const diff = keeperScore(b) - keeperScore(a);
+        return diff !== 0 ? diff : a.id - b.id;
+      });
+      const keeper = sorted[0];
+      const toDelete = sorted.slice(1);
+
+      const keeperSubTypes = new Set(
+        (validationsByPayroll.get(keeper.id) || [])
+          .map((v) => v.sub_type)
+          .filter(Boolean),
+      );
+
+      for (const dup of toDelete) {
+        // Move each validation of the duplicate to the keeper unless the
+        // keeper already has one for the same sub_type -> then drop it.
+        for (const v of validationsByPayroll.get(dup.id) || []) {
+          if (v.sub_type && keeperSubTypes.has(v.sub_type)) {
+            await strapi
+              .query("treasury-validation")
+              .delete({ id: v.id });
+          } else {
+            await strapi
+              .query("treasury-validation")
+              .update({ id: v.id }, { entity_id: keeper.id });
+            if (v.sub_type) keeperSubTypes.add(v.sub_type);
+          }
+        }
+
+        await strapi.query("payroll").delete({ id: dup.id });
+        totalDeleted++;
+      }
+
+      console.log(
+        `[CLEANUP DUPLICATE PAYROLLS] key ${key} (${items.length} rows): kept #${keeper.id}, removed [${toDelete
+          .map((d) => d.id)
+          .join(", ")}]`,
+      );
+    }
+
+    console.log(
+      `[CLEANUP DUPLICATE PAYROLLS] Done. Groups cleaned: ${groupsCleaned}, payrolls deleted: ${totalDeleted}`,
+    );
+  } catch (error) {
+    console.error("[CLEANUP DUPLICATE PAYROLLS] Error:", error);
+    console.log("Cleanup will be retried next time the server starts");
+  }
+}
+
 module.exports = async () => {
   await importSeedData();
   // await migrateGrantableDataToYears();
@@ -3690,6 +3807,9 @@ module.exports = async () => {
     backfillPhaseDocumentDates,
     { runOnce: true },
   );
+  await runStartupScript("cleanupDuplicatePayrolls", cleanupDuplicatePayrolls, {
+    runOnce: true,
+  });
 
   // await reconcileDateContaminatedCollectionOrders();
   // await reconcileDuplicateCollectionOrders();

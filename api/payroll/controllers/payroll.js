@@ -4,8 +4,16 @@ const moment = require("moment");
 
 /**
  * Read the documentation (https://strapi.io/documentation/developer-docs/latest/development/backend-customization.html#core-controllers)
- * to customize this controller
+ * to customize the controller
  */
+
+// A relation field may come back from Strapi as a populated object { id },
+// as a raw id, or be null/undefined. Normalize it to a comparable string.
+const idOf = (value) => {
+  if (value == null) return null;
+  if (typeof value === "object") return value.id != null ? String(value.id) : null;
+  return String(value);
+};
 
 module.exports = {
   async createAll(ctx) {
@@ -35,9 +43,16 @@ module.exports = {
         .query("daily-dedication")
         .find({ users_permissions_user: user.id, _limit: -1 });
 
+      // Explicitly populate year/month so the existence check always has {id}
+      // objects to compare. Without populate a relation can come back as a bare
+      // id, which would make every comparison fail and create duplicates.
       const userPayrolls = await strapi
         .query("payroll")
-        .find({ users_permissions_user: user.id, _limit: -1 });
+        .find({ users_permissions_user: user.id, _limit: -1 }, [
+          "year",
+          "month",
+          "users_permissions_user",
+        ]);
 
       if (dedications && dedications.length) {
         for (let m = 1; m <= 12; m++) {
@@ -54,15 +69,39 @@ module.exports = {
             const month = months.find(mo => mo.month == m)
             const y = years.find(ye => ye.year == year)
 
-            // console.log('month', month)
-            // console.log('year', y)
-            // console.log('userPayrolls', userPayrolls)
+            if (!month || !y) {
+              continue;
+            }
 
-            const payrollExist = userPayrolls.find(up => up.year && up.year.id === y.id && up.month && up.month.id === month.id)
+            const yearId = String(y.id);
+            const monthId = String(month.id);
+
+            // Is there already a payroll for this (user, year, month) in our
+            // snapshot? Relations are normalized to ids via idOf().
+            const payrollExist = userPayrolls.find(
+              (up) =>
+                idOf(up.year) === yearId && idOf(up.month) === monthId
+            );
 
 
             if (!payrollExist) {
-                const total = dedication.hours / 8 * dedication.monthly_salary;
+              // Defense in depth: even if two create-all requests overlap
+              // (e.g. a double click before the frontend guard landed), each
+              // run reads the existing payrolls only once. Re-query right
+              // before the insert so we don't duplicate a (user, year, month)
+              // that the other concurrent run just committed.
+              const justCreated = await strapi.query("payroll").findOne({
+                users_permissions_user: user.id,
+                year: y.id,
+                month: month.id,
+              });
+
+              if (justCreated) {
+                userPayrollsExsist.push(justCreated);
+                continue;
+              }
+
+              const total = dedication.hours / 8 * dedication.monthly_salary;
 
             const payroll = {
                 month: month.id,
@@ -108,6 +147,9 @@ module.exports = {
 
                 const payrollDb = await strapi.query("payroll").create(payroll);
 
+                // Keep our snapshot in sync so later iterations in this same
+                // run see the payroll we just created.
+                userPayrolls.push(payrollDb);
 
                 userPayrollsCreated.push(payrollDb);
 
