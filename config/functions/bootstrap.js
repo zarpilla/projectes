@@ -117,6 +117,7 @@ async function importSeedData() {
       "findestimatedtotalsbyday",
       "findNames",
       "findwithphases",
+      "findwithphasesboth",
       "payexpense",
       "payincome",
       "findwitheconomicdetail",

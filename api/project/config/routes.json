@@ -74,6 +74,14 @@
     },
     {
       "method": "GET",
+      "path": "/projects/phases-both",
+      "handler": "project.findWithPhasesBoth",
+      "config": {
+        "policies": []
+      }
+    },
+    {
+      "method": "GET",
       "path": "/projects/dedications",
       "handler": "project.findDedications",
       "config": {

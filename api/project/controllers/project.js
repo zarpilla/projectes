@@ -438,7 +438,66 @@ module.exports = {
       .filter((p) => p.published_at !== "" && p.published_at !== null);
   },
 
-  // Returns the fully aggregated dedication Gantt table (leaders, periods and
+  // Variant of findWithPhases used by the "Previsió/Execució dedicació" pivot
+  // (DedicationEstPivot.vue), which shows "Hores previstes" (planned, from
+  // project_phases) and "Hores originals" (from project_original_phases) side
+  // by side. Unlike findWithPhases, it eagerly loads BOTH phase collections
+  // (with the full incomes -> estimated_hours -> users_permissions_user
+  // nesting) so both measures can be computed from a single request.
+  //   _where[project_state_in]=1,2,3   (optional, comma-separated)
+  //   activities=true                  (optional, also load activities)
+  async findWithPhasesBoth(ctx) {
+    let projects;
+    const { published_at_null, _limit, activities, hoursType, ...where } = ctx.query;
+
+    const project_state_in =
+      (where._where && where._where.project_state_in) || where.project_state_in;
+
+    const withRelated = [
+      "project_phases",
+      "project_phases.incomes",
+      "project_phases.incomes.estimated_hours",
+      "project_phases.incomes.estimated_hours.users_permissions_user",
+      "project_original_phases",
+      "project_original_phases.incomes",
+      "project_original_phases.incomes.estimated_hours",
+      "project_original_phases.incomes.estimated_hours.users_permissions_user",
+    ];
+
+    if (activities) {
+      withRelated.push("activities");
+    }
+
+    if (ctx.query._q) {
+      projects = await strapi
+        .query("project")
+        .model.fetchAll({ withRelated: ["project_phases", "project_original_phases"] });
+    } else {
+      const stateIds = project_state_in
+        ? String(project_state_in)
+            .split(",")
+            .map((s) => parseInt(s.trim(), 10))
+            .filter((n) => !isNaN(n))
+        : [];
+
+      projects = await strapi
+        .query("project")
+        .model.query((qb) => {
+          qb.select("id", "name", "published_at");
+          if (stateIds.length) {
+            qb.where("project_state", "in", stateIds);
+          }
+        })
+        .fetchAll({
+          withRelated: withRelated,
+        });
+    }
+
+    return projects
+      .map((entity) => sanitizeEntity(entity, { model: strapi.models.project }))
+      .filter((p) => p.published_at !== "" && p.published_at !== null);
+  },
+
   // precomputed cells) plus the per-day dedications rows used by the Excel
   // export. Moves the expensive per-day expansion + re-aggregation previously
   // done client-side (DedicationGantt.vue / DedicationGanttChart.vue) to the
