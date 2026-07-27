@@ -138,6 +138,42 @@ test("handles periodification-style rows (negative expense values input)", () =>
   approx(y.total_real_expenses, 150);
 });
 
+test("periodification affects estimated + real dimensions but NOT original", () => {
+  // Mirrors the corrected pushPeriodificationRows behaviour:
+  //   - "previstos" (incomes/expenses) -> estimated dimension only
+  //   - "executats" (real_incomes/real_expenses) -> real dimension only
+  //   - original dimension is a locked baseline (income_orig/expense_orig = 0)
+  const rows = [
+    {
+      year: "2025",
+      type: "income",
+      income_orig: 0,
+      income_esti: 1000, // "+Ingressos previstos"
+      income_real: 800, // "+Ingressos executats"
+    },
+    {
+      year: "2025",
+      type: "expense",
+      expense_orig: 0,
+      expense_esti: -400, // "+Despeses previstes" (negated at row build time)
+      expense_real: -300, // "+Despeses executades"
+    },
+  ];
+  const [y] = aggregateRowsByYear(rows);
+
+  // Original dimension unchanged by periodification
+  approx(y.total_original_incomes, 0);
+  approx(y.total_original_expenses, 0);
+
+  // Estimated dimension carries the "previstos" adjustments
+  approx(y.total_estimated_incomes, 1000);
+  approx(y.total_estimated_expenses, 400);
+
+  // Real dimension carries the "executats" adjustments
+  approx(y.total_real_incomes, 800);
+  approx(y.total_real_expenses, 300);
+});
+
 test("ignores undefined / null fields without producing NaN", () => {
   const rows = [
     { year: "2025", income_esti: null },

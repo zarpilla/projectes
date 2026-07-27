@@ -2,6 +2,9 @@
 
 const moment = require("moment")
 const _ = require('lodash');
+const {
+  buildEstimatedForecastByYear,
+} = require("../../project/services/projectFinancials");
 const zeroPad = (num, places) => String(num).padStart(places, "0");
 
 /**
@@ -146,6 +149,29 @@ module.exports = {
     await strapi.query("bank-accounts").find({ _limit: -1 })
 
     const me = await strapi.query("me").findOne({}, ["bank_account_payroll", "bank_account_ss", "bank_account_irpf", "bank_account_default", "bank_account_vat"]);
+
+    // Economic forecast ("prevista") per year, derived from the project PLAN
+    // (project_phases + prevista periodification) — exactly the way
+    // ProjectForm's RESUM FINANCER computes it. Reuses the shared
+    // projectFinancials engine so this can't drift from the form.
+    const fallback_deductible_vat_pct =
+      me.options && me.options.deductible_vat_pct
+        ? me.options.deductible_vat_pct
+        : 100.0;
+    const deductibleVatPctByYear = new Map(
+      (years || [])
+        .filter((y) => y && y.year)
+        .map((y) => [String(y.year), parseFloat(y.deductible_vat_pct || 100)])
+    );
+    const forecast_by_year = buildEstimatedForecastByYear(
+      projects,
+      deductibleVatPctByYear,
+      fallback_deductible_vat_pct
+    );
+
+    // Full payroll cost per year (net + IRPF + SS + other), paid or not.
+    // Accumulated in the payrolls loop below.
+    const forecast_payrolls_by_year = {};
 
     // vat
     const vat = { paid: 0, received: 0, deductible_vat_pct: 0, deductible_vat_pct_sum: 0, deductible_vat_pct_n: 0, deductible_vat: 0, documents: [] };
@@ -871,6 +897,20 @@ module.exports = {
             e.emitted ? moment(e.emitted, "YYYY-MM-DD") : moment(),
             moment(),
           ]);
+
+      // Accumulate the full payroll cost (net + IRPF + SS + other) into the
+      // economic forecast for the payroll's year. Paid or unpaid, both count
+      // — these are the "Nómines totals de l'any".
+      if (e.year && e.year.year) {
+        const payrollYear = String(e.year.year);
+        forecast_payrolls_by_year[payrollYear] =
+          (forecast_payrolls_by_year[payrollYear] || 0) +
+          (e.net_base || 0) +
+          (e.irpf_base || 0) +
+          (e.ss_base || 0) +
+          (e.other_base || 0);
+      }
+
       const validationKey = getValidationKey('payrolls', e.id);
       const expense = {
         project_name: "",
@@ -1217,6 +1257,6 @@ module.exports = {
       }
     }
 
-    return { treasury: filteredTreasuryDataX, projects, vat, vat_expected, vat_expected_by_quarter, vat_by_quarter: vatByQuarter };
+    return { treasury: filteredTreasuryDataX, projects, vat, vat_expected, vat_expected_by_quarter, vat_by_quarter: vatByQuarter, forecast_by_year, forecast_payrolls_by_year };
   },
 };

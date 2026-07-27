@@ -2833,6 +2833,32 @@ async function backfillTotalOriginalHours() {
   }
 }
 
+/**
+ * Recomputes and persists every project's stored total_* columns after the
+ * periodification bug fix in pushPeriodificationRows.
+ *
+ * Bug: manual periodification entries entered in the form ("+Ingressos
+ * previstos" / "+Despeses previstes") were being applied to the ORIGINAL
+ * dimension in addition to the ESTIMATED one, so original_incomes_expenses
+ * was contaminated. The fix makes those entries affect only the estimated
+ * dimension (and "+Ingressos executats"/"+Despeses executades" only the
+ * real dimension). Stored totals for any project with periodification must
+ * therefore be recomputed so the persisted columns match the corrected
+ * logic.
+ */
+async function recalcProjectTotalsAfterPeriodificationFix() {
+  console.log(
+    "[PERIODIFICATION FIX] Starting bulk refresh of project total_* columns after the original-dimension periodification fix...",
+  );
+  const summary = await refreshAllStoredTotals({ progressEvery: 50 });
+  console.log(
+    `[PERIODIFICATION FIX] Done. total=${summary.total}, processed=${summary.processed}, failed=${summary.failed}`,
+  );
+  if (summary.failed > 0) {
+    console.error("[PERIODIFICATION FIX] Errors:", summary.errors.slice(0, 20));
+  }
+}
+
 async function copyCanAssignActivitiesToDocuments() {
   try {
     console.log(
@@ -3776,6 +3802,11 @@ module.exports = async () => {
   await runStartupScript(
     "backfillTotalOriginalHours",
     backfillTotalOriginalHours,
+    { runOnce: true },
+  );
+  await runStartupScript(
+    "recalcProjectTotalsAfterPeriodificationFix",
+    recalcProjectTotalsAfterPeriodificationFix,
     { runOnce: true },
   );
   await runStartupScript(

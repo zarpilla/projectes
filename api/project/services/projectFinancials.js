@@ -10,8 +10,8 @@
  * must derive their numbers from these rows so they cannot drift apart.
  *
  * The recent project-240 bugs (Hores previstes pulled from
- * project_original_phases, periodifications not applied to the "orig"
- * dimension) were both caused by having two parallel implementations
+ * project_original_phases, periodifications incorrectly applied to the
+ * "orig" dimension) were both caused by having two parallel implementations
  * of the same business rules. Centralizing the row construction here
  * makes that class of bug structurally impossible.
  */
@@ -698,9 +698,22 @@ const pushPeriodificationRows = (out, p, projectInfo) => {
   for (let j = 0; j < p.periodification.length; j++) {
     const pp = p.periodification[j];
 
-    // Periodification entries are manual yearly adjustments that must be
-    // applied to ALL three dimensions (original, estimated, real) so the
-    // pivot view and the form's RESUM FINANCER agree.
+    // Periodification entries are manual yearly adjustments entered in the
+    // form's "PERIODIFICACIÓ" card. Mapping to dimensions:
+    //
+    //   - "Ingressos previstos" / "Despeses previstes" (pp.incomes /
+    //     pp.expenses) adjust the ESTIMATED (previsió) dimension only. They
+    //     must NOT touch the ORIGINAL dimension: the original baseline comes
+    //     exclusively from project_original_phases and is meant to be a
+    //     locked snapshot from project creation.
+    //
+    //   - "Ingressos executats" / "Despeses executades"
+    //     (pp.real_incomes / pp.real_expenses) adjust the REAL (executat)
+    //     dimension only.
+    //
+    //   - The ORIGINAL dimension is therefore never affected by manual
+    //     periodification, so original_incomes_expenses always reflects the
+    //     pure original baseline.
     //
     // Sign convention: phase expense rows store amounts as NEGATIVE
     // (already sign-flipped at row construction). The DB stores
@@ -713,7 +726,7 @@ const pushPeriodificationRows = (out, p, projectInfo) => {
       ...projectInfo,
       ...noPhaseInfo,
       type: "income",
-      income_orig: pp.incomes || 0,
+      income_orig: 0,
       income_esti: pp.incomes || 0,
       income_real: pp.real_incomes || 0,
       date: `${pp.year}-12-31`,
@@ -726,7 +739,7 @@ const pushPeriodificationRows = (out, p, projectInfo) => {
       ...projectInfo,
       ...noPhaseInfo,
       type: "expense",
-      expense_orig: -1 * (pp.expenses || 0),
+      expense_orig: 0,
       expense_orig_vat: 0,
       expense_esti: -1 * (pp.expenses || 0),
       expense_esti_vat: 0,
@@ -1251,9 +1264,67 @@ const verifyStoredTotals = async (ids, epsilon = 0.01) => {
   };
 };
 
+/**
+ * Build the "prevista" (forecast) income/expense totals per year for a set of
+ * projects, the way ProjectForm's RESUM FINANCER computes them.
+ *
+ * Reuses the same row-construction functions as `buildProjectRows`, but skips
+ * the hours and real-activity rows (irrelevant for the economic forecast):
+ *   - estimated incomes  (all `project_phases.incomes` lines, paid or unpaid)
+ *   - estimated expenses (base "factures" + VAT prorrata)
+ *   - periodification    (the ESTIMATED/prevista dimension only:
+ *                         pp.incomes / pp.expenses)
+ *
+ * The rows are dated by `date_estimate_document || date` (the previsió date)
+ * inside the push* helpers, so `aggregateRowsByYear` buckets them per
+ * previsió year automatically. Periodification rows are always dated
+ * `${pp.year}-12-31`.
+ *
+ * `aggregateRowsByYear` sign-flips expenses/VAT to POSITIVE form values, so
+ * the returned map exposes positive numbers for every field. Callers that
+ * need expenses as negative (e.g. the treasury forecast table) negate them
+ * themselves.
+ *
+ * Returns a plain object keyed by year (string) with:
+ *   { forecast_incomes, forecast_expenses, forecast_expenses_vat }
+ */
+const buildEstimatedForecastByYear = (
+  projects,
+  deductibleVatPctByYear,
+  fallback_deductible_vat_pct
+) => {
+  const rows = [];
+  for (let i = 0; i < (projects || []).length; i++) {
+    const p = projects[i];
+    const projectDefaultYear = getProjectDefaultYear(p);
+    const projectInfo = buildProjectInfo(p);
+    const getDeductibleRatio = makeGetDeductibleRatioForDate(
+      deductibleVatPctByYear,
+      fallback_deductible_vat_pct,
+      projectDefaultYear
+    );
+    pushEstimatedIncomeRows(rows, p, projectInfo);
+    pushEstimatedExpenseRows(rows, p, projectInfo, getDeductibleRatio);
+    pushPeriodificationRows(rows, p, projectInfo);
+  }
+
+  const byYear = aggregateRowsByYear(rows);
+  const map = {};
+  for (let i = 0; i < byYear.length; i++) {
+    const y = byYear[i];
+    map[y.year] = {
+      forecast_incomes: y.total_estimated_incomes,
+      forecast_expenses: y.total_estimated_expenses,
+      forecast_expenses_vat: y.total_estimated_expenses_vat,
+    };
+  }
+  return map;
+};
+
 module.exports = {
   buildProjectRows,
   aggregateRowsByYear,
+  buildEstimatedForecastByYear,
   buildSingleProjectActivitiesMap,
   calculateEstimatedTotals,
   getProjectDefaultYear,

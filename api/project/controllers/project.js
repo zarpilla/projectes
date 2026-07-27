@@ -1020,13 +1020,18 @@ module.exports = {
         const periodified_incomes = periodificationData.incomes || 0;
         const periodified_expenses = periodificationData.expenses || 0;
         
-        // Apply to all three dimensions
-        const new_total_original_incomes = y.total_original_incomes + periodified_incomes;
-        const new_total_original_expenses = y.total_original_expenses + periodified_expenses;
-        
+        // Periodification mapping (must mirror pushPeriodificationRows in
+        // projectFinancials.js):
+        //   - "previstos" (incomes/expenses) -> estimated dimension ONLY.
+        //     The original dimension is a locked baseline and must never be
+        //     touched by manual periodification.
+        //   - "executats" (real_incomes/real_expenses) -> real dimension ONLY.
+        const new_total_original_incomes = y.total_original_incomes;
+        const new_total_original_expenses = y.total_original_expenses;
+
         const new_total_estimated_incomes = y.total_estimated_incomes + periodified_incomes;
         const new_total_estimated_expenses = y.total_estimated_expenses + periodified_expenses;
-        
+
         const new_total_real_incomes = y.total_real_incomes + periodified_real_incomes;
         const new_total_real_expenses = y.total_real_expenses + periodified_real_expenses;
         
