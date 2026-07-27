@@ -78,12 +78,12 @@ const expense = (
   paid: false,
 });
 
-const periodification = (year, incomes, expenses) => ({
+const periodification = (year, incomes, expenses, real_incomes = 0, real_expenses = 0) => ({
   year: String(year),
   incomes,
   expenses,
-  real_incomes: 0,
-  real_expenses: 0,
+  real_incomes,
+  real_expenses,
 });
 
 // Build the deductible map the way the controllers do:
@@ -194,7 +194,7 @@ test("aggregates across multiple projects and keeps expenses positive", () => {
   approx(out["2025"].forecast_expenses, 1000);
 });
 
-test("includes prevista periodification (incomes/expenses) for its year", () => {
+test("periodification=no ignores periodification entirely", () => {
   const p = project(1, {
     project_phases: [
       phase([income(1, 100, "2025-01-01")], [
@@ -202,28 +202,87 @@ test("includes prevista periodification (incomes/expenses) for its year", () => 
       ]),
     ],
     periodification: [
-      // +300 income, +500 expense for the prevista (estimated) dimension of 2025.
-      periodification(2025, 300, 500),
+      // Both prevista and real values present; both must be ignored.
+      periodification(2025, 300, 500, 700, 900),
     ],
   });
-  const out = buildEstimatedForecastByYear([p], vatMap([["2025", 100]]), 100);
+  // Default mode is "no", and passing it explicitly must match.
+  const outExplicit = buildEstimatedForecastByYear(
+    [p],
+    vatMap([["2025", 100]]),
+    100,
+    "no"
+  );
+  const outDefault = buildEstimatedForecastByYear([p], vatMap([["2025", 100]]), 100);
+
+  for (const out of [outExplicit, outDefault]) {
+    approx(out["2025"].forecast_incomes, 100); // only the planned line
+    approx(out["2025"].forecast_expenses, 200);
+    approx(out["2025"].forecast_expenses_vat, 0);
+  }
+});
+
+test("periodification=prevista layers pp.incomes / pp.expenses", () => {
+  const p = project(1, {
+    project_phases: [
+      phase([income(1, 100, "2025-01-01")], [
+        expense(1, 200, "2025-01-01", "2025-01-01"),
+      ]),
+    ],
+    periodification: [
+      // +300 income, +500 expense for the prevista dimension of 2025.
+      // Real values (700/900) must be ignored in this mode.
+      periodification(2025, 300, 500, 700, 900),
+    ],
+  });
+  const out = buildEstimatedForecastByYear(
+    [p],
+    vatMap([["2025", 100]]),
+    100,
+    "prevista"
+  );
 
   approx(out["2025"].forecast_incomes, 100 + 300);
   approx(out["2025"].forecast_expenses, 200 + 500);
   approx(out["2025"].forecast_expenses_vat, 0); // 100% deductible
 });
 
-test("periodification is dated 31/12 of its year, not the line date", () => {
-  // Real periodification dated into 2026 should NOT leak into 2026 when it's
-  // a prevista-only entry for 2025. (Periodification rows use `${year}-12-31`.)
+test("periodification=real layers pp.real_incomes / pp.real_expenses", () => {
   const p = project(1, {
+    project_phases: [
+      phase([income(1, 100, "2025-01-01")], [
+        expense(1, 200, "2025-01-01", "2025-01-01"),
+      ]),
+    ],
     periodification: [
-      // Only the prevista (incomes/expenses) fields feed the forecast; the
-      // real_* fields feed the "executat" dimension and must be ignored here.
-      periodification(2025, 0, 1000),
+      // Prevista values (300/500) must be ignored in "real" mode.
+      periodification(2025, 300, 500, 700, 900),
     ],
   });
-  const out = buildEstimatedForecastByYear([p], vatMap([["2025", 100]]), 100);
+  const out = buildEstimatedForecastByYear(
+    [p],
+    vatMap([["2025", 100]]),
+    100,
+    "real"
+  );
+
+  approx(out["2025"].forecast_incomes, 100 + 700);
+  approx(out["2025"].forecast_expenses, 200 + 900);
+  approx(out["2025"].forecast_expenses_vat, 0);
+});
+
+test("periodification is dated 31/12 of its year, not the line date", () => {
+  // A 2025 prevista periodification must land in 2025 even though December
+  // 31st is the row date — it must never leak into 2026.
+  const p = project(1, {
+    periodification: [periodification(2025, 0, 1000)],
+  });
+  const out = buildEstimatedForecastByYear(
+    [p],
+    vatMap([["2025", 100]]),
+    100,
+    "prevista"
+  );
 
   approx(out["2025"].forecast_expenses, 1000);
   assert.strictEqual(out["2026"], undefined);

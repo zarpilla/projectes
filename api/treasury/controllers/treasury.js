@@ -166,7 +166,8 @@ module.exports = {
     const forecast_by_year = buildEstimatedForecastByYear(
       projects,
       deductibleVatPctByYear,
-      fallback_deductible_vat_pct
+      fallback_deductible_vat_pct,
+      periodification
     );
 
     // Full payroll cost per year (net + IRPF + SS + other), paid or not.
@@ -833,62 +834,11 @@ module.exports = {
       }
     }
 
-    // Apply periodification if requested
-    if (periodification && periodification !== "no" && (periodification === "real" || periodification === "prevista")) {
-      for (let p of projects) {
-        if (p.periodification && p.periodification.length > 0) {
-          console.log(`Applying periodification for project ${p.name} (${p.id}) with periodificacio=${periodification}`);
-          for (let periodif of p.periodification) {
-            // Determine which fields to use based on periodificacio parameter
-            let incomeAdjustment = 0;
-            let expenseAdjustment = 0;
-            
-            if (periodification === "real") {
-              // Use real_incomes and real_expenses for "real" periodification
-              incomeAdjustment = periodif.real_incomes || 0;
-              expenseAdjustment = periodif.real_expenses || 0;
-            } else if (periodification === "prevista") {
-              // Use incomes and expenses for "prevista" periodification
-              incomeAdjustment = periodif.incomes || 0;
-              expenseAdjustment = periodif.expenses || 0;
-            }
-            
-            // Only add entries if there are non-zero adjustments
-            if (incomeAdjustment !== 0) {
-              const periodifIncome = {
-                project_name: p.name,
-                project_id: p.id,
-                type: `Periodificació ${periodification === "real" ? "real" : "prevista"} ingressos`,
-                concept: `Ajust periodificació ${periodif.year}`,
-                total_amount: incomeAdjustment,
-                date: moment(`${periodif.year}-12-31`, "YYYY-MM-DD"),
-                date_error: false,
-                paid: periodification === "real" ? true : false,
-                contact: "-",
-                bank_account: me.bank_account_default ? me.bank_account_default.name : null,
-              };
-              treasury.push(periodifIncome);
-            }
-            
-            if (expenseAdjustment !== 0) {
-              const periodifExpense = {
-                project_name: p.name,
-                project_id: p.id,
-                type: `Periodificació ${periodification === "real" ? "real" : "prevista"} despeses`,
-                concept: `Ajust periodificació ${periodif.year}`,
-                total_amount: expenseAdjustment,
-                date: moment(`${periodif.year}-12-31`, "YYYY-MM-DD"),
-                date_error: false,
-                paid: periodification === "real" ? true : false,
-                contact: "-",
-                bank_account: me.bank_account_default ? me.bank_account_default.name : null,
-              };
-              treasury.push(periodifExpense);
-            }
-          }
-        }
-      }
-    }
+    // NOTE: periodification no longer feeds the treasury (cashflow) rows in
+    // this forecast endpoint. It is applied only to the economic forecast
+    // ("prevista") totals via buildEstimatedForecastByYear above, gated by the
+    // `periodification` ("no"/"prevista"/"real") parameter. The treasury rows
+    // therefore reflect real/expected cash movements only.
 
     for (let e of payrolls) {
       const date = e.paid_date

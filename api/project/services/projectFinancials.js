@@ -1272,8 +1272,17 @@ const verifyStoredTotals = async (ids, epsilon = 0.01) => {
  * the hours and real-activity rows (irrelevant for the economic forecast):
  *   - estimated incomes  (all `project_phases.incomes` lines, paid or unpaid)
  *   - estimated expenses (base "factures" + VAT prorrata)
- *   - periodification    (the ESTIMATED/prevista dimension only:
- *                         pp.incomes / pp.expenses)
+ *   - periodification    (selected via the `periodification` arg, see below)
+ *
+ * Periodification is driven by the `periodification` argument, mirroring the
+ * view's "Periodificació" dropdown:
+ *   - "no"       => no periodification rows
+ *   - "prevista" => pp.incomes / pp.expenses  (the ESTIMATED/prevista dimension)
+ *   - "real"     => pp.real_incomes / pp.real_expenses (the REAL/executat one)
+ * The chosen values are written into the `income_esti` / `expense_esti` slots
+ * so the existing aggregator picks them up; sign conventions match
+ * `pushPeriodificationRows` (incomes positive, expenses negated). For any
+ * other/unset value, periodification is treated as "no".
  *
  * The rows are dated by `date_estimate_document || date` (the previsió date)
  * inside the push* helpers, so `aggregateRowsByYear` buckets them per
@@ -1291,9 +1300,12 @@ const verifyStoredTotals = async (ids, epsilon = 0.01) => {
 const buildEstimatedForecastByYear = (
   projects,
   deductibleVatPctByYear,
-  fallback_deductible_vat_pct
+  fallback_deductible_vat_pct,
+  periodification = "no"
 ) => {
   const rows = [];
+  const usePeriodification =
+    periodification === "prevista" || periodification === "real";
   for (let i = 0; i < (projects || []).length; i++) {
     const p = projects[i];
     const projectDefaultYear = getProjectDefaultYear(p);
@@ -1305,7 +1317,42 @@ const buildEstimatedForecastByYear = (
     );
     pushEstimatedIncomeRows(rows, p, projectInfo);
     pushEstimatedExpenseRows(rows, p, projectInfo, getDeductibleRatio);
-    pushPeriodificationRows(rows, p, projectInfo);
+
+    // Layer the selected periodification into the estimated slots.
+    if (usePeriodification && p.periodification && p.periodification.length) {
+      for (let j = 0; j < p.periodification.length; j++) {
+        const pp = p.periodification[j];
+        const inc =
+          periodification === "prevista"
+            ? pp.incomes || 0
+            : pp.real_incomes || 0;
+        const exp =
+          periodification === "prevista"
+            ? pp.expenses || 0
+            : pp.real_expenses || 0;
+        rows.push({
+          ...projectInfo,
+          ...noPhaseInfo,
+          type: "income",
+          income_esti: inc,
+          date: `${pp.year}-12-31`,
+          year: pp.year.toString(),
+          month: "12",
+          row_type: "Periodificació",
+        });
+        rows.push({
+          ...projectInfo,
+          ...noPhaseInfo,
+          type: "expense",
+          // Negate to match the row-stream expense convention.
+          expense_esti: -1 * exp,
+          date: `${pp.year}-12-31`,
+          year: pp.year.toString(),
+          month: "12",
+          row_type: "Periodificació",
+        });
+      }
+    }
   }
 
   const byYear = aggregateRowsByYear(rows);
