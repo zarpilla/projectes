@@ -3,6 +3,11 @@
 const moment = require("moment");
 const _ = require("lodash");
 const { sanitizeEntity } = require("strapi-utils");
+const {
+  dailyHoursForFirstMatch,
+  capacityForMonth,
+  capacityForWeek,
+} = require("./ganttCapacity");
 
 // Catalan short month names so the period labels are independent of the
 // process-wide moment locale (the frontend renders these with moment 'ca').
@@ -33,90 +38,6 @@ function periodKeyFromDate(dateStr, view) {
   const year = m.isoWeekYear();
   const week = m.isoWeek();
   return `${year}-W${String(week).padStart(2, "0")}`;
-}
-
-// cellData daily-hours resolution: first matching range wins, default 8
-// (matches DedicationGanttChart.vue cellData handling).
-function dailyHoursForFirstMatch(dailyDedications, dateStr) {
-  if (dailyDedications) {
-    for (let j = 0; j < dailyDedications.length; j++) {
-      const dd = dailyDedications[j];
-      if (dd.from <= dateStr && dd.to >= dateStr) {
-        return dd.hours;
-      }
-    }
-  }
-  return 8;
-}
-
-// Expected hours for a month period, faithful to /dedicacio-saldo semantics
-// (see DedicationSaldo.vue): each weekday contributes its daily-dedication
-// hours, weekends contribute 0, AND festive days contribute 0 — festive days
-// zero the theoretical capacity rather than being subtracted as a lump.
-//
-// `festivesSet` is a Set of "YYYY-MM-DD" strings applicable to the user
-// (global festives ∪ user-specific festives). Iterates every day from the
-// first of the period's month to its end, resolving dailyHours per-day so
-// mid-month daily-dedication range changes are honored.
-//
-// Returns { expected, festive } where `festive` is the total daily-dedication
-// hours the festive weekdays consumed (i.e. the capacity removed by holidays),
-// surfaced to the tooltip as a single festive/holiday total.
-function capacityForMonth(periodKey, dailyDedications, festivesSet) {
-  const start = moment(periodKey + "-01", "YYYY-MM-DD");
-  if (!start.isValid()) return { expected: 0, festive: 0 };
-  const end = start.clone().endOf("month");
-  const totalDays = Math.round(moment.duration(end.diff(start)).asDays());
-
-  let expected = 0;
-  let festive = 0;
-  for (let i = 0; i <= totalDays; i++) {
-    const day = start.clone().add(i, "day");
-    const dow = day.day();
-    // Weekend -> 0 expected (matches saldo `day !== 0 && day !== 6` guard).
-    if (dow === 0 || dow === 6) continue;
-    const dateStr = day.format("YYYY-MM-DD");
-    const dh = dailyHoursForFirstMatch(dailyDedications, dateStr);
-    // Festive (global or user-specific) -> 0 expected, but its hours count
-    // toward the festive total so the tooltip can show holiday capacity.
-    if (festivesSet && festivesSet.has(dateStr)) {
-      festive += dh;
-      continue;
-    }
-    expected += dh;
-  }
-  return { expected, festive };
-}
-
-// Expected hours for an ISO-week period, festive-aware (saldo-equivalent).
-// A week is taken as 5 working days (Mon-Fri); festive weekdays reduce the
-// count just like in the month view. Returns { expected, festive } — see
-// capacityForMonth for the festive semantics.
-function capacityForWeek(periodKey, dailyDedications, festivesSet) {
-  const parts = periodKey.split("-W");
-  const year = parseInt(parts[0], 10);
-  const week = parseInt(parts[1], 10);
-  if (!year || !week) return { expected: 0, festive: 0 };
-
-  // Monday of the ISO week.
-  const monday = moment().isoWeekYear(year).isoWeek(week).isoWeekday(1);
-  if (!monday.isValid()) return { expected: 0, festive: 0 };
-
-  let expected = 0;
-  let festive = 0;
-  for (let d = 0; d < 7; d++) {
-    const day = monday.clone().add(d, "day");
-    const dow = day.day();
-    if (dow === 0 || dow === 6) continue;
-    const dateStr = day.format("YYYY-MM-DD");
-    const dh = dailyHoursForFirstMatch(dailyDedications, dateStr);
-    if (festivesSet && festivesSet.has(dateStr)) {
-      festive += dh;
-      continue;
-    }
-    expected += dh;
-  }
-  return { expected, festive };
 }
 
 // Builds the real (done) dedication Gantt table from `activity` records,

@@ -3,6 +3,7 @@
 const moment = require("moment");
 const _ = require("lodash");
 const { sanitizeEntity } = require("strapi-utils");
+const { capacityForMonth, capacityForWeek } = require("./ganttCapacity");
 
 // Catalan short month names so the period labels are independent of the
 // process-wide moment locale (the frontend renders these with moment 'ca').
@@ -32,49 +33,6 @@ function periodKeyFromDate(dateStr, view) {
   const year = m.isoWeekYear();
   const week = m.isoWeek();
   return `${year}-W${String(week).padStart(2, "0")}`;
-}
-
-// Mirrors DedicationGanttChart.vue numberOfWorkingDays: weekdays from the
-// given date to the end of its month.
-function numberOfWorkingDays(dayStr) {
-  const init = moment(dayStr, "YYYY-MM-DD");
-  if (!init.isValid()) return 0;
-  const end = init.clone().endOf("month");
-  const days = Math.round(moment.duration(end.diff(init)).asDays());
-  let n = 0;
-  for (let i = 0; i < days; i++) {
-    const currentDay = init.clone().add(i, "day");
-    if (![0, 6].includes(currentDay.day())) n++;
-  }
-  return n;
-}
-
-// Festive daily-hours resolution: last matching daily-dedication range wins
-// (matches DedicationGanttChart.vue festives handling).
-function dailyHoursForLastMatch(dailyDedications, dateStr) {
-  if (!dailyDedications) return 0;
-  let dailyHours = 0;
-  for (let j = 0; j < dailyDedications.length; j++) {
-    const dd = dailyDedications[j];
-    if (dd.from <= dateStr && dd.to >= dateStr) {
-      dailyHours = dd.hours;
-    }
-  }
-  return dailyHours;
-}
-
-// cellData daily-hours resolution: first matching range wins, default 8
-// (matches DedicationGanttChart.vue cellData handling).
-function dailyHoursForFirstMatch(dailyDedications, dateStr) {
-  if (dailyDedications) {
-    for (let j = 0; j < dailyDedications.length; j++) {
-      const dd = dailyDedications[j];
-      if (dd.from <= dateStr && dd.to >= dateStr) {
-        return dd.hours;
-      }
-    }
-  }
-  return 8;
 }
 
 // Port of DedicationGantt.vue processEstimatedHours: expands an estimated-hours
@@ -330,61 +288,31 @@ async function buildDedicationGantt({
     addProjectHours(entry, d.project_name, d.estimated_hours);
   }
 
-  // 5b) Festives, resolved per leader using that leader's daily dedications.
-  const festivesByUser = Object.create(null);
-  const globalFestives = [];
+  // 5b) Festive date sets per leader (global ∪ user-specific).
+  //
+  // Festives are NOT added to `total` / the project breakdown anymore: counting
+  // holiday hours as booked dedication double-counts them, since they also
+  // reduce the period's expected capacity (see step 7 / capacityForMonth). The
+  // holiday hours are instead surfaced via cell.festive, which the tooltip
+  // renders as a dedicated "Festius" footer line — matching
+  // buildRealDedicationGantt and /dedicaco-saldo.
+  const globalFestiveDates = new Set();
+  const festivesByUserId = Object.create(null);
   festives.forEach((f) => {
     if (!f.date) return;
-    const user = f.users_permissions_user;
-    if (user === null || user === undefined) {
-      globalFestives.push(f);
-    } else {
-      const uname = user.username;
-      if (!festivesByUser[uname]) festivesByUser[uname] = [];
-      festivesByUser[uname].push(f);
+    const u = f.users_permissions_user;
+    if (u === null || u === undefined) {
+      globalFestiveDates.add(f.date);
+    } else if (u.id != null) {
+      if (!festivesByUserId[u.id]) festivesByUserId[u.id] = new Set();
+      festivesByUserId[u.id].add(f.date);
     }
   });
 
-  visibleLeaders.forEach((leader) => {
-    if (!leader.daily_dedications) return;
-    const userFestives = festivesByUser[leader.username];
-    const all = userFestives
-      ? userFestives.concat(globalFestives)
-      : globalFestives;
-    const b = bucket[leader.id];
-
-    for (let i = 0; i < all.length; i++) {
-      const f = all[i];
-      const fDate = f.date;
-      const dailyHours = dailyHoursForLastMatch(leader.daily_dedications, fDate);
-      if (dailyHours > 0) {
-        const periodKey = periodKeyFromDate(fDate, view);
-        let entry = b[periodKey];
-        if (!entry) {
-          entry = {
-            periodKey,
-            total: 0,
-            projects: Object.create(null),
-            dedications: [],
-          };
-          b[periodKey] = entry;
-        }
-        const fname =
-          f.festive_type && f.festive_type.name ? f.festive_type.name : "-";
-        entry.total += dailyHours;
-        entry.dedications.push({
-          project_name: fname,
-          from: fDate,
-          estimated_hours: dailyHours,
-          username: leader.username,
-        });
-        addProjectHours(entry, fname, dailyHours);
-      }
-    }
-  });
-
-  // 6) Periods: union of dedication periods and all festive periods (matches
-  //    the DedicationGanttChart.vue periods computed property).
+  // 6) Periods: driven by where estimated dedication hours fall (matches the
+  //    DedicationGanttChart.vue periods computed property). Festives reduce
+  //    each cell's expected capacity but do not add periods on their own — a
+  //    month with only holidays and no dedication has nothing to show.
   const periodKeysSet = new Set();
   for (let i = 0; i < dedications.length; i++) {
     const d = dedications[i];
@@ -392,9 +320,6 @@ async function buildDedicationGantt({
       periodKeysSet.add(periodKeyFromDate(d.from, view));
     }
   }
-  festives.forEach((f) => {
-    if (f.date) periodKeysSet.add(periodKeyFromDate(f.date, view));
-  });
 
   const periods = Array.from(periodKeysSet)
     .sort()
@@ -438,16 +363,30 @@ async function buildDedicationGantt({
       if (entry) {
         hours = entry.total.toFixed(2);
 
-        const firstDedication = entry.dedications[0];
-        const startDate = firstDedication
-          ? firstDedication.from
-          : period.key + "-01";
-        const dailyHours = dailyHoursForFirstMatch(
-          leader.daily_dedications,
-          startDate
-        );
-        const expectedHours =
-          (view === "month" ? numberOfWorkingDays(startDate) : 5) * dailyHours;
+        // Expected hours for this period, festive-aware (matches
+        // /dedicaco-saldo and buildRealDedicationGantt): weekends and festive
+        // days contribute 0; each other weekday contributes the user's
+        // daily-dedication hours. Computed from the period key (first of month
+        // / Monday of week) so a late first dedication no longer truncates the
+        // month.
+        const userFestiveDates = festivesByUserId[leader.id];
+        // Per-leader festive set = global festives ∪ this user's festives.
+        // Built lazily once per leader and cached on the leader object.
+        let festivesSet = leader._festivesSet;
+        if (!festivesSet) {
+          festivesSet = new Set(globalFestiveDates);
+          if (userFestiveDates) {
+            userFestiveDates.forEach((d) => festivesSet.add(d));
+          }
+          leader._festivesSet = festivesSet;
+        }
+
+        const capacity =
+          view === "month"
+            ? capacityForMonth(period.key, leader.daily_dedications, festivesSet)
+            : capacityForWeek(period.key, leader.daily_dedications, festivesSet);
+        const expectedHours = capacity.expected;
+        const festiveHours = capacity.festive;
 
         if (expectedHours > 0) {
           const pct = (entry.total / expectedHours) * 100;
@@ -495,6 +434,7 @@ async function buildDedicationGantt({
           tooltip,
           breakdown,
           expected: expectedHours,
+          festive: festiveHours,
           diff,
         };
         return;
