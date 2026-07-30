@@ -8,6 +8,10 @@
   "attributes": {
     "multidelivery_discount": {
       "type": "decimal"
+    },
+    "next_day_limit_hour": {
+      "type": "integer",
+      "default": 14
     }
   }
 }

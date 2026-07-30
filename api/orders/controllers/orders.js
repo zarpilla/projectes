@@ -35,6 +35,61 @@ const TABLE_POPULATE = [
   "contact_legal_form",
 ];
 
+/**
+ * Enforce the next-day cutoff: orders whose estimated_delivery_date is
+ * "tomorrow" cannot be created past the configured cutoff hour, unless the
+ * user has the `orders_admin` permission. The cutoff is read from the org
+ * `me` singleType (orders_options.next_day_limit_hour), defaulting to 14.
+ *
+ * @returns {boolean} true if the order passes the check, false (and sets
+ *                   ctx body) if it should be rejected.
+ */
+const assertWithinNextDayCutoff = async (ctx) => {
+  const { estimated_delivery_date } = ctx.request.body || {};
+
+  // Only applies when targeting tomorrow's delivery
+  if (!estimated_delivery_date) return true;
+
+  const now = moment();
+  const tomorrow = moment().add(1, 'day');
+  const isTomorrow = moment(estimated_delivery_date).isSame(tomorrow, 'day');
+  if (!isTomorrow) return true;
+
+  // Admins (orders_admin) are exempt
+  if (ctx.state.user) {
+    const user = await strapi.query('user', 'users-permissions').findOne(
+      { id: ctx.state.user.id },
+      ['permissions']
+    );
+    const isAdmin = user && user.permissions &&
+      user.permissions.some(p => p.permission === 'orders_admin');
+    if (isAdmin) return true;
+  }
+
+  // Read org-wide cutoff (default 14)
+  let nextDayLimitHour = 14;
+  try {
+    const meSettings = await strapi.query('me').findOne();
+    if (
+      meSettings &&
+      meSettings.orders_options &&
+      meSettings.orders_options.next_day_limit_hour != null
+    ) {
+      nextDayLimitHour = meSettings.orders_options.next_day_limit_hour;
+    }
+  } catch (e) {
+    // fall back to default 14
+  }
+
+  if (now.hour() >= nextDayLimitHour) {
+    ctx.badRequest(
+      `No es pot crear la comanda: s'ha superat l'hora límit (${nextDayLimitHour}h) per a entregues del dia següent.`
+    );
+    return false;
+  }
+  return true;
+};
+
 module.exports = {
   // Lightweight list endpoint for OrdersTable.vue.
   // Same query semantics as /orders (same filters, _sort, _limit, _start,
@@ -877,6 +932,9 @@ module.exports = {
     if (!ctx.request.body._tracking_user && ctx.state.user) {
       ctx.request.body._tracking_user = ctx.state.user;
     }
+    // Enforce same-day cutoff (admin-exempt)
+    const allowed = await assertWithinNextDayCutoff(ctx);
+    if (!allowed) return;
     // Call the core create service
     const entity = await strapi.services.orders.create(ctx.request.body);
     return entity;

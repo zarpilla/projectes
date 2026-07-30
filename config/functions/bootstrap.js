@@ -3657,6 +3657,48 @@ async function migrateFrontUrlToMe() {
   }
 }
 
+// Set the next-day order cutoff hour on the me.orders_options component.
+// The new default in the schema is 14, but we want it to be 13 for this org.
+async function setNextDayLimitHourTo13() {
+  try {
+    console.log(
+      "[NEXT_DAY_LIMIT_HOUR] Setting me.orders_options.next_day_limit_hour = 13...",
+    );
+
+    const me = await strapi.query("me").findOne();
+    if (!me) {
+      console.log("[NEXT_DAY_LIMIT_HOUR] Me entity not found, skipping");
+      return;
+    }
+
+    const currentHour =
+      me.orders_options && me.orders_options.next_day_limit_hour;
+
+    if (currentHour === 13) {
+      console.log(
+        "[NEXT_DAY_LIMIT_HOUR] Already set to 13, skipping",
+      );
+      return;
+    }
+
+    await strapi.query("me").update(
+      { id: me.id },
+      {
+        orders_options: {
+          ...(me.orders_options || {}),
+          next_day_limit_hour: 13,
+        },
+      },
+    );
+
+    console.log(
+      `[NEXT_DAY_LIMIT_HOUR] Successfully set next_day_limit_hour = 13 (was ${currentHour})`,
+    );
+  } catch (error) {
+    console.error("[NEXT_DAY_LIMIT_HOUR] Error:", error);
+  }
+}
+
 // Remove duplicate payrolls (same user + year + month) created by the
 // concurrent-request bug in payrolls/create-all. For each duplicate group we
 // keep the "best" record (prefer paid/paid_date/validated/bank_account, then
@@ -3834,6 +3876,11 @@ module.exports = async () => {
   await runStartupScript("migrateFrontUrlToMe", migrateFrontUrlToMe, {
     runOnce: true,
   });
+  await runStartupScript(
+    "setNextDayLimitHourTo13",
+    setNextDayLimitHourTo13,
+    { runOnce: true },
+  );
   await runStartupScript(
     "backfillPhaseDocumentDates",
     backfillPhaseDocumentDates,
