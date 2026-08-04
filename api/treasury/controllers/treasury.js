@@ -35,6 +35,29 @@ const getValidationKey = (entityType, entityId, subType = null) => {
   return `${entityType}:${entityId}`;
 }
 
+// Compute the effect of a single treasury row on the running balance.
+// Returns { accountBalance, delta }:
+//   - accountBalance: the per-account balance AFTER applying this row
+//   - delta: the amount to add to the global subtotal
+// Handles the three row kinds identically for every caller:
+//   - is_real_balance_adjustment: snap the account to desired_balance
+//   - is_balance_annotation:      snap the account to account_balance
+//   - regular movement:           add total_amount
+const applyRowToBalance = (row, currentAccountBalance) => {
+  if (row.is_real_balance_adjustment) {
+    const desiredBalance = row.desired_balance;
+    const adjustment = desiredBalance - currentAccountBalance;
+    // Backfill the Import column for display (existing behavior).
+    row.total_amount = adjustment;
+    return { accountBalance: desiredBalance, delta: adjustment };
+  }
+  if (row.is_balance_annotation && row.account_balance !== undefined) {
+    const adjustment = row.account_balance - currentAccountBalance;
+    return { accountBalance: row.account_balance, delta: adjustment };
+  }
+  return { accountBalance: currentAccountBalance + row.total_amount, delta: row.total_amount };
+};
+
 module.exports = {
   async forecast(ctx) {
 
@@ -1119,43 +1142,21 @@ module.exports = {
     for (let i = 0; i < treasuryData.length; i++) {
       const t = treasuryData[i];
       const account = t.bank_account || "default";
-      
+
       // Initialize account balance if needed
       if (balanceByAccount[account] === undefined) {
         balanceByAccount[account] = 0;
       }
-      
-      // Handle is_real_balance adjustments
-      if (t.is_real_balance_adjustment) {
-        // Calculate what the theoretical balance is right now (before this adjustment)
-        const currentTheoreticalBalance = balanceByAccount[account];
-        const desiredBalance = t.desired_balance;
-        const adjustment = desiredBalance - currentTheoreticalBalance;
-        
-        // Set the total_amount to the adjustment needed
-        treasuryData[i].total_amount = adjustment;
-        
-        // Update both account balance and global subtotal
-        balanceByAccount[account] = desiredBalance;
-        subtotal += adjustment;
-      }
-      // For old-style balance annotations, set the subtotal to the account balance
-      else if (t.is_balance_annotation && t.account_balance !== undefined) {
-        const adjustment = t.account_balance - balanceByAccount[account];
-        balanceByAccount[account] = t.account_balance;
-        subtotal += adjustment;
-      } 
-      // Regular entry
-      else {
-        balanceByAccount[account] += t.total_amount;
-        subtotal += t.total_amount;
-      }
-      
+
+      const { accountBalance, delta } = applyRowToBalance(t, balanceByAccount[account]);
+      balanceByAccount[account] = accountBalance;
+      subtotal += delta;
+
       treasuryDataX.push({
         ...t,
         datex: moment(treasuryData[i].datef, "YYYYMMDD").format("DD-MM-YYYY"),
         subtotal,
-        account_subtotal: balanceByAccount[account], // Add per-account balance
+        account_subtotal: accountBalance, // per-account balance
       });
     }
 
@@ -1188,19 +1189,18 @@ module.exports = {
             t.bank_account === null
           );
           
-          // Recalculate subtotals for the filtered account-specific data
+          // Recalculate subtotals for the filtered account-specific data,
+          // reusing the same per-row logic as the global walk so that
+          // is_real_balance_adjustment and is_balance_annotation rows snap the
+          // running balance correctly, and account_subtotal stays in sync.
           let accountSubtotal = 0;
           filteredTreasuryDataX = filteredTreasuryDataX.map(t => {
-            // For balance annotations, set the subtotal to the account balance
-            if (t.is_balance_annotation && t.account_balance !== undefined) {
-              accountSubtotal = t.account_balance;
-            } else {
-              accountSubtotal += t.total_amount;
-            }
-            
+            const { accountBalance, delta } = applyRowToBalance(t, accountSubtotal);
+            accountSubtotal = accountBalance;
             return {
               ...t,
               subtotal: accountSubtotal,
+              account_subtotal: accountSubtotal,
             };
           });
         }
