@@ -60,17 +60,20 @@ function expandEstimatedHours(p, h, targetYear, festivesMap, dedications) {
       ? h.users_permissions_user.username
       : "-";
 
-  // Same sparse shape the frontend produces from /projects/phases (relations
-  // other than phases/incomes/estimated_hours.user are not populated there, so
-  // the legacy columns resolve to "-"/0). Kept identical on purpose so the
-  // Excel export does not change.
+  // Most relations (phases/incomes/estimated_hours.user aside) are not
+  // populated here, so the remaining hour/total columns resolve to 0.
+  // project_type and project_likelihood are eagerly loaded on the project, so
+  // they are populated here and surface in the Excel export. The legacy
+  // placeholder columns (project_leader, project_state, project_scope,
+  // project_scope_name, project_client) were removed since they were always "-".
   const projectBase = {
     project_name: p.name,
-    project_leader: "-",
-    project_state: "-",
-    project_scope: "-",
-    project_scope_name: "-",
-    project_client: "-",
+    project_type:
+      p.project_type && p.project_type.name ? p.project_type.name : "-",
+    project_likelihood:
+      p.project_likelihood && p.project_likelihood.name
+        ? p.project_likelihood.name
+        : "-",
     total_estimated_hours: 0,
     total_real_hours: 0,
     count: 1,
